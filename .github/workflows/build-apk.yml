@@ -10,41 +10,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout source
-      uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.10"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    - name: Install system dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y \
-          zip unzip openjdk-17-jdk \
-          python3-pip build-essential git \
-          libffi-dev libssl-dev
-    - name: Force NDK r25b
-      run: |
-        echo "ANDROID_NDK_HOME=$HOME/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
-        echo "ANDROID_NDK_ROOT=$HOME/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
-    - name: Install Buildozer
-      run: |
-        pip install --upgrade pip
-        pip install buildozer cython
-    - name: Full clean
-     run: |
-       rm -rf ~/.buildozer
-       rm -rf .buildozer
-       buildozer android clean || true
-      
-    - name: Build APK
-      run: |
-        buildozer android debug --accept-licenses
- 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: quiz-ai-apk
-        path: bin/*.apk
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            zip unzip openjdk-17-jdk \
+            python3-pip build-essential git \
+            libffi-dev libssl-dev
+
+      - name: Install Buildozer
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.36
+
+      - name: Force NDK r25b
+        run: |
+          echo "ANDROID_NDK_HOME=$HOME/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$HOME/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
+
+      - name: Full clean
+        run: |
+          rm -rf ~/.buildozer
+          rm -rf .buildozer
+
+      - name: Build APK
+        run: |
+          buildozer android debug --accept-licenses
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: quiz-ai-apk
+          path: bin/*.apk
