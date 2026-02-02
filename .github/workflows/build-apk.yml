@@ -25,7 +25,10 @@ jobs:
           zip unzip openjdk-17-jdk \
           python3-pip build-essential git \
           libffi-dev libssl-dev
-
+    - name: Force NDK r25b
+      run: |
+        echo "ANDROID_NDK_HOME=$HOME/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
+        echo "ANDROID_NDK_ROOT=$HOME/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
     - name: Install Buildozer
       run: |
         pip install --upgrade pip
