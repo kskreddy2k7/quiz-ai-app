@@ -1,0 +1,36 @@
+<QuizLayout@BoxLayout>:
+    orientation: "vertical"
+    padding: 20
+    spacing: 10
+
+    Label:
+        id: question
+        text: "Upload a document to generate quiz"
+        font_size: 18
+        size_hint_y: None
+        height: 80
+
+    GridLayout:
+        id: options
+        cols: 2
+        spacing: 10
+        size_hint_y: None
+        height: 200
+
+    Label:
+        id: status
+        text: ""
+        font_size: 16
+
+    Button:
+        text: "Upload File"
+        size_hint_y: None
+        height: 50
+        on_press: app.pick_file()
+
+    Button:
+        text: "Generate Quiz"
+        size_hint_y: None
+        height: 50
+        on_press: app.start_quiz()
+    
