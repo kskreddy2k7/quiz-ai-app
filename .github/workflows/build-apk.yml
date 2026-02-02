@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout source
@@ -24,7 +24,8 @@ jobs:
           sudo apt install -y \
             zip unzip openjdk-17-jdk \
             python3-pip build-essential git \
-            libffi-dev libssl-dev
+            libffi-dev libssl-dev \
+            autoconf automake libtool pkg-config
 
       - name: Install Buildozer
         run: |
