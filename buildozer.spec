@@ -19,13 +19,14 @@ fullscreen = 1
 android.api = 33
 android.minapi = 21
 android.ndk = 25b
-
-# IMPORTANT: single architecture only
 android.arch = arm64-v8a
 
 android.accept_sdk_license = True
 android.enable_androidx = True
 android.allow_backup = False
+
+# REQUIRED FOR FILE ACCESS
+android.permissions = MANAGE_EXTERNAL_STORAGE
 
 # ---------------- Buildozer ----------------
 
