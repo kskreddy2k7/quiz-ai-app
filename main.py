@@ -4,8 +4,8 @@ from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.popup import Popup
 from kivy.uix.button import Button
 
-from file_reader import read_file
-from quiz_generator import generate_quiz
+#from file_reader import read_file
+#from quiz_generator import generate_quiz
 
 
 class QuizLayout(BoxLayout):
@@ -43,14 +43,14 @@ class QuizApp(App):
         return self.layout
 
     def pick_file(self):
-        chooser = FileChooserListView(path="/")
+        chooser = FileChooserListView(path="/sdcard")
         popup = Popup(title="Select File",
                       content=chooser,
                       size_hint=(0.9, 0.9))
 
         def on_select(instance, selection):
             if selection:
-                self.text_data = read_file(selection[0])
+               # self.text_data = read_file(selection[0])
                 popup.dismiss()
 
         chooser.bind(selection=on_select)
@@ -58,7 +58,7 @@ class QuizApp(App):
 
     def start_quiz(self):
         if self.text_data:
-            self.layout.quiz = generate_quiz(self.text_data)
+            #self.layout.quiz = generate_quiz(self.text_data)
             self.layout.index = 0
             self.layout.score = 0
             self.layout.show_question()
