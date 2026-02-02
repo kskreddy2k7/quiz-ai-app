@@ -4,7 +4,7 @@ package.name = quizai
 package.domain = org.kranthu
 
 source.dir = .
-source.include_exts = py,kv
+source.include_exts = py
 
 version = 0.1
 
@@ -19,9 +19,9 @@ android.minapi = 21
 android.ndk = 25b
 android.arch = arm64-v8a
 
-android.permissions = MANAGE_EXTERNAL_STORAGE
 android.accept_sdk_license = True
 android.enable_androidx = True
+android.allow_backup = False
 
 [buildozer]
 log_level = 2
