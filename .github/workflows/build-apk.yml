@@ -33,11 +33,16 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install buildozer cython
-
+    - name: Full clean
+     run: |
+       rm -rf ~/.buildozer
+       rm -rf .buildozer
+       buildozer android clean || true
+      
     - name: Build APK
       run: |
         buildozer android debug --accept-licenses
-
+ 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
