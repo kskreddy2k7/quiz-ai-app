@@ -18,13 +18,13 @@ jobs:
 
     steps:
       # -----------------------------
-      # Checkout repo
+      # Checkout repository
       # -----------------------------
       - name: Checkout source
         uses: actions/checkout@v4
 
       # -----------------------------
-      # Java 17 (DO NOT hardcode JAVA_HOME)
+      # Java 17 (let GitHub manage JAVA_HOME)
       # -----------------------------
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -67,7 +67,7 @@ jobs:
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
           unzip -q commandlinetools-linux-11076708_latest.zip
 
-          # ✅ FIX: handle Google’s nested folder structure
+          # 🔥 FIX Google’s nested cmdline-tools bug
           rm -rf latest
           if [ -d "cmdline-tools/cmdline-tools" ]; then
             mv cmdline-tools/cmdline-tools latest
@@ -79,12 +79,16 @@ jobs:
 
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
           sdkmanager --version
           yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.2"
 
       # -----------------------------
       # Install Buildozer + python-for-android
@@ -95,7 +99,7 @@ jobs:
           pip install buildozer cython==0.29.36 python-for-android==2023.09.16
 
       # -----------------------------
-      # Clean caches
+      # Clean build caches
       # -----------------------------
       - name: Clean build cache
         run: |
@@ -103,17 +107,23 @@ jobs:
           rm -rf .buildozer
 
       # -----------------------------
-      # Build APK
+      # Build APK (FINAL AIDL FIX)
       # -----------------------------
       - name: Build APK
         run: |
+          # Kill injected NDK
           unset ANDROID_NDK_ROOT
           unset ANDROID_NDK_HOME
           unset ANDROID_NDK_LATEST_HOME
 
+          # 🔑 Force Buildozer to use installed SDK (FIXES AIDL)
+          export ANDROIDSDK="$ANDROID_SDK_ROOT"
+          export ANDROID_SDK_ROOT="$ANDROID_SDK_ROOT"
+          export ANDROID_HOME="$ANDROID_SDK_ROOT"
+
+          echo "ANDROIDSDK=$ANDROIDSDK"
           echo "JAVA_HOME=$JAVA_HOME"
           java -version
-          sdkmanager --version
 
           buildozer android debug
 
