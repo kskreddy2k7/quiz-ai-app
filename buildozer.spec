@@ -19,14 +19,14 @@ android.minapi = 21
 android.ndk = 25c
 android.arch = arm64-v8a
 
-android.permissions = INTERNET,READ_EXTERNAL_STORAGE
+android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
 
 android.accept_sdk_license = True
 android.enable_androidx = True
 android.allow_backup = False
 android.debuggable = False
 
-android.logcat_filters = *:S python:D
+android.logcat_filters = *:E python:D
 
 
 [buildozer]
