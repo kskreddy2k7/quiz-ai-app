@@ -13,7 +13,7 @@ import os
 from file_reader import read_file
 from quiz_generator import generate_quiz
 
-# ---------------- APP THEME ----------------
+# ---------- THEME ----------
 Window.clearcolor = (0.96, 0.97, 0.98, 1)
 
 
@@ -127,11 +127,7 @@ class QuizLayout(BoxLayout):
     def start_exam(self, instance):
         count = int(self.count_input.text or 5)
 
-        if self.text_data:
-            text = self.text_data
-        else:
-            text = self.topic_input.text.strip()
-
+        text = self.text_data if self.text_data else self.topic_input.text.strip()
         if not text:
             self.status.text = "Enter a topic or upload a file"
             return
@@ -153,9 +149,7 @@ class QuizLayout(BoxLayout):
 
         if self.index >= len(self.quiz):
             self.save_score()
-            self.question_label.text = (
-                f"Exam Finished\nScore: {self.score}/{len(self.quiz)}"
-            )
+            self.question_label.text = f"Exam Finished\nScore: {self.score}/{len(self.quiz)}"
             return
 
         q = self.quiz[self.index]
@@ -197,10 +191,7 @@ class QuizLayout(BoxLayout):
             with open(path, "r") as f:
                 data = json.load(f)
 
-        data.append({
-            "score": self.score,
-            "total": len(self.quiz)
-        })
+        data.append({"score": self.score, "total": len(self.quiz)})
 
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
