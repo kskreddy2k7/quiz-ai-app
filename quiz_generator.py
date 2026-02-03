@@ -20,7 +20,7 @@ def generate_quiz(text, count, level="easy"):
     for i in range(count):
         key = random.choice(keywords)
 
-        question = f"🤔 What best explains **{key}**?"
+        question = f"🤖 AI Quick-Check: What best explains **{key}**?"
 
         correct = f"{key} is explained clearly with correct meaning"
         wrong1 = f"{key} is misunderstood here"
@@ -32,15 +32,22 @@ def generate_quiz(text, count, level="easy"):
 
         explanation = (
             f"📘 This question checks your {depth[level]}.\n"
-            f"✅ The correct answer explains {key} accurately, "
-            f"while others are misconceptions students usually make."
+            f"✅ The correct answer explains {key} accurately."
         )
+
+        option_explanations = {
+            correct: f"✅ Correct: {key} is described with the right meaning and context.",
+            wrong1: f"❌ Not quite: this option shows a common misunderstanding about {key}.",
+            wrong2: f"❌ Not quite: {key} is applied in the wrong way here.",
+            wrong3: f"❌ Not quite: this option ignores the topic and doesn't relate to {key}."
+        }
 
         quiz.append({
             "question": question,
             "options": options,
             "answer": correct,
-            "explanation": explanation
+            "explanation": explanation,
+            "option_explanations": option_explanations
         })
 
     return quiz

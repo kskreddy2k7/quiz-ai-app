@@ -13,7 +13,7 @@ from file_reader import read_file
 from quiz_generator import generate_quiz
 
 # 🎨 Premium background
-Window.clearcolor = (0.96, 0.98, 1, 1)
+Window.clearcolor = (0.95, 0.97, 1, 1)
 
 
 class QuizLayout(BoxLayout):
@@ -22,14 +22,14 @@ class QuizLayout(BoxLayout):
 
         # 🌟 APP HEADER
         self.add_widget(Label(
-            text="📚 S Quiz",
+            text="✨ S Quiz AI Tutor",
             font_size="30sp",
             bold=True,
             color=(0.1, 0.25, 0.6, 1)
         ))
 
         self.add_widget(Label(
-            text="Built with ❤️ by Kranthu\n"
+            text="AI-assisted questions + instant feedback\n"
                  "Believe in learning. Practice daily. Win life 🌱",
             font_size="14sp",
             halign="center",
@@ -38,10 +38,13 @@ class QuizLayout(BoxLayout):
 
         # ✍️ INPUT
         self.topic_input = TextInput(
-            hint_text="✏️ Type topic (OR upload file below)",
+            hint_text="✏️ Type a topic (or upload a study file below)",
             size_hint_y=None,
             height="46dp",
-            multiline=False
+            multiline=False,
+            background_color=(1, 1, 1, 1),
+            foreground_color=(0.2, 0.2, 0.2, 1),
+            cursor_color=(0.1, 0.55, 0.9, 1)
         )
         self.add_widget(self.topic_input)
 
@@ -49,7 +52,10 @@ class QuizLayout(BoxLayout):
             hint_text="🔢 Number of questions (default 5)",
             input_filter="int",
             size_hint_y=None,
-            height="46dp"
+            height="46dp",
+            background_color=(1, 1, 1, 1),
+            foreground_color=(0.2, 0.2, 0.2, 1),
+            cursor_color=(0.1, 0.55, 0.9, 1)
         )
         self.add_widget(self.count_input)
 
@@ -57,7 +63,8 @@ class QuizLayout(BoxLayout):
             text="Easy",
             values=("Easy", "Medium", "Hard"),
             size_hint_y=None,
-            height="46dp"
+            height="46dp",
+            background_color=(0.2, 0.55, 0.9, 1)
         )
         self.add_widget(self.level_spinner)
 
@@ -65,7 +72,8 @@ class QuizLayout(BoxLayout):
             text="Practice",
             values=("Practice", "Exam"),
             size_hint_y=None,
-            height="46dp"
+            height="46dp",
+            background_color=(0.2, 0.55, 0.9, 1)
         )
         self.add_widget(self.mode_spinner)
 
@@ -74,12 +82,14 @@ class QuizLayout(BoxLayout):
 
         upload_btn = Button(
             text="📂 Browse Study File",
-            background_color=(0.2, 0.2, 0.2, 1)
+            background_normal="",
+            background_color=(0.18, 0.2, 0.25, 1)
         )
         upload_btn.bind(on_press=self.pick_file)
 
         start_btn = Button(
             text="🚀 Start Learning",
+            background_normal="",
             background_color=(0.1, 0.55, 0.9, 1)
         )
         start_btn.bind(on_press=self.start_quiz)
@@ -88,10 +98,10 @@ class QuizLayout(BoxLayout):
         btns.add_widget(start_btn)
         self.add_widget(btns)
 
-        self.status = Label(text="", font_size="14sp")
+        self.status = Label(text="", font_size="14sp", color=(0.1, 0.3, 0.5, 1))
         self.add_widget(self.status)
 
-        self.timer_label = Label(text="")
+        self.timer_label = Label(text="", color=(0.3, 0.3, 0.3, 1))
         self.add_widget(self.timer_label)
 
         self.question_label = Label(
@@ -99,12 +109,22 @@ class QuizLayout(BoxLayout):
             font_size="18sp",
             bold=True,
             halign="left",
-            valign="middle"
+            valign="middle",
+            color=(0.1, 0.15, 0.2, 1)
         )
         self.add_widget(self.question_label)
 
         self.options_box = BoxLayout(orientation="vertical", spacing=10)
         self.add_widget(self.options_box)
+
+        self.feedback_label = Label(
+            text="",
+            font_size="15sp",
+            halign="left",
+            valign="top",
+            color=(0.2, 0.2, 0.2, 1)
+        )
+        self.add_widget(self.feedback_label)
 
         self.text_data = ""
         self.quiz = []
@@ -149,6 +169,7 @@ class QuizLayout(BoxLayout):
         self.quiz = generate_quiz(text, count, level)
         self.index = 0
         self.score = 0
+        self.feedback_label.text = ""
 
         if self.exam_mode:
             self.time_left = count * 20
@@ -167,6 +188,7 @@ class QuizLayout(BoxLayout):
 
     def show_question(self):
         self.options_box.clear_widgets()
+        self.feedback_label.text = ""
 
         if self.index >= len(self.quiz):
             self.finish_quiz()
@@ -176,13 +198,21 @@ class QuizLayout(BoxLayout):
         self.question_label.text = q["question"]
 
         for opt in q["options"]:
-            btn = Button(text=opt, size_hint_y=None, height="48dp")
+            btn = Button(
+                text=opt,
+                size_hint_y=None,
+                height="48dp",
+                background_normal="",
+                background_color=(0.92, 0.94, 0.98, 1),
+                color=(0.1, 0.1, 0.1, 1)
+            )
             btn.bind(on_press=self.check_answer)
             self.options_box.add_widget(btn)
 
     def check_answer(self, btn):
         q = self.quiz[self.index]
 
+        explanation = q["option_explanations"].get(btn.text, q["explanation"])
         if btn.text == q["answer"]:
             self.score += 1
             btn.background_color = (0.2, 0.85, 0.3, 1)
@@ -190,7 +220,7 @@ class QuizLayout(BoxLayout):
             btn.background_color = (0.9, 0.3, 0.3, 1)
 
         if not self.exam_mode:
-            self.question_label.text += "\n\n💡 Explanation:\n" + q["explanation"]
+            self.feedback_label.text = f"💡 Explanation:\n{explanation}"
 
         self.index += 1
         Clock.schedule_once(lambda dt: self.show_question(), 1)
@@ -202,6 +232,7 @@ class QuizLayout(BoxLayout):
             f"🌱 Keep learning. You are improving every day!"
         )
         self.options_box.clear_widgets()
+        self.feedback_label.text = ""
 
 
 class QuizApp(App):
