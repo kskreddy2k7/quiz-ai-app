@@ -5,7 +5,7 @@
 # =========================
 title = Quiz AI
 package.name = quizai
-package.domain = org.example
+package.domain = org.kata.quizai
 
 # =========================
 # Source
