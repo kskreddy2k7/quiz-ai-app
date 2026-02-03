@@ -14,10 +14,18 @@ orientation = portrait
 fullscreen = 0
 
 android.permissions = INTERNET,READ_EXTERNAL_STORAGE
+
+# ---- ANDROID CONFIG (CRITICAL) ----
 android.api = 33
 android.minapi = 21
 android.build_tools = 33.0.2
-android.archs = arm64-v8a,armeabi-v7a
+
+# ---- FORCE SUPPORTED NDK (FIXES CRASH) ----
+android.ndk = 25b
+android.ndk_api = 21
+
+# ---- USE ONE ARCH (STABLE IN CI) ----
+android.archs = arm64-v8a
 
 [buildozer]
 log_level = 2
