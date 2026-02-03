@@ -10,6 +10,12 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
 
+    # 🚫 BLOCK GitHub runner injected NDK (VERY IMPORTANT)
+    env:
+      ANDROID_NDK_ROOT: ""
+      ANDROID_NDK_HOME: ""
+      ANDROID_NDK_LATEST_HOME: ""
+
     steps:
       # -----------------------------
       # Checkout source
@@ -66,7 +72,7 @@ jobs:
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
       # -----------------------------
-      # Install Buildozer + p4a
+      # Install Buildozer + python-for-android
       # -----------------------------
       - name: Install Buildozer
         run: |
@@ -97,12 +103,11 @@ jobs:
           ANDROIDSDK: /home/runner/android-sdk
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
-          # 🚫 REMOVE runner NDK (causes crash)
+          # 🚫 EXTRA SAFETY: remove any injected NDK
           unset ANDROID_NDK_ROOT
           unset ANDROID_NDK_HOME
           unset ANDROID_NDK_LATEST_HOME
 
-          # ✅ Correct paths
           export PATH=/home/runner/android-sdk/cmdline-tools/latest/bin:/home/runner/android-sdk/platform-tools:$PATH
           export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
 
