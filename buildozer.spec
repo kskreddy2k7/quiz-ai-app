@@ -5,7 +5,7 @@
 # =========================
 title = Quiz AI
 package.name = quizai
-package.domain = org.example
+package.domain = org.kata.quizai
 
 # =========================
 # Source
@@ -35,6 +35,8 @@ fullscreen = 0
 android.api = 33
 android.minapi = 21
 android.build_tools_version = 33.0.2
+android.ndk = 25.2.9519653
+android.ndk_api = 21
 
 # 🔥 FORCE GRADLE (FIXES YOUR ERROR)
 android.gradle = True
