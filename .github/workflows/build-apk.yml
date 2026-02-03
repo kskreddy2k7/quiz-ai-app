@@ -25,43 +25,21 @@ jobs:
             zip unzip openjdk-17-jdk \
             python3-pip build-essential git \
             libffi-dev libssl-dev \
+            libgl1-mesa-dev libgles2-mesa-dev libx11-dev \
             autoconf automake libtool pkg-config
 
       - name: Install Buildozer
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install buildozer cython==0.29.36
 
-      - name: Force Java 17
+      - name: Check Python syntax
         run: |
-          echo "JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64" >> $GITHUB_ENV
-          echo "/usr/lib/jvm/temurin-17-jdk-amd64/bin" >> $GITHUB_PATH
+          python -m py_compile main.py
+          python -m py_compile file_reader.py
+          python -m py_compile quiz_generator.py
 
-      - name: Install Gradle 7.6
-        run: |
-          wget https://services.gradle.org/distributions/gradle-7.6-bin.zip
-          unzip -q gradle-7.6-bin.zip
-          echo "GRADLE_HOME=$PWD/gradle-7.6" >> $GITHUB_ENV
-          echo "$PWD/gradle-7.6/bin" >> $GITHUB_PATH
-
-      - name: Remove GitHub preinstalled NDK
-        run: |
-          echo "ANDROID_NDK=" >> $GITHUB_ENV
-          echo "ANDROID_NDK_LATEST_HOME=" >> $GITHUB_ENV
-
-      - name: Force NDK r25b
-        run: |
-          echo "ANDROID_NDK_HOME=$HOME/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
-          echo "ANDROID_NDK_ROOT=$HOME/.buildozer/android/platform/android-ndk-r25b" >> $GITHUB_ENV
-
-      - name: Force Android SDK from Buildozer
-        run: |
-          echo "ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$HOME/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
-          echo "$HOME/.buildozer/android/platform/android-sdk/platform-tools" >> $GITHUB_PATH
-          echo "$HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-
-      - name: Full clean
+      - name: Clean buildozer
         run: |
           rm -rf ~/.buildozer
           rm -rf .buildozer
@@ -73,5 +51,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: quiz-ai-apk
+          name: squiz-apk
           path: bin/*.apk
