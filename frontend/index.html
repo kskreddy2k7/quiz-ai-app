@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuizAI Academy 🎯</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="loading-screen" class="loading-screen">
+      <div class="loader-card">
+        <div class="loader-emoji">🤖✨</div>
+        <p id="loading-message">Warming up your brain 🧠✨</p>
+      </div>
+    </div>
+
+    <main class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="badge">🎯 QuizAI Academy</p>
+          <h1>Turn study notes into smart quizzes & doubt-free learning.</h1>
+          <p class="subtitle">
+            Upload study material, generate MCQs with explanations, and chat with your AI tutor in
+            seconds. 📘🚀
+          </p>
+          <div class="hero-actions">
+            <button class="primary" id="generate-btn">Generate Quiz ✨</button>
+            <button class="ghost" id="scroll-chat">Ask a Doubt 💬</button>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div class="stat">
+            <span>Step-by-step answers</span>
+            <strong>Explained clearly</strong>
+          </div>
+          <div class="stat">
+            <span>MCQs from files</span>
+            <strong>TXT • PDF • DOCX • PPTX</strong>
+          </div>
+          <div class="stat">
+            <span>Difficulty tuning</span>
+            <strong>Easy • Medium • Hard</strong>
+          </div>
+        </div>
+      </header>
+
+      <section class="panel" id="quiz-panel">
+        <h2>Generate your quiz 📘</h2>
+        <p class="muted">Paste your topic or upload a file to craft MCQs with explanations.</p>
+        <form id="quiz-form" class="quiz-form">
+          <label>
+            Topic / Notes
+            <textarea
+              name="text"
+              placeholder="Paste notes here or describe the topic..."
+              rows="4"
+            ></textarea>
+          </label>
+          <label>
+            Upload a file
+            <input type="file" name="file" accept=".txt,.pdf,.docx,.pptx" />
+          </label>
+          <p class="file-hint" id="file-hint">No file selected.</p>
+          <div class="grid">
+            <label>
+              Questions
+              <input type="number" name="num_questions" value="5" min="1" max="20" />
+            </label>
+            <label>
+              Difficulty
+              <select name="difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </label>
+          </div>
+          <button type="submit" class="primary">Create Quiz 🚀</button>
+          <p class="form-message" id="quiz-message"></p>
+        </form>
+
+        <div id="quiz-summary" class="quiz-summary"></div>
+        <div id="quiz-results" class="quiz-results empty">
+          <p>✨ Your generated questions will appear here.</p>
+        </div>
+      </section>
+
+      <section class="panel chat-panel" id="chat-panel">
+        <div class="chat-header">
+          <div>
+            <h2>AI Doubt Solver 🤖</h2>
+            <p class="muted">Chat with your personal tutor and get step-by-step clarity.</p>
+          </div>
+          <span class="status-pill">Online</span>
+        </div>
+        <div id="chat-window" class="chat-window">
+          <div class="chat-message bot">
+            <p>Hi! I’m your AI tutor. Ask me anything and I’ll break it down for you. ✨</p>
+          </div>
+        </div>
+        <form id="chat-form" class="chat-form">
+          <input
+            type="text"
+            name="message"
+            placeholder="Type your doubt here..."
+            autocomplete="off"
+          />
+          <button type="submit" class="primary">Send ➤</button>
+        </form>
+        <div id="chat-tips" class="chat-tips"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

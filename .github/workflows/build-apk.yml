@@ -1,16 +1,16 @@
 name: Build Android APK
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
+  push:
+    branches: ["main"]
 
 jobs:
-  build:
+  build-apk:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -18,54 +18,69 @@ jobs:
         with:
           python-version: "3.10"
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
       - name: Install system dependencies
         run: |
-          sudo apt update
-          sudo apt install -y \
-            zip unzip openjdk-17-jdk \
-            python3-pip build-essential git \
-            libffi-dev libssl-dev \
-            libgl1-mesa-dev libgles2-mesa-dev libx11-dev \
-            autoconf automake libtool pkg-config
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            ccache \
+            git \
+            zip \
+            unzip \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            libffi-dev \
+            libssl-dev \
+            liblzma-dev \
+            zlib1g-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            libtinfo5 \
+            libsqlite3-dev
 
-      - name: Install Buildozer
+      - name: Install Android SDK
+        env:
+          ANDROID_SDK_ROOT: /opt/android-sdk
+        run: |
+          sudo mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools
+          sudo chown -R $USER:$USER ${ANDROID_SDK_ROOT}
+          cd /tmp
+          curl -sSLo commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q commandlinetools.zip
+          mv cmdline-tools ${ANDROID_SDK_ROOT}/cmdline-tools/latest
+          export PATH=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${PATH}
+          yes | sdkmanager --licenses
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.2"
+          test -f ${ANDROID_SDK_ROOT}/build-tools/33.0.2/aidl
+
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install buildozer cython==0.29.36
-
-      - name: Lock python-for-android
-        run: |
-          pip install python-for-android==2023.09.16
-
-      - name: Python syntax check
-        run: |
-          python -m py_compile main.py
-          python -m py_compile file_reader.py
-          python -m py_compile quiz_generator.py
-
-      - name: Clean buildozer cache
-        run: |
-          rm -rf ~/.buildozer
-          rm -rf .buildozer
+          python -m pip install cython==0.29.36
+          python -m pip install python-for-android==2023.09.16
+          python -m pip install buildozer
 
       - name: Build APK
+        env:
+          ANDROID_SDK_ROOT: /opt/android-sdk
+          ANDROID_HOME: /opt/android-sdk
         run: |
-          unset ANDROID_NDK
-          unset ANDROID_NDK_HOME
-          unset ANDROID_NDK_ROOT
-          unset ANDROID_NDK_LATEST_HOME
-          unset ANDROID_HOME
-          unset ANDROID_SDK_ROOT
-          unset GRADLE_HOME
-          unset JAVA_HOME
+          export PATH=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${PATH}
+          buildozer android debug
 
-          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-          export PATH=$JAVA_HOME/bin:$PATH
-
-          buildozer android debug --accept-licenses
-
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: squiz-apk
+          name: quizai-apk
           path: bin/*.apk

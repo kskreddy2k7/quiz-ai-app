@@ -1,26 +1,51 @@
 [app]
-title = S Quiz
-package.name = squiz
-package.domain = org.kranthu
-version = 1.0
-source.dir = .
-source.include_exts = py,png,jpg,json
 
-requirements = python3,kivy,pymupdf,python-docx,python-pptx
-orientation = portrait
-fullscreen = 1
+# (str) Title of your application
+# (str) Package name
+# (str) Package domain (needed for android/ios packaging)
+title = QuizAI Academy
+package.name = quizaiacademy
+package.domain = com.quizai
 
-icon.filename = assets/icon.png
+# (str) Source code where the main.py lives
+source.dir = mobile_app
 
-android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
-android.api = 33
+# (list) Source files to include (let Buildozer include everything in source.dir)
+source.include_exts = py,png,jpg,jpeg,kv
+
+# (list) Application requirements
+requirements = python3,kivy
+
+# (str) Entry point
+entrypoint = main.py
+
+# (str) Minimum API target
 android.minapi = 21
-android.ndk = 25c
-android.arch = arm64-v8a
+
+# (str) Target API
+android.api = 33
+
+# (str) Android SDK path
+android.sdk_path = /opt/android-sdk
+
+# (bool) Accept SDK licenses automatically
 android.accept_sdk_license = True
-android.enable_androidx = True
-android.allow_backup = False
+
+# (str) Python-for-android version pin
+p4a.branch = 2023.09.16
+
+# (str) Cython version pin
+cython = 0.29.36
+
+# (str) Android build tools version
+android.build_tools_version = 33.0.2
+
+# (list) Permissions
+android.permissions = INTERNET
+
+# (bool) Enable logcat
+android.logcat_filter = *:S python:D
 
 [buildozer]
 log_level = 2
-warn_on_root = 1
+warn_on_root = 0
