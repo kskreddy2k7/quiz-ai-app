@@ -1,43 +1,45 @@
 import random
+import re
+
+def extract_keywords(text):
+    words = re.findall(r"[A-Za-z]{5,}", text)
+    keywords = list(set(words))
+    return keywords[:20] if keywords else ["learning", "concept", "knowledge"]
 
 def generate_quiz(text, count, level="easy"):
-    words = [w for w in text.split() if len(w) > 4]
-    if not words:
-        words = ["learning", "concept", "knowledge"]
+    keywords = extract_keywords(text)
 
-    difficulty_hint = {
+    depth = {
         "easy": "basic understanding",
         "medium": "concept clarity",
-        "hard": "deep application"
+        "hard": "real application"
     }
 
     quiz = []
 
-    for _ in range(count):
-        keyword = random.choice(words)
+    for i in range(count):
+        key = random.choice(keywords)
 
-        question = f"What best explains **{keyword}**?"
+        question = f"🤔 What best explains **{key}**?"
 
-        options = [
-            f"A clear and correct explanation of {keyword}",
-            f"An unrelated idea",
-            f"A common misunderstanding",
-            f"An incorrect usage"
-        ]
+        correct = f"{key} is explained clearly with correct meaning"
+        wrong1 = f"{key} is misunderstood here"
+        wrong2 = f"{key} is used incorrectly"
+        wrong3 = f"{key} has no relation to this topic"
 
+        options = [correct, wrong1, wrong2, wrong3]
         random.shuffle(options)
 
-        answer = next(o for o in options if "correct explanation" in o)
-
         explanation = (
-            f"This question checks your {difficulty_hint[level]}. "
-            f"The correct answer directly explains what {keyword} means in context."
+            f"📘 This question checks your {depth[level]}.\n"
+            f"✅ The correct answer explains {key} accurately, "
+            f"while others are misconceptions students usually make."
         )
 
         quiz.append({
             "question": question,
             "options": options,
-            "answer": answer,
+            "answer": correct,
             "explanation": explanation
         })
 
