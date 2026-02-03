@@ -8,7 +8,7 @@ source.include_exts = py
 
 version = 0.1
 
-requirements = python3,kivy
+requirements = python3,kivy,pymupdf,python-docx,python-pptx,requests
 bootstrap = sdl2
 
 orientation = portrait
