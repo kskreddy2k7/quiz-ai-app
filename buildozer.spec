@@ -21,7 +21,7 @@ version = 0.1
 # =========================
 # Requirements
 # =========================
-requirements = python3,kivy
+requirements = python3,kivy,pyjnius
 
 # =========================
 # UI
@@ -35,8 +35,9 @@ fullscreen = 0
 android.api = 33
 android.minapi = 21
 android.build_tools_version = 33.0.2
-android.ndk = 25.2.9519653
+android.ndk = 25b
 android.ndk_api = 21
+android.archs = arm64-v8a, armeabi-v7a
 
 # 🔥 FORCE GRADLE (FIXES YOUR ERROR)
 android.gradle = True
@@ -46,18 +47,23 @@ android.enable_androidx = True
 android.ant_path =
 
 # SDK handling
-android.sdk_path = $ANDROID_SDK_ROOT
+android.sdk_path =
 android.accept_sdk_license = True
 
 # =========================
 # Permissions
 # =========================
-android.permissions = INTERNET
+android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,READ_MEDIA_IMAGES,READ_MEDIA_VIDEO,READ_MEDIA_AUDIO
 
 # =========================
 # Logging
 # =========================
 log_level = 2
+
+# =========================
+# Assets
+# =========================
+icon.filename = assets/icon.png
 
 # =========================
 # Cleanup
