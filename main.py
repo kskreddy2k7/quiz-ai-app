@@ -66,7 +66,7 @@ class QuizLayout(BoxLayout):
         self.score = 0
 
     def pick_file(self, instance):
-        chooser = FileChooserListView()  # SAFE default path
+        chooser = FileChooserListView()
         popup = Popup(title="Select File", content=chooser, size_hint=(0.9, 0.9))
 
         def selected(_, files):
@@ -133,7 +133,7 @@ class QuizLayout(BoxLayout):
 
 
 class QuizApp(App):
-    kv_file = None  # VERY IMPORTANT
+    kv_file = None  # IMPORTANT
 
     def build(self):
         return QuizLayout()
