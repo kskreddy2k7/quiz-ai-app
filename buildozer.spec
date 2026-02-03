@@ -27,7 +27,6 @@ android.allow_backup = False
 android.debuggable = False
 
 android.logcat_filters = *:S python:D
-android.exclude_libs = libffi.so,libcrypt.so
 
 
 [buildozer]
