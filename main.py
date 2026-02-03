@@ -4,88 +4,52 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
+from kivy.uix.filechooser import FileChooserListView
+from kivy.uix.popup import Popup
 from kivy.clock import Clock
-import random
-import threading
-import time
+import json
+import os
 
-# ---------------- THEME ----------------
-Window.clearcolor = (0.96, 0.97, 0.98, 1)  # professional light background
+from file_reader import read_file
+from quiz_generator import generate_quiz
 
-
-# ---------------- SIMULATED ONLINE AI ----------------
-def online_ai_generate(topic, count):
-    time.sleep(2)
-
-    base_questions = [
-        f"{topic} is important in examinations",
-        f"{topic} is used in real-world applications",
-        f"{topic} improves problem-solving skills",
-        f"{topic} is commonly asked in tests",
-        f"{topic} requires regular practice",
-        f"{topic} questions appear in competitive exams",
-        f"{topic} fundamentals are essential",
-        f"{topic} concepts should be revised",
-        f"{topic} MCQs improve accuracy",
-        f"{topic} practice increases scores",
-    ]
-
-    selected = random.sample(base_questions, min(count, len(base_questions)))
-    quiz = []
-
-    for q in selected:
-        correct = q.split()[0]
-        options = [correct, "Java", "C++", "JavaScript"]
-        random.shuffle(options)
-
-        quiz.append({
-            "question": q,
-            "options": options,
-            "answer": correct
-        })
-
-    return quiz
+# ---------------- APP THEME ----------------
+Window.clearcolor = (0.96, 0.97, 0.98, 1)
 
 
-# ---------------- UI ----------------
-class QuizUI(BoxLayout):
+class QuizLayout(BoxLayout):
     def __init__(self, **kwargs):
-        super().__init__(orientation="vertical", padding=25, spacing=18, **kwargs)
+        super().__init__(orientation="vertical", padding=20, spacing=15, **kwargs)
 
-        # App Title
-        self.title = Label(
+        # ---------- HEADER ----------
+        self.add_widget(Label(
             text="S Quiz",
             font_size="26sp",
             bold=True,
             color=(0.1, 0.2, 0.4, 1),
             size_hint_y=None,
-            height="50dp"
-        )
-        self.add_widget(self.title)
+            height="45dp"
+        ))
 
-        self.subtitle = Label(
-            text="Professional Exam Preparation",
+        self.add_widget(Label(
+            text="Smart Exam Preparation",
             font_size="14sp",
             color=(0.4, 0.4, 0.4, 1),
             size_hint_y=None,
             height="30dp"
-        )
-        self.add_widget(self.subtitle)
+        ))
 
-        # Topic Input
+        # ---------- INPUTS ----------
         self.topic_input = TextInput(
-            hint_text="Subject / Topic (e.g. Python)",
+            hint_text="Enter topic OR upload study file",
             size_hint_y=None,
             height="45dp",
-            multiline=False,
-            background_color=(1, 1, 1, 1),
-            foreground_color=(0, 0, 0, 1)
+            multiline=False
         )
         self.add_widget(self.topic_input)
 
-        # Question Count
         self.count_input = TextInput(
-            hint_text="Number of Questions",
+            hint_text="Number of questions",
             input_filter="int",
             size_hint_y=None,
             height="45dp",
@@ -93,309 +57,155 @@ class QuizUI(BoxLayout):
         )
         self.add_widget(self.count_input)
 
-        # Start Button
-        self.start_btn = Button(
+        # ---------- BUTTONS ----------
+        btn_box = BoxLayout(size_hint_y=None, height="45dp", spacing=10)
+
+        file_btn = Button(
+            text="Upload File",
+            background_normal="",
+            background_color=(0.5, 0.5, 0.5, 1),
+            color=(1, 1, 1, 1)
+        )
+        file_btn.bind(on_press=self.pick_file)
+        btn_box.add_widget(file_btn)
+
+        start_btn = Button(
             text="Start Exam",
-            size_hint_y=None,
-            height="50dp",
             background_normal="",
             background_color=(0.12, 0.45, 0.85, 1),
             color=(1, 1, 1, 1),
             bold=True
         )
-        self.start_btn.bind(on_press=self.start_exam)
-        self.add_widget(self.start_btn)
+        start_btn.bind(on_press=self.start_exam)
+        btn_box.add_widget(start_btn)
 
-        # Status
-        self.status = Label(
-            text="",
-            font_size="13sp",
-            color=(0.5, 0.5, 0.5, 1),
-            size_hint_y=None,
-            height="30dp"
-        )
+        self.add_widget(btn_box)
+
+        # ---------- STATUS ----------
+        self.status = Label(text="", font_size="14sp")
         self.add_widget(self.status)
 
-        # Question Card
+        # ---------- QUESTION ----------
         self.question_label = Label(
             text="",
             font_size="18sp",
             bold=True,
-            color=(0.1, 0.1, 0.1, 1),
             size_hint_y=None,
             height="100dp"
         )
         self.add_widget(self.question_label)
 
-        # Options
-        self.options_box = BoxLayout(
-            orientation="vertical",
-            spacing=12,
-            size_hint_y=None
-        )
+        # ---------- OPTIONS ----------
+        self.options_box = BoxLayout(orientation="vertical", spacing=10)
         self.add_widget(self.options_box)
 
+        # ---------- STATE ----------
+        self.text_data = ""
         self.quiz = []
         self.index = 0
         self.score = 0
 
+    # ---------- FILE PICKER ----------
+    def pick_file(self, instance):
+        chooser = FileChooserListView()
+        popup = Popup(
+            title="Select Study File",
+            content=chooser,
+            size_hint=(0.9, 0.9)
+        )
+
+        def selected(_, files):
+            if files:
+                self.text_data = read_file(files[0])
+                self.status.text = "File loaded successfully"
+                popup.dismiss()
+
+        chooser.bind(selection=selected)
+        popup.open()
+
+    # ---------- START EXAM ----------
     def start_exam(self, instance):
-        if not self.topic_input.text or not self.count_input.text:
-            self.status.text = "Please enter topic and question count"
+        count = int(self.count_input.text or 5)
+
+        if self.text_data:
+            text = self.text_data
+        else:
+            text = self.topic_input.text.strip()
+
+        if not text:
+            self.status.text = "Enter a topic or upload a file"
             return
 
-        self.status.text = "Generating questions..."
-        self.start_btn.disabled = True
-        threading.Thread(target=self.fetch_quiz).start()
-
-    def fetch_quiz(self):
-        self.quiz = online_ai_generate(
-            self.topic_input.text,
-            int(self.count_input.text)
-        )
-        Clock.schedule_once(lambda dt: self.start_quiz())
-
-    def start_quiz(self):
-        self.start_btn.disabled = False
-        self.status.text = ""
+        self.quiz = generate_quiz(text, count)
         self.index = 0
         self.score = 0
+        self.status.text = ""
+
+        if not self.quiz:
+            self.status.text = "Could not generate questions"
+            return
+
         self.show_question()
 
+    # ---------- SHOW QUESTION ----------
     def show_question(self):
         self.options_box.clear_widgets()
 
-        if self.index < len(self.quiz):
-            q = self.quiz[self.index]
-            self.question_label.text = q["question"]
-
-            for opt in q["options"]:
-                btn = Button(
-                    text=opt,
-                    size_hint_y=None,
-                    height="46dp",
-                    background_normal="",
-                    background_color=(1, 1, 1, 1),
-                    color=(0.1, 0.1, 0.1, 1)
-                )
-                btn.bind(on_press=self.check_answer)
-                self.options_box.add_widget(btn)
-        else:
+        if self.index >= len(self.quiz):
+            self.save_score()
             self.question_label.text = (
-                f"Exam Completed\nScore: {self.score}/{len(self.quiz)}"
+                f"Exam Finished\nScore: {self.score}/{len(self.quiz)}"
             )
+            return
 
+        q = self.quiz[self.index]
+        self.question_label.text = q["question"]
+
+        for option in q["options"]:
+            btn = Button(
+                text=option,
+                size_hint_y=None,
+                height="48dp",
+                background_normal="",
+                background_color=(0.15, 0.55, 0.95, 1),
+                color=(1, 1, 1, 1),
+                bold=True
+            )
+            btn.bind(on_press=self.check_answer)
+            self.options_box.add_widget(btn)
+
+    # ---------- CHECK ANSWER ----------
     def check_answer(self, instance):
-        if instance.text == self.quiz[self.index]["answer"]:
+        correct = self.quiz[self.index]["answer"]
+
+        if instance.text == correct:
             self.score += 1
+            instance.background_color = (0.2, 0.8, 0.2, 1)
+        else:
+            instance.background_color = (0.9, 0.2, 0.2, 1)
 
         self.index += 1
-        Clock.schedule_once(lambda dt: self.show_question(), 0.3)
+        Clock.schedule_once(lambda dt: self.show_question(), 0.5)
 
+    # ---------- SAVE SCORE ----------
+    def save_score(self):
+        data = []
+        if os.path.exists("scores.json"):
+            with open("scores.json", "r") as f:
+                data = json.load(f)
 
-class QuizApp(App):
-    def build(self):
-        return QuizUI()
-
-
-QuizApp().run()from kivy.core.window import Window
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.uix.button import Button
-from kivy.uix.textinput import TextInput
-from kivy.clock import Clock
-import random
-import threading
-import time
-
-# ---------------- THEME ----------------
-Window.clearcolor = (0.96, 0.97, 0.98, 1)  # professional light background
-
-
-# ---------------- SIMULATED ONLINE AI ----------------
-def online_ai_generate(topic, count):
-    time.sleep(2)
-
-    base_questions = [
-        f"{topic} is important in examinations",
-        f"{topic} is used in real-world applications",
-        f"{topic} improves problem-solving skills",
-        f"{topic} is commonly asked in tests",
-        f"{topic} requires regular practice",
-        f"{topic} questions appear in competitive exams",
-        f"{topic} fundamentals are essential",
-        f"{topic} concepts should be revised",
-        f"{topic} MCQs improve accuracy",
-        f"{topic} practice increases scores",
-    ]
-
-    selected = random.sample(base_questions, min(count, len(base_questions)))
-    quiz = []
-
-    for q in selected:
-        correct = q.split()[0]
-        options = [correct, "Java", "C++", "JavaScript"]
-        random.shuffle(options)
-
-        quiz.append({
-            "question": q,
-            "options": options,
-            "answer": correct
+        data.append({
+            "score": self.score,
+            "total": len(self.quiz)
         })
 
-    return quiz
-
-
-# ---------------- UI ----------------
-class QuizUI(BoxLayout):
-    def __init__(self, **kwargs):
-        super().__init__(orientation="vertical", padding=25, spacing=18, **kwargs)
-
-        # App Title
-        self.title = Label(
-            text="S Quiz",
-            font_size="26sp",
-            bold=True,
-            color=(0.1, 0.2, 0.4, 1),
-            size_hint_y=None,
-            height="50dp"
-        )
-        self.add_widget(self.title)
-
-        self.subtitle = Label(
-            text="Professional Exam Preparation",
-            font_size="14sp",
-            color=(0.4, 0.4, 0.4, 1),
-            size_hint_y=None,
-            height="30dp"
-        )
-        self.add_widget(self.subtitle)
-
-        # Topic Input
-        self.topic_input = TextInput(
-            hint_text="Subject / Topic (e.g. Python)",
-            size_hint_y=None,
-            height="45dp",
-            multiline=False,
-            background_color=(1, 1, 1, 1),
-            foreground_color=(0, 0, 0, 1)
-        )
-        self.add_widget(self.topic_input)
-
-        # Question Count
-        self.count_input = TextInput(
-            hint_text="Number of Questions",
-            input_filter="int",
-            size_hint_y=None,
-            height="45dp",
-            multiline=False
-        )
-        self.add_widget(self.count_input)
-
-        # Start Button
-        self.start_btn = Button(
-            text="Start Exam",
-            size_hint_y=None,
-            height="50dp",
-            background_normal="",
-            background_color=(0.12, 0.45, 0.85, 1),
-            color=(1, 1, 1, 1),
-            bold=True
-        )
-        self.start_btn.bind(on_press=self.start_exam)
-        self.add_widget(self.start_btn)
-
-        # Status
-        self.status = Label(
-            text="",
-            font_size="13sp",
-            color=(0.5, 0.5, 0.5, 1),
-            size_hint_y=None,
-            height="30dp"
-        )
-        self.add_widget(self.status)
-
-        # Question Card
-        self.question_label = Label(
-            text="",
-            font_size="18sp",
-            bold=True,
-            color=(0.1, 0.1, 0.1, 1),
-            size_hint_y=None,
-            height="100dp"
-        )
-        self.add_widget(self.question_label)
-
-        # Options
-        self.options_box = BoxLayout(
-            orientation="vertical",
-            spacing=12,
-            size_hint_y=None
-        )
-        self.add_widget(self.options_box)
-
-        self.quiz = []
-        self.index = 0
-        self.score = 0
-
-    def start_exam(self, instance):
-        if not self.topic_input.text or not self.count_input.text:
-            self.status.text = "Please enter topic and question count"
-            return
-
-        self.status.text = "Generating questions..."
-        self.start_btn.disabled = True
-        threading.Thread(target=self.fetch_quiz).start()
-
-    def fetch_quiz(self):
-        self.quiz = online_ai_generate(
-            self.topic_input.text,
-            int(self.count_input.text)
-        )
-        Clock.schedule_once(lambda dt: self.start_quiz())
-
-    def start_quiz(self):
-        self.start_btn.disabled = False
-        self.status.text = ""
-        self.index = 0
-        self.score = 0
-        self.show_question()
-
-    def show_question(self):
-        self.options_box.clear_widgets()
-
-        if self.index < len(self.quiz):
-            q = self.quiz[self.index]
-            self.question_label.text = q["question"]
-
-            for opt in q["options"]:
-                btn = Button(
-                    text=opt,
-                    size_hint_y=None,
-                    height="46dp",
-                    background_normal="",
-                    background_color=(1, 1, 1, 1),
-                    color=(0.1, 0.1, 0.1, 1)
-                )
-                btn.bind(on_press=self.check_answer)
-                self.options_box.add_widget(btn)
-        else:
-            self.question_label.text = (
-                f"Exam Completed\nScore: {self.score}/{len(self.quiz)}"
-            )
-
-    def check_answer(self, instance):
-        if instance.text == self.quiz[self.index]["answer"]:
-            self.score += 1
-
-        self.index += 1
-        Clock.schedule_once(lambda dt: self.show_question(), 0.3)
+        with open("scores.json", "w") as f:
+            json.dump(data, f, indent=2)
 
 
 class QuizApp(App):
     def build(self):
-        return QuizUI()
+        return QuizLayout()
 
 
 QuizApp().run()
