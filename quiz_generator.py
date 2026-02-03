@@ -1,49 +1,35 @@
 import random
-import re
 
-def generate_quiz(text, count=5):
-    sentences = re.split(r'[.?\n]', text)
-    sentences = [s.strip() for s in sentences if len(s.strip()) > 40]
+def generate_quiz(text, count, level="easy"):
+    keywords = text.split()[:10]
+
+    difficulty_map = {
+        "easy": "basic understanding",
+        "medium": "concept clarity",
+        "hard": "deep application"
+    }
 
     quiz = []
-    random.shuffle(sentences)
+    for i in range(count):
+        topic = random.choice(keywords) if keywords else "this topic"
+        question = f"What best explains {topic}?"
+        options = [
+            f"A correct explanation of {topic}",
+            f"An unrelated statement",
+            f"A common misconception",
+            f"An incorrect usage"
+        ]
 
-    for s in sentences[:count]:
-        correct = pick_keyword(s)
-        options = generate_options(correct)
+        answer = options[0]
 
         quiz.append({
-            "question": f"Choose the correct option:\n\n{s}",
+            "question": question,
             "options": options,
-            "answer": correct,
+            "answer": answer,
             "explanation": (
-                f"The correct answer is '{correct}'.\n\n"
-                f"This is because the sentence directly explains the concept "
-                f"related to '{correct}'.\n\n"
-                f"Other options are incorrect as they do not match the context."
+                f"This question checks your {difficulty_map[level]}. "
+                f"The correct answer directly explains {topic}."
             )
         })
 
     return quiz
-
-
-def pick_keyword(sentence):
-    words = sentence.split()
-    keywords = [w for w in words if len(w) > 5]
-    return random.choice(keywords) if keywords else words[0]
-
-
-def generate_options(correct):
-    distractors = [
-        "Java", "C++", "Operating System",
-        "Database", "Compiler", "Algorithm",
-        "Data Structure"
-    ]
-
-    options = [correct]
-    for d in distractors:
-        if d != correct and len(options) < 4:
-            options.append(d)
-
-    random.shuffle(options)
-    return options
