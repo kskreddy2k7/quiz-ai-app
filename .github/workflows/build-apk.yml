@@ -26,7 +26,27 @@ jobs:
             python3-pip build-essential git \
             libffi-dev libssl-dev \
             libgl1-mesa-dev libgles2-mesa-dev libx11-dev \
-            autoconf automake libtool pkg-config
+            autoconf automake libtool pkg-config \
+            wget
+
+      # ✅ INSTALL ANDROID SDK (FIXES "Aidl not found")
+      - name: Install Android SDK
+        run: |
+          mkdir -p $HOME/android-sdk
+          cd $HOME/android-sdk
+
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip commandlinetools-linux-11076708_latest.zip
+
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/* cmdline-tools/latest/ || true
+
+          export ANDROID_HOME=$HOME/android-sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
       - name: Install Buildozer
         run: |
@@ -37,7 +57,7 @@ jobs:
         run: |
           pip install python-for-android==2023.09.16
 
-      # ✅ FIXED: Python syntax check (NO main.py error)
+      # ✅ FIXED PYTHON CHECK (NO main.py ERROR)
       - name: Python syntax check
         run: python -m compileall backend
 
@@ -46,24 +66,17 @@ jobs:
           rm -rf ~/.buildozer
           rm -rf .buildozer
 
+      # ✅ BUILD APK (ANDROID SDK PATH SET)
       - name: Build APK
         run: |
-          unset ANDROID_NDK
-          unset ANDROID_NDK_HOME
-          unset ANDROID_NDK_ROOT
-          unset ANDROID_NDK_LATEST_HOME
-          unset ANDROID_HOME
-          unset ANDROID_SDK_ROOT
-          unset GRADLE_HOME
-          unset JAVA_HOME
-
-          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-          export PATH=$JAVA_HOME/bin:$PATH
+          export ANDROID_HOME=$HOME/android-sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          export PATH=$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/33.0.2:$PATH
 
           buildozer android debug --accept-licenses
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: squiz-apk
+          name: quiz-ai-apk
           path: bin/*.apk
