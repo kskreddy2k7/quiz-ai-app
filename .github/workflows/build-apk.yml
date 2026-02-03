@@ -13,17 +13,11 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      # -----------------------------
-      # Python setup
-      # -----------------------------
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      # -----------------------------
-      # System dependencies
-      # -----------------------------
       - name: Install system dependencies
         run: |
           sudo apt update
@@ -35,42 +29,13 @@ jobs:
             libgl1-mesa-dev libgles2-mesa-dev libx11-dev \
             autoconf automake libtool pkg-config
 
-      # -----------------------------
-      # FORCE JAVA 17 (VERY IMPORTANT)
-      # -----------------------------
+      # ✅ FORCE JAVA 17 (REQUIRED)
       - name: Force Java 17
         run: |
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           export PATH=$JAVA_HOME/bin:$PATH
           java -version
 
-      # -----------------------------
-      # Install Android SDK (fixes AIDL)
-      # -----------------------------
-      - name: Install Android SDK
-        run: |
-          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-          export PATH=$JAVA_HOME/bin:$PATH
-
-          mkdir -p $HOME/android-sdk
-          cd $HOME/android-sdk
-
-          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip commandlinetools-linux-11076708_latest.zip
-
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest/ || true
-
-          export ANDROID_HOME=$HOME/android-sdk
-          export ANDROID_SDK_ROOT=$ANDROID_HOME
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/33.0.2:$PATH
-
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-
-      # -----------------------------
-      # Install Buildozer + p4a
-      # -----------------------------
       - name: Install Buildozer
         run: |
           python -m pip install --upgrade pip
@@ -80,37 +45,22 @@ jobs:
         run: |
           pip install python-for-android==2023.09.16
 
-      # -----------------------------
-      # Python syntax check (NO main.py bug)
-      # -----------------------------
       - name: Python syntax check
         run: python -m compileall backend
 
-      # -----------------------------
-      # Clean old build cache
-      # -----------------------------
       - name: Clean buildozer cache
         run: |
           rm -rf ~/.buildozer
           rm -rf .buildozer
 
-      # -----------------------------
-      # BUILD APK
-      # -----------------------------
+      # ✅ BUILD APK (BUILDOZER MANAGES SDK + AIDL)
       - name: Build APK
         run: |
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           export PATH=$JAVA_HOME/bin:$PATH
 
-          export ANDROID_HOME=$HOME/android-sdk
-          export ANDROID_SDK_ROOT=$ANDROID_HOME
-          export PATH=$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/33.0.2:$PATH
-
           buildozer android debug --accept-licenses
 
-      # -----------------------------
-      # Upload APK
-      # -----------------------------
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
