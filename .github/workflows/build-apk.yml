@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    timeout-minutes: 90
 
     steps:
       # -----------------------------
@@ -39,7 +40,7 @@ jobs:
             autoconf automake libtool pkg-config
 
       # -----------------------------
-      # Force Java 17 (REQUIRED)
+      # Force Java 17
       # -----------------------------
       - name: Force Java 17
         run: |
@@ -48,19 +49,34 @@ jobs:
           java -version
 
       # -----------------------------
+      # Install Android SDK + ACCEPT LICENSES
+      # -----------------------------
+      - name: Install Android SDK and accept licenses
+        run: |
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip commandlinetools-linux-11076708_latest.zip
+          mv cmdline-tools latest
+
+          export ANDROID_SDK_ROOT=$HOME/android-sdk
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+      # -----------------------------
       # Install Buildozer & p4a
       # -----------------------------
       - name: Install Buildozer
         run: |
           python -m pip install --upgrade pip
           pip install buildozer cython==0.29.36
-
-      - name: Lock python-for-android
-        run: |
           pip install python-for-android==2023.09.16
 
       # -----------------------------
-      # Backend syntax check
+      # Python syntax check
       # -----------------------------
       - name: Python syntax check
         run: python -m compileall backend
@@ -74,19 +90,20 @@ jobs:
           rm -rf .buildozer
 
       # -----------------------------
-      # Build APK (AUTO LICENSE ACCEPT)
+      # Build APK
       # -----------------------------
       - name: Build APK
         env:
-          ANDROID_SDK_ACCEPT_LICENSES: "y"
+          ANDROID_SDK_ROOT: $HOME/android-sdk
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
-          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
           export PATH=$JAVA_HOME/bin:$PATH
 
           buildozer android debug
 
       # -----------------------------
-      # Upload APK artifact
+      # Upload APK
       # -----------------------------
       - name: Upload APK
         uses: actions/upload-artifact@v4
