@@ -9,8 +9,12 @@ def generate_quiz(text, limit=5):
     quiz = []
 
     for s in sentences[:limit]:
-        answer = s.split()[0]
-        options = random.sample(fallback, 4)
+        words = s.split()
+        if not words:
+            continue
+
+        answer = words[0]
+        options = fallback.copy()
 
         if answer not in options:
             options[0] = answer
