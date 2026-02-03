@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
 
-    # Block GitHub runner injected NDK (Buildozer breaks with it)
+    # 🚫 Block GitHub runner injected NDK (Buildozer breaks with it)
     env:
       ANDROID_NDK_ROOT: ""
       ANDROID_NDK_HOME: ""
@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
 
       # -----------------------------
-      # Java 17 (official)
+      # Java 17 (DO NOT hardcode JAVA_HOME)
       # -----------------------------
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -60,14 +60,20 @@ jobs:
         run: |
           export ANDROID_SDK_ROOT="$HOME/android-sdk"
           export ANDROID_HOME="$ANDROID_SDK_ROOT"
+
           mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
           cd "$ANDROID_SDK_ROOT/cmdline-tools"
 
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
           unzip -q commandlinetools-linux-11076708_latest.zip
 
-          # 🔥 CRITICAL FIX (this is the bug)
-          mv cmdline-tools/cmdline-tools latest
+          # ✅ FIX: handle Google’s nested folder structure
+          rm -rf latest
+          if [ -d "cmdline-tools/cmdline-tools" ]; then
+            mv cmdline-tools/cmdline-tools latest
+          else
+            mv cmdline-tools latest
+          fi
 
           export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
 
@@ -81,7 +87,7 @@ jobs:
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
       # -----------------------------
-      # Install Buildozer + p4a
+      # Install Buildozer + python-for-android
       # -----------------------------
       - name: Install Buildozer
         run: |
