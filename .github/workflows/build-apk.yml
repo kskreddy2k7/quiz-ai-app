@@ -29,7 +29,7 @@ jobs:
             libgl1-mesa-dev libgles2-mesa-dev libx11-dev \
             autoconf automake libtool pkg-config
 
-      # ✅ FORCE JAVA 17 (REQUIRED)
+      # ✅ FORCE JAVA 17
       - name: Force Java 17
         run: |
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
@@ -53,13 +53,13 @@ jobs:
           rm -rf ~/.buildozer
           rm -rf .buildozer
 
-      # ✅ BUILD APK (BUILDOZER MANAGES SDK + AIDL)
+      # ✅ BUILD APK (AUTO-ACCEPT LICENSES)
       - name: Build APK
         run: |
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           export PATH=$JAVA_HOME/bin:$PATH
 
-          buildozer android debug --accept-licenses
+          yes | buildozer android debug --accept-licenses
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
