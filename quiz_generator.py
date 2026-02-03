@@ -1,35 +1,44 @@
 import random
 
 def generate_quiz(text, count, level="easy"):
-    keywords = text.split()[:10]
+    words = [w for w in text.split() if len(w) > 4]
+    if not words:
+        words = ["learning", "concept", "knowledge"]
 
-    difficulty_map = {
+    difficulty_hint = {
         "easy": "basic understanding",
         "medium": "concept clarity",
         "hard": "deep application"
     }
 
     quiz = []
-    for i in range(count):
-        topic = random.choice(keywords) if keywords else "this topic"
-        question = f"What best explains {topic}?"
+
+    for _ in range(count):
+        keyword = random.choice(words)
+
+        question = f"What best explains **{keyword}**?"
+
         options = [
-            f"A correct explanation of {topic}",
-            f"An unrelated statement",
-            f"A common misconception",
+            f"A clear and correct explanation of {keyword}",
+            f"An unrelated idea",
+            f"A common misunderstanding",
             f"An incorrect usage"
         ]
 
-        answer = options[0]
+        random.shuffle(options)
+
+        answer = next(o for o in options if "correct explanation" in o)
+
+        explanation = (
+            f"This question checks your {difficulty_hint[level]}. "
+            f"The correct answer directly explains what {keyword} means in context."
+        )
 
         quiz.append({
             "question": question,
             "options": options,
             "answer": answer,
-            "explanation": (
-                f"This question checks your {difficulty_map[level]}. "
-                f"The correct answer directly explains {topic}."
-            )
+            "explanation": explanation
         })
 
     return quiz
