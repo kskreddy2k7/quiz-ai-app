@@ -2,7 +2,7 @@ def read_file(path):
     text = ""
 
     if path.endswith(".pdf"):
-        import fitz
+        import fitz  # PyMuPDF
         pdf = fitz.open(path)
         for page in pdf:
             text += page.get_text()
@@ -22,7 +22,7 @@ def read_file(path):
                     text += shape.text + " "
 
     elif path.endswith(".txt"):
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
             text = f.read()
 
-    return text
+    return text.strip()
