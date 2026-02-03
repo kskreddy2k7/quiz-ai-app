@@ -80,9 +80,12 @@ jobs:
           sdkmanager \
             "platform-tools" \
             "platforms;android-33" \
-            "build-tools;33.0.2"
+            "build-tools;33.0.2" \
+            "ndk;25.2.9519653" \
+            "cmake;3.22.1"
 
           test -f "$ANDROID_SDK_ROOT/build-tools/33.0.2/aidl"
+          test -d "$ANDROID_SDK_ROOT/ndk/25.2.9519653"
 
       # -----------------------------
       # Buildozer + p4a
@@ -111,12 +114,12 @@ jobs:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
           ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
           ANDROIDSDK: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/25.2.9519653
+          ANDROID_NDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}/ndk/25.2.9519653
           ANDROID_API: "33"
           ANDROID_MINAPI: "21"
           P4A_BUILD_ISOLATED: "0"
         run: |
-          unset ANDROID_NDK_ROOT
-          unset ANDROID_NDK_HOME
           unset ANDROID_NDK_LATEST_HOME
 
           java -version
