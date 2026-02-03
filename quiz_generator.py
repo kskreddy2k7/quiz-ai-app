@@ -1,30 +1,49 @@
 import random
 import re
 
-def generate_quiz(text, limit=5):
-    sentences = re.split(r'[.!?]', text)
-    sentences = [s.strip() for s in sentences if len(s.split()) > 6]
+def generate_quiz(text, count=5):
+    sentences = re.split(r'[.?\n]', text)
+    sentences = [s.strip() for s in sentences if len(s.strip()) > 40]
 
-    fallback = ["Python", "Java", "C++", "JavaScript"]
     quiz = []
+    random.shuffle(sentences)
 
-    for s in sentences[:limit]:
-        words = s.split()
-        if not words:
-            continue
-
-        answer = words[0]
-        options = fallback.copy()
-
-        if answer not in options:
-            options[0] = answer
-
-        random.shuffle(options)
+    for s in sentences[:count]:
+        correct = pick_keyword(s)
+        options = generate_options(correct)
 
         quiz.append({
-            "question": s.replace(answer, "_____"),
+            "question": f"Choose the correct option:\n\n{s}",
             "options": options,
-            "answer": answer
+            "answer": correct,
+            "explanation": (
+                f"The correct answer is '{correct}'.\n\n"
+                f"This is because the sentence directly explains the concept "
+                f"related to '{correct}'.\n\n"
+                f"Other options are incorrect as they do not match the context."
+            )
         })
 
     return quiz
+
+
+def pick_keyword(sentence):
+    words = sentence.split()
+    keywords = [w for w in words if len(w) > 5]
+    return random.choice(keywords) if keywords else words[0]
+
+
+def generate_options(correct):
+    distractors = [
+        "Java", "C++", "Operating System",
+        "Database", "Compiler", "Algorithm",
+        "Data Structure"
+    ]
+
+    options = [correct]
+    for d in distractors:
+        if d != correct and len(options) < 4:
+            options.append(d)
+
+    random.shuffle(options)
+    return options
