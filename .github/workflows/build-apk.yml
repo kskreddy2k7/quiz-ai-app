@@ -37,11 +37,9 @@ jobs:
         run: |
           pip install python-for-android==2023.09.16
 
+      # ✅ FIXED: Python syntax check (NO main.py error)
       - name: Python syntax check
-        run: |
-          python -m py_compile main.py
-          python -m py_compile file_reader.py
-          python -m py_compile quiz_generator.py
+        run: python -m compileall backend
 
       - name: Clean buildozer cache
         run: |
