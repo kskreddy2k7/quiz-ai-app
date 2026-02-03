@@ -166,10 +166,15 @@ class QuizLayout(BoxLayout):
             self.status.text = "⚠️ Please type a topic or upload a file"
             return
 
-        self.quiz = generate_quiz(text, count, level)
+        self.status.text = "🤖 Generating quiz with AI..."
+        self.quiz, source = generate_quiz(text, count, level)
         self.index = 0
         self.score = 0
         self.feedback_label.text = ""
+        if source == "ai":
+            self.status.text = "✅ AI quiz ready"
+        else:
+            self.status.text = "✅ Quiz ready (local generator)"
 
         if self.exam_mode:
             self.time_left = count * 20
