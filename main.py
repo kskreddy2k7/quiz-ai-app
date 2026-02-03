@@ -107,7 +107,7 @@ class QuizLayout(BoxLayout):
 
     # ---------- FILE PICKER ----------
     def pick_file(self, instance):
-        chooser = FileChooserListView()
+        chooser = FileChooserListView(path="/sdcard/Download")
         popup = Popup(
             title="Select Study File",
             content=chooser,
@@ -187,11 +187,14 @@ class QuizLayout(BoxLayout):
         self.index += 1
         Clock.schedule_once(lambda dt: self.show_question(), 0.5)
 
-    # ---------- SAVE SCORE ----------
+    # ---------- SAVE SCORE (ANDROID SAFE) ----------
     def save_score(self):
+        app = App.get_running_app()
+        path = os.path.join(app.user_data_dir, "scores.json")
+
         data = []
-        if os.path.exists("scores.json"):
-            with open("scores.json", "r") as f:
+        if os.path.exists(path):
+            with open(path, "r") as f:
                 data = json.load(f)
 
         data.append({
@@ -199,11 +202,13 @@ class QuizLayout(BoxLayout):
             "total": len(self.quiz)
         })
 
-        with open("scores.json", "w") as f:
+        with open(path, "w") as f:
             json.dump(data, f, indent=2)
 
 
 class QuizApp(App):
+    kv_file = None  # IMPORTANT: disable auto .kv loading
+
     def build(self):
         return QuizLayout()
 
