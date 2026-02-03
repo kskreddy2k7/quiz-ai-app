@@ -1,7 +1,7 @@
 [app]
 
 # =========================
-# App basic information
+# App Info
 # =========================
 title = Quiz AI
 package.name = quizai
@@ -24,24 +24,31 @@ version = 0.1
 requirements = python3,kivy
 
 # =========================
-# Orientation & UI
+# UI
 # =========================
 orientation = portrait
 fullscreen = 0
 
 # =========================
-# Android specific
+# Android CONFIG (CRITICAL)
 # =========================
 android.api = 33
 android.minapi = 21
+android.build_tools_version = 33.0.2
+
+# 🔥 FORCE GRADLE (FIXES YOUR ERROR)
+android.gradle = True
+android.enable_androidx = True
+
+# 🔥 DISABLE ANT COMPLETELY
+android.ant_path =
+
+# SDK handling
 android.sdk_path = $ANDROID_SDK_ROOT
 android.accept_sdk_license = True
 
-# Use stable build tools
-android.build_tools_version = 33.0.2
-
 # =========================
-# Permissions (add later if needed)
+# Permissions
 # =========================
 android.permissions = INTERNET
 
@@ -51,11 +58,8 @@ android.permissions = INTERNET
 log_level = 2
 
 # =========================
-# Exclude unnecessary files
+# Cleanup
 # =========================
 exclude_patterns = tests,docs,*.md,.gitignore,.github
 
-# =========================
-# Build options
-# =========================
 warn_on_root = 1
