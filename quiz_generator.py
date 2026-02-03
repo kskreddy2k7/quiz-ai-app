@@ -1,44 +1,28 @@
-import requests
+import random
+import re
 
-API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
+def generate_quiz(text, limit=10):
+    sentences = re.split(r'[.!?]', text)
+    sentences = [s.strip() for s in sentences if len(s.split()) > 8]
 
-def generate_quiz(text, num_questions=10):
-    prompt = f"""
-Generate {num_questions} exam-style multiple choice questions.
-Each question must have 4 options and one correct answer.
-
-Content:
-{text[:1200]}
-"""
-
-    response = requests.post(
-        API_URL,
-        json={"inputs": prompt},
-        timeout=60
-    )
-
-    if response.status_code != 200:
-        print("HF Error:", response.text)
-        return []
-
-    data = response.json()
-
-    if not isinstance(data, list):
-        return []
-
-    output = data[0].get("generated_text", "")
+    keywords = list(set(re.findall(r'\b[A-Z][a-z]{3,}\b', text)))
+    fallback = ["Python", "Java", "C++", "JavaScript"]
 
     quiz = []
-    lines = output.split("\n")
 
-    for i in range(0, len(lines)-5, 6):
+    for s in sentences[:limit]:
+        words = s.split()
+        answer = words[0]
+
+        options = random.sample(keywords + fallback, 4)
+        if answer not in options:
+            options[0] = answer
+        random.shuffle(options)
+
         quiz.append({
-            "question": lines[i],
-            "options": lines[i+1:i+5],
-            "answer": lines[i+1]  # safe fallback
+            "question": s.replace(answer, "_____"),
+            "options": options,
+            "answer": answer
         })
-
-        if len(quiz) == num_questions:
-            break
 
     return quiz
