@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       # -----------------------------
-      # Set up Java 17 (CRITICAL)
+      # Set up Java 17 (REQUIRED)
       # -----------------------------
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -66,7 +66,7 @@ jobs:
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
       # -----------------------------
-      # Install Buildozer & python-for-android
+      # Install Buildozer + p4a
       # -----------------------------
       - name: Install Buildozer
         run: |
@@ -88,7 +88,7 @@ jobs:
           rm -rf .buildozer
 
       # -----------------------------
-      # Build APK (FORCE SDK + LICENSES)
+      # Build APK (FIX SDK + NDK)
       # -----------------------------
       - name: Build APK
         env:
@@ -97,10 +97,16 @@ jobs:
           ANDROIDSDK: /home/runner/android-sdk
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
+          # 🚫 REMOVE runner NDK (causes crash)
+          unset ANDROID_NDK_ROOT
+          unset ANDROID_NDK_HOME
+          unset ANDROID_NDK_LATEST_HOME
+
+          # ✅ Correct paths
           export PATH=/home/runner/android-sdk/cmdline-tools/latest/bin:/home/runner/android-sdk/platform-tools:$PATH
           export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
 
-          yes | buildozer android debug
+          buildozer android debug
 
       # -----------------------------
       # Upload APK
