@@ -10,15 +10,13 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      # ✅ REQUIRED
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -35,7 +33,9 @@ jobs:
             libgl1-mesa-dev libgles2-mesa-dev libx11-dev \
             autoconf automake libtool pkg-config
 
-      # ✅ ANDROID SDK (PINNED)
+      # -----------------------------
+      # ANDROID SDK (PINNED + LICENSED)
+      # -----------------------------
       - name: Install Android SDK
         run: |
           export ANDROID_SDK_ROOT="$HOME/android-sdk"
@@ -54,16 +54,18 @@ jobs:
             mv cmdline-tools latest
           fi
 
+          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
           echo "ANDROIDSDK=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
 
-          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
-
+          # ✅ Accept ALL licenses ONCE
           yes | sdkmanager --licenses
 
+          # ✅ Install ONLY supported tools
           sdkmanager \
             "platform-tools" \
             "platforms;android-33" \
@@ -82,23 +84,27 @@ jobs:
           rm -rf ~/.buildozer
           rm -rf .buildozer
 
-      # 🔒 FORCE API LEVEL (THIS FIXES YOUR ERROR)
+      # -----------------------------
+      # BUILD (FORCE SDK + BLOCK AUTO DOWNLOADS)
+      # -----------------------------
       - name: Build APK
         env:
-          ANDROID_API: "33"
-          ANDROID_MINAPI: "21"
-          ANDROIDSDK: ${{ env.ANDROID_SDK_ROOT }}
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
           ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROIDSDK: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_API: "33"
+          ANDROID_MINAPI: "21"
+          P4A_BUILD_ISOLATED: "0"
         run: |
           unset ANDROID_NDK_ROOT
           unset ANDROID_NDK_HOME
           unset ANDROID_NDK_LATEST_HOME
 
-          java -version
-          python --version
-
-          buildozer -v android debug
+          # 🔒 Force buildozer to use OUR SDK
+          buildozer -v android debug \
+            --sdk-dir=$ANDROID_SDK_ROOT \
+            --android-api=33 \
+            --android-minapi=21
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
