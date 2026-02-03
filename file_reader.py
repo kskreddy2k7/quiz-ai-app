@@ -10,7 +10,8 @@ def read_file(path):
     elif path.endswith(".docx"):
         from docx import Document
         doc = Document(path)
-        text = " ".join(p.text for p in doc.paragraphs)
+        for p in doc.paragraphs:
+            text += p.text + " "
 
     elif path.endswith(".pptx"):
         from pptx import Presentation
@@ -36,7 +37,8 @@ def read_file(path):
     elif path.endswith(".docx"):
         from docx import Document
         doc = Document(path)
-        text = " ".join(p.text for p in doc.paragraphs)
+        for p in doc.paragraphs:
+            text += p.text + " "
 
     elif path.endswith(".pptx"):
         from pptx import Presentation
