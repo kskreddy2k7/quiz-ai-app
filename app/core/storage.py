@@ -1,49 +1,28 @@
-from __future__ import annotations
-
 import json
 from pathlib import Path
-from typing import Dict, List
 
 
 class StorageManager:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path):
         self.path = path
-        if not self.path.exists():
-            self._write({"scores": [], "history": [], "streak": 0, "last_date": "", "materials": []})
+        if not path.exists():
+            self.path.write_text(json.dumps({"history": [], "scores": [], "streak": 0}))
 
-    def _write(self, data: Dict) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    def load(self):
+        return json.loads(self.path.read_text())
 
-    def load(self) -> Dict:
-        return json.loads(self.path.read_text(encoding="utf-8"))
-
-    def update_score(self, score: int) -> None:
+    def update_score(self, score):
         data = self.load()
-        data.setdefault("scores", []).append(score)
-        self._write(data)
+        data["scores"].append(score)
+        self.path.write_text(json.dumps(data, indent=2))
 
-    def add_history(self, entry: Dict) -> None:
+    def add_history(self, item):
         data = self.load()
-        data.setdefault("history", []).append(entry)
-        self._write(data)
+        data["history"].append(item)
+        self.path.write_text(json.dumps(data, indent=2))
 
-    def update_streak(self, today: str) -> int:
+    def update_streak(self, date):
         data = self.load()
-        last_date = data.get("last_date", "")
-        streak = data.get("streak", 0)
-        if last_date != today:
-            streak = streak + 1 if last_date else 1
-        data["last_date"] = today
-        data["streak"] = streak
-        self._write(data)
-        return streak
-
-    def add_material(self, entry: Dict) -> None:
-        data = self.load()
-        data.setdefault("materials", []).append(entry)
-        self._write(data)
-
-    def get_materials(self) -> List[Dict]:
-        data = self.load()
-        return data.get("materials", [])
+        data["streak"] += 1
+        self.path.write_text(json.dumps(data, indent=2))
+        return data["streak"]
