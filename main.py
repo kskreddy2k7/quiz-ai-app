@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import List
 
 from kivy.app import App
+from kivy.clock import Clock
+from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.properties import ListProperty, NumericProperty, StringProperty
 from kivy.uix.screenmanager import Screen, ScreenManager
@@ -110,11 +112,43 @@ class QuizApp(App):
 
     def build(self):
         self.active_questions = []
-        return Builder.load_file("app.kv")
+        Window.bind(on_keyboard=self._handle_back)
+        root = Builder.load_file("app.kv")
+        root.current = "splash"
+        return root
 
     def on_start(self):
         self._refresh_daily_quote()
         self.generate_quiz()
+        Clock.schedule_once(self._show_home, 2)
+
+    def _show_home(self, *_args):
+        self.root.current = "home"
+
+    def request_storage_permissions(self):
+        try:
+            from android.permissions import Permission, request_permissions  # type: ignore
+        except Exception:
+            return
+
+        request_permissions(
+            [
+                Permission.READ_EXTERNAL_STORAGE,
+                Permission.WRITE_EXTERNAL_STORAGE,
+                Permission.READ_MEDIA_IMAGES,
+                Permission.READ_MEDIA_VIDEO,
+                Permission.READ_MEDIA_AUDIO,
+            ]
+        )
+
+    def _handle_back(self, _window, key, *_args):
+        if key != 27:
+            return False
+        current = self.root.current
+        if current in {"splash", "quiz", "results", "materials"}:
+            self.go_home()
+            return True
+        return False
 
     def _refresh_daily_quote(self):
         today_index = datetime.date.today().toordinal() % len(MOTIVATIONAL_QUOTES)
@@ -141,6 +175,8 @@ class QuizApp(App):
         )
 
     def submit_answer(self, answer: str):
+        if not self.active_questions or self.current_index >= len(self.active_questions):
+            return
         question = self.active_questions[self.current_index]
         if answer == question.answer:
             self.score += 1

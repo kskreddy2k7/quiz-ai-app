@@ -119,10 +119,6 @@ jobs:
           ANDROID_MINAPI: "21"
           P4A_BUILD_ISOLATED: "0"
         run: |
-          unset ANDROID_NDK_ROOT
-          unset ANDROID_NDK_HOME
-          unset ANDROID_NDK_LATEST_HOME
-
           java -version
           python --version
 

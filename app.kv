@@ -45,7 +45,7 @@
             bold: True
             color: 0.1, 0.2, 0.4, 1
         Label:
-            text: "Believe in yourself. Every great achievement starts with a small step."
+            text: "Believe in yourself. Small steps every day lead to big success."
             font_size: "18sp"
             color: 0.2, 0.2, 0.3, 1
             text_size: self.width, None
@@ -184,6 +184,7 @@
                 on_release: app.go_home()
 
 <MaterialsScreen>:
+    on_pre_enter: app.request_storage_permissions()
     BoxLayout:
         orientation: "vertical"
         padding: dp(20)
