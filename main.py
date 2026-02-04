@@ -238,9 +238,6 @@ ScreenManager:
         padding: "24dp"
         spacing: "20dp"
         Label:
-            text: "Quiz AI"
-            font_size: "32sp"
-        Label:
             text: "Believe in yourself. Small steps every day lead to big success."
         Label:
             text: "Created with motivation by\\nKata Sai Kranthu Reddy"
