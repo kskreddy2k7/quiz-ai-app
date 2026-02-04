@@ -1,0 +1,42 @@
+[
+  {
+    "topic": "Science",
+    "difficulty": "easy",
+    "prompt": "What part of the cell produces energy?",
+    "choices": ["Nucleus", "Mitochondria", "Ribosome", "Golgi body"],
+    "answer": "Mitochondria",
+    "explanation": "Mitochondria are like tiny power plants that make energy for the cell."
+  },
+  {
+    "topic": "Math",
+    "difficulty": "easy",
+    "prompt": "What is 8 × 7?",
+    "choices": ["54", "56", "63", "64"],
+    "answer": "56",
+    "explanation": "Multiplying 8 by 7 gives 56."
+  },
+  {
+    "topic": "History",
+    "difficulty": "medium",
+    "prompt": "Which ancient civilization built the pyramids of Giza?",
+    "choices": ["Romans", "Egyptians", "Greeks", "Mayans"],
+    "answer": "Egyptians",
+    "explanation": "The pyramids of Giza were built by ancient Egyptians as royal tombs."
+  },
+  {
+    "topic": "Geography",
+    "difficulty": "easy",
+    "prompt": "Which planet is known as the Red Planet?",
+    "choices": ["Mars", "Venus", "Jupiter", "Saturn"],
+    "answer": "Mars",
+    "explanation": "Mars appears red because of iron oxide (rust) on its surface."
+  },
+  {
+    "topic": "Technology",
+    "difficulty": "medium",
+    "prompt": "Which language is primarily used for Android development today?",
+    "choices": ["Kotlin", "Swift", "Ruby", "Go"],
+    "answer": "Kotlin",
+    "explanation": "Kotlin is the modern, officially supported language for Android apps."
+  }
+]
