@@ -53,7 +53,7 @@ android.accept_sdk_license = True
 # =========================
 # Permissions
 # =========================
-android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
+android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,CAMERA,RECORD_AUDIO
 
 # =========================
 # Logging
