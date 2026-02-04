@@ -13,6 +13,7 @@ from kivy.clock import Clock
 from kivy.properties import ListProperty, NumericProperty, StringProperty
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen, ScreenManager
+from kivy.utils import platform
 
 
 @dataclass(frozen=True)
@@ -88,6 +89,7 @@ class SplashScreen(Screen):
 
 class HomeScreen(Screen):
     daily_quote = StringProperty("")
+    permission_status = StringProperty("Preparing to request permissions...")
 
 
 class QuizScreen(Screen):
@@ -197,6 +199,37 @@ ScreenManager:
     def _go_home_from_splash(self, _dt):
         if self.root:
             self.root.current = "home"
+            Clock.schedule_once(self._request_android_permissions, 0.5)
+
+    def _request_android_permissions(self, _dt):
+        if platform != "android":
+            return
+        from android.permissions import Permission, request_permissions
+
+        permissions = [
+            Permission.READ_EXTERNAL_STORAGE,
+            Permission.WRITE_EXTERNAL_STORAGE,
+        ]
+        home_screen = self.root.get_screen("home")
+        home_screen.permission_status = "Requesting permissions..."
+        request_permissions(permissions, self._on_permissions_result)
+
+    def _on_permissions_result(self, permissions, grants):
+        if not self.root:
+            return
+        denied = [
+            permission
+            for permission, granted in zip(permissions, grants)
+            if not granted
+        ]
+        home_screen = self.root.get_screen("home")
+        if denied:
+            home_screen.permission_status = (
+                "Some permissions were denied. You can still study, "
+                "but saving materials or using media features may be limited."
+            )
+        else:
+            home_screen.permission_status = "All requested permissions were granted."
 
     def _handle_back(self, _window, key, *_args):
         if key != 27:
