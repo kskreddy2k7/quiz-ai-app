@@ -17,6 +17,7 @@ from app.core.permission_manager import PermissionManager
 from app.core.quiz_generator import QuizGenerator, QuizQuestion
 from app.core.storage import StorageManager
 from app.core.utils import build_daily_quote
+
 from app.screens.ai_chat import AIChatScreen
 from app.screens.explanation import ExplanationScreen
 from app.screens.home import HomeScreen
@@ -27,10 +28,11 @@ from app.screens.quiz_setup import QuizSetupScreen
 from app.screens.results import ResultsScreen
 from app.screens.splash import SplashScreen
 
+
 ENCOURAGEMENTS = [
-    "Great effort! Keep going.",
-    "Well done! You're improving.",
-    "Fantastic work! Stay consistent.",
+    "🌟 Great effort! Keep going!",
+    "🔥 Well done! You're improving!",
+    "🚀 Fantastic work! Stay consistent!",
 ]
 
 
@@ -46,16 +48,24 @@ class QuizAIApp(App):
     last_explanation: str = ""
     last_selected_answer: str = ""
 
+    # -------------------------
+    # APP STARTUP
+    # -------------------------
+
     def build(self):
         self.active_questions = []
+
+        # AI CORE
         self.ai_engine = AIEngine()
         self.doubt_solver = DoubtSolver(self.ai_engine)
-        self.quiz_generator = QuizGenerator(self.ai_engine, self._data_path("local_questions.json"))
+        self.quiz_generator = QuizGenerator(
+            self.ai_engine, self._data_path("local_questions.json")
+        )
         self.explanation_engine = ExplanationEngine(self.ai_engine)
-        self.permission_manager = PermissionManager()
 
-        storage_path = Path(self.user_data_dir) / "quiz_data.json"
-        self.storage = StorageManager(storage_path)
+        # SYSTEM
+        self.permission_manager = PermissionManager()
+        self.storage = StorageManager(Path(self.user_data_dir) / "quiz_data.json")
 
         self._load_kv_files()
 
@@ -69,6 +79,7 @@ class QuizAIApp(App):
         manager.add_widget(ResultsScreen(name="results"))
         manager.add_widget(MaterialsScreen(name="materials"))
         manager.add_widget(ProgressScreen(name="progress"))
+
         return manager
 
     def _data_path(self, filename: str) -> Path:
@@ -76,7 +87,7 @@ class QuizAIApp(App):
 
     def _load_kv_files(self) -> None:
         ui_dir = Path(__file__).resolve().parent / "app" / "ui"
-        for filename in [
+        for file in [
             "splash.kv",
             "home.kv",
             "ai_chat.kv",
@@ -87,21 +98,19 @@ class QuizAIApp(App):
             "materials.kv",
             "progress.kv",
         ]:
-            Builder.load_file(str(ui_dir / filename))
+            Builder.load_file(str(ui_dir / file))
 
     def on_start(self):
         self._refresh_daily_quote()
-        Clock.schedule_once(self._go_home_from_splash, 1.6)
+        Clock.schedule_once(self._go_home_from_splash, 1.5)
 
     # -------------------------
     # NAVIGATION
     # -------------------------
 
     def _go_home_from_splash(self, _dt):
-        if not self.root:
-            return
         self.root.current = "home"
-        Clock.schedule_once(self._request_permissions, 0.8)
+        Clock.schedule_once(self._request_permissions, 0.5)
 
     def go_home(self):
         self._refresh_daily_quote()
@@ -133,10 +142,10 @@ class QuizAIApp(App):
         home = self.root.get_screen("home")
         home.permission_status = "Requesting permissions…"
 
-        def update_status(message: str) -> None:
-            home.permission_status = message
+        def update(msg: str):
+            home.permission_status = msg
 
-        self.permission_manager.request_permissions(update_status)
+        self.permission_manager.request_permissions(update)
 
     # -------------------------
     # QUIZ FLOW
@@ -144,34 +153,38 @@ class QuizAIApp(App):
 
     def start_quiz(self, subject: str, topic: str, difficulty: str):
         self.last_topic = f"{subject} · {topic}" if topic else subject
-        self.current_difficulty = difficulty or self.quiz_generator.default_difficulty
+        self.current_difficulty = difficulty or "easy"
         self.root.current = "quiz_play"
+
         quiz = self.root.get_screen("quiz_play")
-        quiz.question_text = "Preparing your quiz..."
+        quiz.question_text = "🧠 Preparing your quiz..."
         quiz.option_texts = []
         quiz.progress_text = ""
 
-        def on_complete(questions: List[QuizQuestion]) -> None:
+        def on_complete(questions: List[QuizQuestion]):
             self._start_questions(questions)
 
-        def on_error(message: str) -> None:
-            quiz.progress_text = message
-            questions = self.quiz_generator.get_local_quiz(subject, topic, self.current_difficulty)
+        def on_error(_msg: str):
+            questions = self.quiz_generator.get_local_quiz(
+                subject, topic, self.current_difficulty
+            )
             self._start_questions(questions)
 
         if self.ai_engine.is_available():
-            quiz.progress_text = "Generating AI quiz..."
-            self.quiz_generator.request_ai_quiz(subject, topic, self.current_difficulty, on_complete, on_error)
+            quiz.progress_text = "✨ Generating AI quiz..."
+            self.quiz_generator.request_ai_quiz(
+                subject, topic, self.current_difficulty, on_complete, on_error
+            )
         else:
-            on_error("AI features unavailable. Using offline questions.")
+            on_error("offline")
 
     def _start_questions(self, questions: List[QuizQuestion]):
         if not questions:
             quiz = self.root.get_screen("quiz_play")
-            quiz.question_text = "No questions available yet."
+            quiz.question_text = "No questions available."
             quiz.option_texts = []
-            quiz.progress_text = ""
             return
+
         self.active_questions = questions
         self.current_index = 0
         self.score = 0
@@ -181,6 +194,7 @@ class QuizAIApp(App):
         if self.current_index >= len(self.active_questions):
             self.show_results()
             return
+
         q = self.active_questions[self.current_index]
         quiz = self.root.get_screen("quiz_play")
         quiz.question_text = q.prompt
@@ -188,25 +202,27 @@ class QuizAIApp(App):
         quiz.progress_text = f"{self.current_index + 1}/{len(self.active_questions)}"
 
     def submit_answer(self, answer: str):
-        if not self.active_questions:
-            return
         q = self.active_questions[self.current_index]
         self.last_selected_answer = answer
+
         if answer == q.answer:
             self.score += 1
+
         explanation = self.root.get_screen("explanation")
-        explanation.result_text = "Correct!" if answer == q.answer else "Not quite."
-        explanation.explanation_text = "Loading explanation..."
+        explanation.result_text = "✅ Correct!" if answer == q.answer else "❌ Not quite"
+        explanation.explanation_text = "Thinking..."
         explanation.selected_answer = answer
         explanation.correct_answer = q.answer
-        explanation.next_label = "Next" if self.current_index + 1 < len(self.active_questions) else "See Results"
+        explanation.next_label = (
+            "Next" if self.current_index + 1 < len(self.active_questions) else "Results"
+        )
         self.root.current = "explanation"
 
-        def on_complete(text: str) -> None:
+        def on_complete(text: str):
             explanation.explanation_text = text
             self.last_explanation = text
 
-        def on_error(_message: str) -> None:
+        def on_error(_msg: str):
             fallback = self.explanation_engine.fallback_explanation(q, answer)
             explanation.explanation_text = fallback
             self.last_explanation = fallback
@@ -222,15 +238,18 @@ class QuizAIApp(App):
         results = self.root.get_screen("results")
         total = len(self.active_questions)
         percent = int((self.score / total) * 100) if total else 0
+
         results.score_text = f"Score: {self.score}/{total} ({percent}%)"
         results.encouragement_text = ENCOURAGEMENTS[min(percent // 34, 2)]
         results.explanation_text = self.last_explanation
+
         self._store_results(percent)
         self.root.current = "results"
 
-    def _store_results(self, percent: int) -> None:
+    def _store_results(self, percent: int):
         today = datetime.date.today().isoformat()
         streak = self.storage.update_streak(today)
+
         self.storage.add_history(
             {
                 "date": today,
@@ -239,6 +258,7 @@ class QuizAIApp(App):
                 "score": percent,
             }
         )
+
         self.storage.update_score(percent)
         home = self.root.get_screen("home")
         home.streak_text = f"Streak: {streak} days"
@@ -248,20 +268,22 @@ class QuizAIApp(App):
     # -------------------------
 
     def send_ai_question(self, question: str):
-        question = question.strip()
         screen = self.root.get_screen("ai_chat")
+        question = question.strip()
+
         if not question:
             screen.status_text = "Please enter a question."
             return
-        screen.status_text = "Tutor is thinking..."
+
+        screen.status_text = "Tutor is thinking…"
         screen.chat_history += f"\nYou: {question}\n"
 
-        def on_complete(text: str) -> None:
+        def on_complete(text: str):
             screen.chat_history += f"Tutor: {text}\n"
             screen.status_text = ""
 
-        def on_error(message: str) -> None:
-            screen.chat_history += f"Tutor: {message}\n"
+        def on_error(msg: str):
+            screen.chat_history += f"Tutor: {msg}\n"
             screen.status_text = ""
 
         self.doubt_solver.solve(question, on_complete, on_error)
@@ -270,18 +292,18 @@ class QuizAIApp(App):
     # MATERIALS
     # -------------------------
 
-    def add_material_entry(self, label: str, path: str) -> None:
+    def add_material_entry(self, label: str, path: str):
         self.storage.add_material({"label": label, "path": path})
         self._refresh_materials()
 
     def _refresh_materials(self):
         screen = self.root.get_screen("materials")
-        materials = self.storage.get_materials()
-        if not materials:
-            screen.materials_text = "No materials saved yet."
-        else:
-            lines = [f"• {item['label']}" for item in materials]
-            screen.materials_text = "\n".join(lines)
+        items = self.storage.get_materials()
+        screen.materials_text = (
+            "\n".join(f"• {i['label']}" for i in items)
+            if items
+            else "No materials saved yet."
+        )
 
     # -------------------------
     # PROGRESS
@@ -290,15 +312,17 @@ class QuizAIApp(App):
     def _refresh_progress(self):
         data = self.storage.load()
         scores = data.get("scores", [])
-        average = int(sum(scores) / len(scores)) if scores else 0
+        avg = int(sum(scores) / len(scores)) if scores else 0
+
         history = data.get("history", [])
-        history_lines = [
-            f"{item['date']} · {item['topic']} · {item['score']}%" for item in history
+        lines = [
+            f"{i['date']} · {i['topic']} · {i['score']}%" for i in history
         ]
+
         screen = self.root.get_screen("progress")
-        screen.average_score = average
+        screen.average_score = avg
         screen.streak_text = f"Streak: {data.get('streak', 0)} days"
-        screen.history_text = "\n".join(history_lines) if history_lines else "No quizzes yet."
+        screen.history_text = "\n".join(lines) if lines else "No quizzes yet."
 
     # -------------------------
     # DAILY MOTIVATION
@@ -310,19 +334,23 @@ class QuizAIApp(App):
 
     def request_daily_motivation(self):
         home = self.root.get_screen("home")
-        home.motivation_status = "Loading AI motivation..."
+        home.motivation_status = "✨ Loading motivation..."
 
-        def on_complete(text: str) -> None:
+        def on_complete(text: str):
             home.motivation_status = text
 
-        def on_error(message: str) -> None:
-            home.motivation_status = message
+        def on_error(_msg: str):
+            home.motivation_status = "📴 Offline: Keep learning every day!"
 
         if self.ai_engine.is_available():
-            prompt = "Share a short, encouraging study motivation for a student in 1-2 sentences."
-            self.ai_engine.run_async(prompt, "You are a motivating study coach.", on_complete, on_error)
+            self.ai_engine.run_async(
+                "Give a short study motivation with emojis.",
+                "You are a motivating tutor.",
+                on_complete,
+                on_error,
+            )
         else:
-            home.motivation_status = "AI features unavailable. Configure API key."
+            on_error("offline")
 
 
 if __name__ == "__main__":
