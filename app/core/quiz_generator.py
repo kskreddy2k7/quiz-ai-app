@@ -45,11 +45,11 @@ class QuizGenerator:
             questions.append(QuizQuestion(**item))
         return questions
 
-    def save_quiz_offline(self, questions: List[QuizQuestion]):
+    def save_quiz_offline(self, questions: List[QuizQuestion]) -> None:
         data = [q.__dict__ for q in questions]
         self.local_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
-    def get_local_quiz(self, subject: str, topic: str, difficulty: str):
+    def get_local_quiz(self, subject: str, topic: str, difficulty: str) -> List[QuizQuestion]:
         qs = self.load_local_questions()
         if not qs:
             qs = self._demo_questions()
@@ -76,7 +76,7 @@ class QuizGenerator:
         difficulty: str,
         on_complete: Callable,
         on_error: Callable,
-    ):
+    ) -> None:
         prompt = f"""
 Create 5 MCQ questions.
 
@@ -98,6 +98,7 @@ Return ONLY JSON:
  }}
 ]
 """
+
         def success(text: str) -> None:
             try:
                 questions = self._parse_ai_response(text, topic or subject, difficulty)
@@ -139,19 +140,34 @@ Return ONLY JSON:
         return questions
 
     def _is_valid_question(self, item: dict) -> bool:
-        required = {"prompt", "choices", "answer", "explanation", "wrong_explanations", "topic", "difficulty"}
+        required = {
+            "prompt",
+            "choices",
+            "answer",
+            "explanation",
+            "wrong_explanations",
+            "topic",
+            "difficulty",
+        }
         if not required.issubset(item.keys()):
+            return False
+        if not isinstance(item["prompt"], str) or not item["prompt"].strip():
             return False
         if not isinstance(item["choices"], list) or len(item["choices"]) != 4:
             return False
-        if item["answer"] not in item["choices"]:
+        if len(set(item["choices"])) != 4:
+            return False
+        if not isinstance(item["answer"], str) or item["answer"] not in item["choices"]:
+            return False
+        if not isinstance(item["explanation"], str) or not item["explanation"].strip():
             return False
         if not isinstance(item["wrong_explanations"], dict):
             return False
         for choice in item["choices"]:
             if choice == item["answer"]:
                 continue
-            if choice not in item["wrong_explanations"]:
+            explanation = item["wrong_explanations"].get(choice)
+            if not isinstance(explanation, str) or not explanation.strip():
                 return False
         return True
 

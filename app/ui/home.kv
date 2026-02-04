@@ -110,6 +110,8 @@
                         width: "80dp"
                         background_normal: ""
                         background_color: 0.35, 0.55, 0.9, 1
+                        disabled: not root.ai_available
+                        opacity: 0.5 if self.disabled else 1
                         on_release:
                             app.go_ai_chat()
                             app.send_ai_question(search_input.text)
@@ -122,6 +124,8 @@
                 height: self.minimum_height
                 CardButton:
                     text: "🤖  Ask AI Doubt"
+                    disabled: not root.ai_available
+                    opacity: 0.5 if self.disabled else 1
                     on_release: app.go_ai_chat()
                 CardButton:
                     text: "🧠  Generate AI Quiz"
@@ -132,7 +136,9 @@
                     text: "📘  Offline Quiz"
                     on_release: app.go_quiz_setup()
                 CardButton:
-                    text: "🌟  Daily Motivation"
+                    text: "✨  Daily Motivation"
+                    disabled: not root.ai_available
+                    opacity: 0.5 if self.disabled else 1
                     on_release: app.request_daily_motivation()
                 CardButton:
                     text: "📈  Progress"

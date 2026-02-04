@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import json
 from pathlib import Path
 from typing import List
 
@@ -126,7 +125,10 @@ class QuizAIApp(App):
 
     def go_ai_chat(self):
         screen = self.root.get_screen("ai_chat")
-        screen.status_text = ""
+        if self.ai_engine.is_available():
+            screen.status_text = ""
+        else:
+            screen.status_text = "📴 AI tutor is offline. Try a quiz instead."
         self.root.current = "ai_chat"
 
     def go_quiz_setup(self):
@@ -335,9 +337,7 @@ class QuizAIApp(App):
         avg = int(sum(scores) / len(scores)) if scores else 0
 
         history = data.get("history", [])
-        lines = [
-            f"{i['date']} · {i['topic']} · {i['score']}%" for i in history
-        ]
+        lines = [f"{i['date']} · {i['topic']} · {i['score']}%" for i in history]
 
         screen = self.root.get_screen("progress")
         screen.average_score = avg
@@ -357,7 +357,7 @@ class QuizAIApp(App):
         home = self.root.get_screen("home")
         available = self.ai_engine.is_available()
         home.ai_available = available
-        home.ai_status = "AI Mode: Online ✨" if available else "AI Mode: Offline 📴"
+        home.ai_status = self.ai_engine.availability_message()
         home.ai_status_color = (
             [0.6, 1, 0.7, 1] if available else [0.8, 0.85, 0.95, 0.9]
         )
@@ -369,7 +369,7 @@ class QuizAIApp(App):
         message = (
             "Welcome to Quiz AI! 📘\n\n"
             "• Works offline with demo quizzes\n"
-            "• AI features need internet access\n"
+            "• AI features need internet + API key\n"
             "• We do not collect personal data"
         )
         content = BoxLayout(orientation="vertical", spacing="12dp", padding="12dp")
@@ -393,8 +393,7 @@ class QuizAIApp(App):
         )
         button.bind(on_release=popup.dismiss)
         popup.open()
-        data["first_launch_shown"] = True
-        self.storage.path.write_text(json.dumps(data, indent=2))
+        self.storage.mark_first_launch_shown()
 
     def _format_wrong_explanations(self, question: QuizQuestion) -> str:
         if not question.wrong_explanations:
@@ -403,12 +402,18 @@ class QuizAIApp(App):
         for choice in question.choices:
             if choice == question.answer:
                 continue
-            explanation = question.wrong_explanations.get(choice, "This option is incorrect.")
+            explanation = question.wrong_explanations.get(
+                choice, "This option is incorrect."
+            )
             lines.append(f"• {choice}: {explanation}")
         return "\n".join(lines)
 
     def request_daily_motivation(self):
         home = self.root.get_screen("home")
+        if not self.ai_engine.is_available():
+            home.motivation_status = "📴 Offline: Keep learning every day!"
+            return
+
         home.motivation_status = "✨ Loading motivation..."
 
         def on_complete(text: str):
@@ -417,15 +422,12 @@ class QuizAIApp(App):
         def on_error(_msg: str):
             home.motivation_status = "📴 Offline: Keep learning every day!"
 
-        if self.ai_engine.is_available():
-            self.ai_engine.run_async(
-                "Give a short study motivation with emojis.",
-                "You are a motivating tutor.",
-                on_complete,
-                on_error,
-            )
-        else:
-            on_error("offline")
+        self.ai_engine.run_async(
+            "Give a short study motivation with emojis.",
+            "You are a motivating tutor.",
+            on_complete,
+            on_error,
+        )
 
 
 if __name__ == "__main__":
