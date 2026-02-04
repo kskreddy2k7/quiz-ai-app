@@ -1,0 +1,40 @@
+#:import dp kivy.metrics.dp
+
+<ProgressScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(20)
+        spacing: dp(14)
+        canvas.before:
+            Color:
+                rgba: 0.96, 0.97, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Label:
+            text: "Your Progress"
+            font_size: "22sp"
+            bold: True
+            color: 0.2, 0.25, 0.45, 1
+        Label:
+            text: root.streak_text
+            font_size: "15sp"
+            color: 0.2, 0.3, 0.45, 1
+        Label:
+            text: "Average Score"
+            font_size: "14sp"
+            color: 0.2, 0.3, 0.45, 1
+        ProgressBar:
+            max: 100
+            value: root.average_score
+            size_hint_y: None
+            height: dp(16)
+        Label:
+            text: root.history_text
+            font_size: "13sp"
+            color: 0.25, 0.35, 0.5, 1
+            text_size: self.width, None
+            halign: "left"
+        SecondaryButton:
+            text: "Back to Home"
+            on_release: app.go_home()

@@ -1,0 +1,45 @@
+#:import dp kivy.metrics.dp
+
+<MaterialsScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(20)
+        spacing: dp(12)
+        canvas.before:
+            Color:
+                rgba: 0.96, 0.97, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Label:
+            text: "Study Materials"
+            font_size: "22sp"
+            bold: True
+            color: 0.2, 0.25, 0.45, 1
+        Label:
+            text: "Keep your notes and files handy for quick review."
+            font_size: "16sp"
+            color: 0.3, 0.35, 0.5, 1
+            text_size: self.width, None
+            halign: "center"
+        Label:
+            text: "Store PDFs, PPTs, or DOCs on your device and open them anytime."
+            font_size: "14sp"
+            color: 0.35, 0.4, 0.55, 1
+            text_size: self.width, None
+            halign: "center"
+        Card:
+            Label:
+                text: "Offline Tips"
+                font_size: "16sp"
+                bold: True
+                color: 0.2, 0.25, 0.4, 1
+            Label:
+                text: "Organize folders by subject and review weekly to stay consistent."
+                font_size: "13sp"
+                color: 0.3, 0.35, 0.5, 1
+                text_size: self.width, None
+                halign: "center"
+        SecondaryButton:
+            text: "Back to Home"
+            on_release: app.go_home()

@@ -1,0 +1,90 @@
+#:import dp kivy.metrics.dp
+
+<HomeScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(20)
+        spacing: dp(16)
+        canvas.before:
+            Color:
+                rgba: 0.95, 0.96, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Label:
+            text: "Welcome, Learner!"
+            font_size: "24sp"
+            bold: True
+            color: 0.15, 0.2, 0.4, 1
+        Label:
+            text: root.daily_quote
+            font_size: "16sp"
+            color: 0.25, 0.3, 0.45, 1
+            text_size: self.width, None
+            halign: "center"
+        Card:
+            Label:
+                text: "AI Daily Motivation"
+                font_size: "16sp"
+                bold: True
+                color: 0.2, 0.25, 0.4, 1
+            Label:
+                text: root.motivation_status
+                font_size: "14sp"
+                color: 0.3, 0.35, 0.5, 1
+                text_size: self.width, None
+                halign: "center"
+        Card:
+            Label:
+                text: "Permissions"
+                font_size: "16sp"
+                bold: True
+                color: 0.2, 0.25, 0.4, 1
+            Label:
+                text: "We use storage to save progress. Camera and microphone are optional for future study tools."
+                font_size: "13sp"
+                color: 0.3, 0.35, 0.5, 1
+                text_size: self.width, None
+                halign: "center"
+            Label:
+                text: root.permission_status
+                font_size: "13sp"
+                color: 0.3, 0.35, 0.5, 1
+                text_size: self.width, None
+                halign: "center"
+        Card:
+            Label:
+                text: "Quiz Setup"
+                font_size: "16sp"
+                bold: True
+                color: 0.2, 0.25, 0.4, 1
+            RoundedTextInput:
+                id: topic_input
+                text: root.topic_text
+                hint_text: "Enter a topic (e.g., Science)"
+            Spinner:
+                id: difficulty_spinner
+                text: root.difficulty_text
+                values: ["easy", "medium", "hard"]
+                size_hint_y: None
+                height: dp(44)
+                background_normal: ""
+                background_color: 0.88, 0.92, 1, 1
+                color: 0.2, 0.25, 0.35, 1
+        Label:
+            text: root.streak_text
+            font_size: "14sp"
+            color: 0.25, 0.3, 0.45, 1
+        PrimaryButton:
+            text: "Start AI Quiz"
+            on_release: app.start_quiz(topic_input.text, difficulty_spinner.text)
+        PrimaryButton:
+            text: "AI Tutor"
+            on_release: app.go_ai_tutor()
+        PrimaryButton:
+            text: "Progress"
+            on_release: app.go_progress()
+        PrimaryButton:
+            text: "Study Materials"
+            on_release: app.go_materials()
+        Widget:

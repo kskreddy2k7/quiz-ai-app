@@ -1,0 +1,40 @@
+#:import dp kivy.metrics.dp
+
+<ResultsScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(24)
+        spacing: dp(16)
+        canvas.before:
+            Color:
+                rgba: 0.95, 0.98, 0.97, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Label:
+            text: "Quiz Complete!"
+            font_size: "22sp"
+            bold: True
+            color: 0.15, 0.45, 0.35, 1
+        Label:
+            text: root.score_text
+            font_size: "18sp"
+            color: 0.2, 0.3, 0.4, 1
+        Label:
+            text: root.encouragement_text
+            font_size: "16sp"
+            color: 0.2, 0.3, 0.4, 1
+            text_size: self.width, None
+            halign: "center"
+        Label:
+            text: root.explanation_text
+            font_size: "14sp"
+            color: 0.25, 0.35, 0.45, 1
+            text_size: self.width, None
+            halign: "center"
+        PrimaryButton:
+            text: "Try Another Quiz"
+            on_release: app.start_quiz(app.last_topic, app.current_difficulty)
+        PrimaryButton:
+            text: "Back to Home"
+            on_release: app.go_home()

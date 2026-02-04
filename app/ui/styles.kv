@@ -1,0 +1,50 @@
+#:import dp kivy.metrics.dp
+
+<PrimaryButton@Button>:
+    background_normal: ""
+    background_color: 0.32, 0.42, 0.85, 1
+    color: 1, 1, 1, 1
+    font_size: "16sp"
+    size_hint_y: None
+    height: dp(48)
+    bold: True
+
+<SecondaryButton@Button>:
+    background_normal: ""
+    background_color: 0.84, 0.88, 0.96, 1
+    color: 0.2, 0.3, 0.45, 1
+    font_size: "15sp"
+    size_hint_y: None
+    height: dp(44)
+
+<Card@BoxLayout>:
+    orientation: "vertical"
+    padding: dp(16)
+    spacing: dp(12)
+    size_hint_y: None
+    height: self.minimum_height
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [18, 18, 18, 18]
+
+<RoundedTextInput@TextInput>:
+    background_normal: ""
+    background_color: 1, 1, 1, 1
+    foreground_color: 0.2, 0.25, 0.35, 1
+    cursor_color: 0.2, 0.25, 0.35, 1
+    padding: dp(12)
+    size_hint_y: None
+    height: dp(44)
+    multiline: False
+    font_size: "15sp"
+    canvas.before:
+        Color:
+            rgba: 0.9, 0.93, 1, 1
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [14, 14, 14, 14]
