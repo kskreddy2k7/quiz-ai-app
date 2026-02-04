@@ -1,36 +1,57 @@
 from __future__ import annotations
 
 import datetime
+import os
 from pathlib import Path
 from typing import List
 
-from kivy.app import App
-from kivy.clock import Clock
-from kivy.lang import Builder
-from kivy.properties import NumericProperty
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.popup import Popup
-from kivy.uix.screenmanager import ScreenManager
+try:
+    from kivy.app import App
+    from kivy.clock import Clock
+    from kivy.lang import Builder
+    from kivy.properties import NumericProperty
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.button import Button
+    from kivy.uix.label import Label
+    from kivy.uix.popup import Popup
+    from kivy.uix.screenmanager import ScreenManager
+except ImportError:
+    import sys
+    print("\n" + "="*60)
+    print("CRITICAL ERROR: Kivy framework not found.")
+    print("="*60)
+    if sys.version_info >= (3, 13):
+        print(f"You are running Python {sys.version_info.major}.{sys.version_info.minor}, which is too new for Kivy.")
+        print("Please install Python 3.10, 3.11, or 3.12 to run this app.")
+    else:
+        print("Please install dependencies using: pip install -r requirements.txt")
+    print("="*60 + "\n")
+    sys.exit(1)
 
-from app.core.ai_engine import AIEngine
-from app.core.doubt_solver import DoubtSolver
-from app.core.explanation_engine import ExplanationEngine
-from app.core.permission_manager import PermissionManager
-from app.core.quiz_generator import QuizGenerator, QuizQuestion
-from app.core.storage import StorageManager
-from app.core.utils import build_daily_quote
+# --- Service Imports ---
+from app.services.ai_service import AIService
+from app.services.quiz_service import QuizService, QuizQuestion
+from app.services.tutor_service import TutorService
+from app.services.storage_service import StorageService
 
-from app.screens.ai_chat import AIChatScreen
-from app.screens.explanation import ExplanationScreen
-from app.screens.home import HomeScreen
-from app.screens.materials import MaterialsScreen
-from app.screens.progress import ProgressScreen
-from app.screens.quiz_play import QuizPlayScreen
-from app.screens.quiz_setup import QuizSetupScreen
-from app.screens.results import ResultsScreen
-from app.screens.splash import SplashScreen
+# --- Utils Imports ---
+from app.utils.permissions import PermissionManager
+from app.utils.helpers import build_daily_quote
+
+# --- UI Imports ---
+# Guard these as well if they import kivy at top level (they do)
+try:
+    from app.screens.ai_chat import AIChatScreen
+    from app.screens.explanation import ExplanationScreen
+    from app.screens.home import HomeScreen
+    from app.screens.progress import ProgressScreen
+    from app.screens.quiz_play import QuizPlayScreen
+    from app.screens.quiz_setup import QuizSetupScreen
+    from app.screens.results import ResultsScreen
+    from app.screens.settings import SettingsScreen
+    from app.screens.splash import SplashScreen
+except ImportError:
+    pass # Already caught above, app won't run anyway
 
 
 ENCOURAGEMENTS = [
@@ -51,6 +72,7 @@ class QuizAIApp(App):
     current_difficulty: str = "easy"
     last_explanation: str = ""
     last_selected_answer: str = ""
+    user_answers: dict = {}  # Map index -> selected_answer
 
     # -------------------------
     # APP STARTUP
@@ -58,18 +80,18 @@ class QuizAIApp(App):
 
     def build(self):
         self.active_questions = []
+        self.user_answers = {}
 
-        # AI CORE
-        self.ai_engine = AIEngine()
-        self.doubt_solver = DoubtSolver(self.ai_engine)
-        self.quiz_generator = QuizGenerator(
-            self.ai_engine, self._data_path("local_questions.json")
-        )
-        self.explanation_engine = ExplanationEngine(self.ai_engine)
-
-        # SYSTEM
+        # INSTANTIATE SERVICES
+        self.ai_service = AIService()
+        self.storage_service = StorageService("quiz_data.json")
+        
+        # Determine local questions path relative to data/ dir
+        local_q_path = Path(__file__).resolve().parent / "app" / "data" / "local_questions.json"
+        
+        self.quiz_service = QuizService(self.ai_service, local_q_path)
+        self.tutor_service = TutorService(self.ai_service)
         self.permission_manager = PermissionManager()
-        self.storage = StorageManager(Path(self.user_data_dir) / "quiz_data.json")
 
         self._load_kv_files()
 
@@ -81,28 +103,25 @@ class QuizAIApp(App):
         manager.add_widget(QuizPlayScreen(name="quiz_play"))
         manager.add_widget(ExplanationScreen(name="explanation"))
         manager.add_widget(ResultsScreen(name="results"))
-        manager.add_widget(MaterialsScreen(name="materials"))
+        manager.add_widget(SettingsScreen(name="settings"))
         manager.add_widget(ProgressScreen(name="progress"))
 
         return manager
 
     def _data_path(self, filename: str) -> Path:
-        return Path(__file__).resolve().parent / "data" / filename
+        return Path(__file__).resolve().parent / "app" / "data" / filename
 
     def _load_kv_files(self) -> None:
         ui_dir = Path(__file__).resolve().parent / "app" / "ui"
-        for file in [
-            "splash.kv",
-            "home.kv",
-            "ai_chat.kv",
-            "quiz_setup.kv",
-            "quiz_play.kv",
-            "explanation.kv",
-            "results.kv",
-            "materials.kv",
-            "progress.kv",
-        ]:
-            Builder.load_file(str(ui_dir / file))
+        kv_files = [
+            "components.kv", "splash.kv", "home.kv", "ai_chat.kv", 
+            "quiz_setup.kv", "quiz_play.kv", "explanation.kv", 
+            "results.kv", "settings.kv", "progress.kv"
+        ]
+        for file in kv_files:
+            path = ui_dir / file
+            print(f"DEBUG: Loading {file}...")
+            Builder.load_file(str(path))
 
     def on_start(self):
         self._refresh_daily_quote()
@@ -125,24 +144,32 @@ class QuizAIApp(App):
 
     def go_ai_chat(self):
         screen = self.root.get_screen("ai_chat")
-        if self.ai_engine.is_available():
+        if self.ai_service.is_available():
             screen.status_text = ""
         else:
             screen.status_text = "📴 AI tutor is offline. Try a quiz instead."
         self.root.current = "ai_chat"
 
-    def go_quiz_setup(self):
+    def go_quiz_setup(self, mode: str = "file"):
         screen = self.root.get_screen("quiz_setup")
-        screen.load_subjects(self._data_path("subjects.json"))
+        screen.mode = mode
+        # Ensure subjects.json exists or handle it
+        subjects_path = self._data_path("subjects.json")
+        if subjects_path.exists():
+            screen.load_subjects(subjects_path)
         self.root.current = "quiz_setup"
 
     def go_progress(self):
         self._refresh_progress()
         self.root.current = "progress"
 
-    def go_materials(self):
-        self._refresh_materials()
-        self.root.current = "materials"
+    def open_settings(self):
+        self.root.current = "settings"
+
+    def go_results_overview(self):
+        # Navigation to results or a new analytics screen
+        # For now, we reuse the results logic or redirect to progress
+        self.root.current = "progress"
 
     # -------------------------
     # PERMISSIONS
@@ -150,10 +177,16 @@ class QuizAIApp(App):
 
     def _request_permissions(self, _dt):
         home = self.root.get_screen("home")
-        home.permission_status = "Requesting permissions…"
+        try:
+            home.permission_status = "Requesting permissions…"
+        except AttributeError:
+             pass # UI might not have this property yet
 
         def update(msg: str):
-            home.permission_status = msg
+            try:
+                home.permission_status = msg
+            except AttributeError:
+                pass
 
         self.permission_manager.request_permissions(update)
 
@@ -161,13 +194,22 @@ class QuizAIApp(App):
     # QUIZ FLOW
     # -------------------------
 
-    def start_quiz(self, subject: str, topic: str, difficulty: str):
+    def start_quiz(
+        self, 
+        subject: str, 
+        topic: str, 
+        difficulty: str, 
+        content_context: str = "",
+        file_path: str = "",
+        num_questions: int = 5,
+        q_type: str = "mixed"
+    ):
         self.last_topic = f"{subject} · {topic}" if topic else subject
         self.current_difficulty = difficulty or "easy"
         self.root.current = "quiz_play"
 
         quiz = self.root.get_screen("quiz_play")
-        quiz.question_text = "🧠 Preparing your quiz..."
+        quiz.question_text = "🧠 Analyzing content..." if file_path or content_context else "🧠 Preparing your quiz..."
         quiz.option_texts = []
         quiz.progress_text = ""
 
@@ -175,19 +217,36 @@ class QuizAIApp(App):
             self._start_questions(questions)
 
         def on_error(_msg: str):
-            questions = self.quiz_generator.get_local_quiz(
+            # Fallback to local database if everything else fails
+            quiz.progress_text = f"⚠️ Generation error: {_msg}. Reverting to local library..."
+            questions = self.quiz_service.get_local_quiz(
                 subject, topic, self.current_difficulty
             )
-            quiz.progress_text = "📴 Offline mode: using demo quiz."
             self._start_questions(questions)
 
-        if self.ai_engine.is_available():
-            quiz.progress_text = "✨ Generating AI quiz..."
-            self.quiz_generator.request_ai_quiz(
-                subject, topic, self.current_difficulty, on_complete, on_error
+        # Logic:
+        # 1. If we have custom context (File/Text), ALWAYS try generation (AI or Mock)
+        # 2. If no context, check AI availability.
+        #    - If Available: AI Gen
+        #    - If Offline: Local DB (Mock gen is bad without source text)
+        
+        has_context = bool(content_context or file_path)
+        
+        if has_context or self.ai_service.is_available():
+            quiz.progress_text = "✨ generating quiz..."
+            self.quiz_service.request_ai_quiz(
+                subject=subject, 
+                topic=topic, 
+                difficulty=self.current_difficulty,
+                content_context=content_context, 
+                file_path=file_path,
+                num_questions=num_questions,
+                q_type=q_type,
+                on_complete=on_complete, 
+                on_error=on_error
             )
         else:
-            on_error("offline")
+            on_error("offline_no_context")
 
     def _start_questions(self, questions: List[QuizQuestion]):
         if not questions:
@@ -199,6 +258,7 @@ class QuizAIApp(App):
         self.active_questions = questions
         self.current_index = 0
         self.score = 0
+        self.user_answers = {}
         self._load_question()
 
     def _load_question(self):
@@ -215,15 +275,14 @@ class QuizAIApp(App):
     def submit_answer(self, answer: str):
         q = self.active_questions[self.current_index]
         self.last_selected_answer = answer
+        self.user_answers[self.current_index] = answer
 
         if answer == q.answer:
             self.score += 1
 
         explanation = self.root.get_screen("explanation")
         explanation.result_text = "✅ Correct!" if answer == q.answer else "❌ Not quite"
-        explanation.explanation_text = (
-            "Great job!" if answer == q.answer else "Let’s review the reasoning."
-        )
+        explanation.explanation_text = "Analyzing..." # Placeholder
         explanation.selected_answer = answer
         explanation.correct_answer = q.answer
         explanation.correct_explanation = q.explanation
@@ -234,19 +293,14 @@ class QuizAIApp(App):
         self.root.current = "explanation"
 
         def on_complete(text: str):
-            explanation.explanation_text = (
-                "Great job!" if answer == q.answer else "Let’s review the reasoning."
-            )
+            explanation.explanation_text = text
             self.last_explanation = text
 
         def on_error(_msg: str):
-            fallback = self.explanation_engine.fallback_explanation(q, answer)
-            explanation.explanation_text = (
-                "Great job!" if answer == q.answer else "Let’s review the reasoning."
-            )
-            self.last_explanation = fallback
+            # Fallback already handled in tutor_service but redundancy is fine
+            pass
 
-        self.explanation_engine.request_explanation(q, answer, on_complete, on_error)
+        self.tutor_service.explain_answer(q, answer, on_complete, on_error)
 
     def next_question(self):
         self.current_index += 1
@@ -267,9 +321,9 @@ class QuizAIApp(App):
 
     def _store_results(self, percent: int):
         today = datetime.date.today().isoformat()
-        streak = self.storage.update_streak(today)
+        streak = self.storage_service.update_streak(today)
 
-        self.storage.add_history(
+        self.storage_service.add_history(
             {
                 "date": today,
                 "topic": self.last_topic,
@@ -278,9 +332,12 @@ class QuizAIApp(App):
             }
         )
 
-        self.storage.update_score(percent)
+        self.storage_service.update_score(percent)
         home = self.root.get_screen("home")
-        home.streak_text = f"Streak: {streak} days"
+        try:
+            home.streak_text = f"Streak: {streak} days"
+        except AttributeError:
+             pass
 
     # -------------------------
     # AI CHAT
@@ -288,51 +345,28 @@ class QuizAIApp(App):
 
     def send_ai_question(self, question: str):
         screen = self.root.get_screen("ai_chat")
-        question = question.strip()
+        # Delegate to the screen which handles the UI logic
+        screen.send_message(question)
 
-        if not question:
-            screen.status_text = "Please enter a question."
-            return
-        if not self.ai_engine.is_available():
-            screen.status_text = "📴 AI tutor is offline. Try the quiz mode."
-            return
 
-        screen.status_text = "Tutor is thinking…"
-        screen.chat_history += f"\nYou: {question}\n"
 
-        def on_complete(text: str):
-            screen.chat_history += f"Tutor: {text}\n"
-            screen.status_text = ""
-
-        def on_error(msg: str):
-            screen.chat_history += f"Tutor: {msg}\n"
-            screen.status_text = ""
-
-        self.doubt_solver.solve(question, on_complete, on_error)
-
-    # -------------------------
-    # MATERIALS
-    # -------------------------
-
-    def add_material_entry(self, label: str, path: str):
-        self.storage.add_material({"label": label, "path": path})
-        self._refresh_materials()
-
-    def _refresh_materials(self):
-        screen = self.root.get_screen("materials")
-        items = self.storage.get_materials()
-        screen.materials_text = (
-            "\n".join(f"• {i['label']}" for i in items)
-            if items
-            else "No materials saved yet."
-        )
+    def ask_about_review_item(self, question: str, answer_info: str):
+        # Strip markup and formatting
+        import re
+        clean_ans = re.sub(r'\[.*?\]', '', answer_info)
+        context_q = f"In a quiz, I had this question: \"{question}\". {clean_ans}. Can you explain the concepts involved in more detail?"
+        
+        # Navigate and send
+        self.go_ai_chat()
+        screen = self.root.get_screen("ai_chat")
+        screen.send_message(context_q)
 
     # -------------------------
     # PROGRESS
     # -------------------------
 
     def _refresh_progress(self):
-        data = self.storage.load()
+        data = self.storage_service.load()
         scores = data.get("scores", [])
         avg = int(sum(scores) / len(scores)) if scores else 0
 
@@ -340,9 +374,12 @@ class QuizAIApp(App):
         lines = [f"{i['date']} · {i['topic']} · {i['score']}%" for i in history]
 
         screen = self.root.get_screen("progress")
-        screen.average_score = avg
-        screen.streak_text = f"Streak: {data.get('streak', 0)} days"
-        screen.history_text = "\n".join(lines) if lines else "No quizzes yet."
+        try:
+            screen.average_score = avg
+            screen.streak_text = f"Streak: {data.get('streak', 0)} days"
+            screen.history_text = "\n".join(lines) if lines else "No quizzes yet."
+        except AttributeError:
+             pass
 
     # -------------------------
     # DAILY MOTIVATION
@@ -350,20 +387,26 @@ class QuizAIApp(App):
 
     def _refresh_daily_quote(self):
         home = self.root.get_screen("home")
-        home.daily_quote = build_daily_quote()
+        try:
+            home.daily_quote = build_daily_quote()
+        except AttributeError:
+            pass
         self._refresh_ai_status()
 
     def _refresh_ai_status(self):
         home = self.root.get_screen("home")
-        available = self.ai_engine.is_available()
-        home.ai_available = available
-        home.ai_status = self.ai_engine.availability_message()
-        home.ai_status_color = (
-            [0.6, 1, 0.7, 1] if available else [0.8, 0.85, 0.95, 0.9]
-        )
+        available = self.ai_service.is_available()
+        try:
+            home.ai_available = available
+            home.ai_status = self.ai_service.availability_message()
+            home.ai_status_color = (
+                [0.6, 1, 0.7, 1] if available else [0.8, 0.85, 0.95, 0.9]
+            )
+        except AttributeError:
+            pass
 
     def _maybe_show_first_launch_dialog(self, _dt):
-        data = self.storage.load()
+        data = self.storage_service.load()
         if data.get("first_launch_shown"):
             return
         message = (
@@ -393,7 +436,7 @@ class QuizAIApp(App):
         )
         button.bind(on_release=popup.dismiss)
         popup.open()
-        self.storage.mark_first_launch_shown()
+        self.storage_service.mark_first_launch_shown()
 
     def _format_wrong_explanations(self, question: QuizQuestion) -> str:
         if not question.wrong_explanations:
@@ -410,19 +453,31 @@ class QuizAIApp(App):
 
     def request_daily_motivation(self):
         home = self.root.get_screen("home")
-        if not self.ai_engine.is_available():
-            home.motivation_status = "📴 Offline: Keep learning every day!"
+        if not self.ai_service.is_available():
+            try:
+                home.motivation_status = "📴 Offline: Keep learning!"
+            except AttributeError:
+                pass
             return
 
-        home.motivation_status = "✨ Loading motivation..."
+        try:
+            home.motivation_status = "✨ Loading motivation..."
+        except AttributeError:
+            pass
 
         def on_complete(text: str):
-            home.motivation_status = text
+            try:
+                home.motivation_status = text
+            except AttributeError:
+                pass
 
         def on_error(_msg: str):
-            home.motivation_status = "📴 Offline: Keep learning every day!"
+            try:
+                home.motivation_status = "📴 Offline: Keep learning!"
+            except AttributeError:
+                pass
 
-        self.ai_engine.run_async(
+        self.ai_service.run_async(
             "Give a short study motivation with emojis.",
             "You are a motivating tutor.",
             on_complete,

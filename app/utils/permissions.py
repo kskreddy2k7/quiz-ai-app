@@ -15,15 +15,19 @@ class PermissionManager:
             return None
         if not importlib.util.find_spec("android"):
             return None
-        from android.permissions import Permission, request_permissions
-
-        return Permission, request_permissions
+        try:
+            from android.permissions import Permission, request_permissions
+            return Permission, request_permissions
+        except ImportError:
+            return None
 
     def request_permissions(self, update_status: Callable[[str], None]) -> None:
         if platform != "android" or not self._android_permissions:
             update_status("Permissions ready.")
             return
+        
         Permission, request_permissions = self._android_permissions
+        # Add WRITE_EXTERNAL_STORAGE for file saving if needed later
         permissions: List[str] = [Permission.INTERNET]
 
         def callback(_permissions, _grants):

@@ -1,21 +1,58 @@
+#:import Theme app.ui.theme.Theme
+
 <SplashScreen>:
     canvas.before:
         Color:
-            rgba: 0.07, 0.09, 0.14, 1
+            rgba: Theme.color(Theme.BG_DARK)
         Rectangle:
             pos: self.pos
             size: self.size
+        # Background Digital Grid (Subtle)
+        Color:
+            rgba: Theme.color(Theme.PRIMARY, 0.05)
+        Line:
+            points: [0, self.height/3, self.width, self.height/3]
+            width: 1
+        Line:
+            points: [0, self.height*2/3, self.width, self.height*2/3]
+            width: 1
+        
+        # Central Glow
+        Color:
+            rgba: Theme.color(Theme.PRIMARY, 0.15)
+        Ellipse:
+            pos: self.center_x - 150, self.center_y - 150
+            size: 300, 300
+
     BoxLayout:
         orientation: "vertical"
-        spacing: "16dp"
         padding: "32dp"
-        size_hint: 1, 1
+        spacing: "24dp"
+        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+        size_hint: 0.8, 0.6
+        
         Label:
-            text: "Quiz AI 📘"
-            font_size: "36sp"
+            text: "QUIZ AI"
+            font_size: "64sp"
             bold: True
-            color: 0.58, 0.85, 1, 1
+            font_name: "Roboto" # Or default
+            color: Theme.color(Theme.PRIMARY)
+            size_hint_y: None
+            height: self.texture_size[1]
+            halign: "center"
+            
+            canvas.before:
+                Color:
+                    rgba: Theme.color(Theme.PRIMARY_LIGHT, 0.3)
+                Rectangle:
+                    pos: self.x - 10, self.y
+                    size: self.width + 20, self.height
+        
         Label:
-            text: "Your futuristic study companion"
-            font_size: "16sp"
-            color: 0.8, 0.9, 1, 0.7
+            text: "FUTURISTIC LEARNING"
+            font_size: "18sp"
+            letter_spacing: 5
+            color: Theme.color(Theme.ACCENT_TEAL)
+            size_hint_y: None
+            height: self.texture_size[1]
+            halign: "center"

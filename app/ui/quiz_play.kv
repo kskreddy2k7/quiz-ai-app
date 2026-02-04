@@ -1,46 +1,130 @@
+#:import Theme app.ui.theme.Theme
+
+
+<QuizOptionWidget>:
+    size_hint_y: None
+    height: "64dp"
+    padding: "0dp"
+    
+    canvas.before:
+        Color:
+            rgba: root.bg_color
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [16]
+        # Neon Border
+        Color:
+            rgba: Theme.color(Theme.PRIMARY, 0.5)
+        Line:
+            rounded_rectangle: [self.x, self.y, self.width, self.height, 16]
+            width: 1
+
+    Label:
+        text: root.text
+        text_size: self.width - dp(32), None
+        size_hint_x: 1
+        padding: "16dp", "0dp"
+        halign: "left"
+        valign: "middle"
+        color: Theme.color(Theme.TEXT_PRIMARY)
+        font_size: "15sp"
+
 <QuizPlayScreen>:
     canvas.before:
         Color:
-            rgba: 0.05, 0.07, 0.12, 1
+            rgba: Theme.color(Theme.BG_DARK)
         Rectangle:
             pos: self.pos
             size: self.size
+        # Background Detail
+        Color:
+            rgba: Theme.color(Theme.PRIMARY, 0.05)
+        Ellipse:
+            pos: -200, -200
+            size: 500, 500
+
     BoxLayout:
         orientation: "vertical"
         padding: "20dp"
-        spacing: "14dp"
+        spacing: "20dp"
+
+        # --- Top Bar ---
         BoxLayout:
             size_hint_y: None
-            height: "40dp"
+            height: "50dp"
+            canvas.before:
+                Color:
+                    rgba: Theme.color(Theme.BG_CARD, 0.4)
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [12]
+            
             Button:
-                text: "← Back"
-                size_hint_x: None
-                width: "90dp"
+                text: "×"
+                font_size: "24sp"
+                size_hint: None, None
+                size: "50dp", "50dp"
                 background_normal: ""
-                background_color: 0.16, 0.22, 0.3, 1
+                background_color: 0,0,0,0
+                color: Theme.color(Theme.ACCENT_RED)
                 on_release: app.go_home()
+            
             Label:
-                text: "Quiz Challenge"
-                color: 0.7, 0.9, 1, 1
+                text: root.progress_text
+                font_size: "16sp"
                 bold: True
-        Label:
-            text: root.progress_text
-            font_size: "13sp"
-            color: 0.6, 0.8, 1, 0.9
+                color: Theme.color(Theme.PRIMARY)
+                halign: "right"
+                valign: "middle"
+                padding: "16dp", 0
+                text_size: self.size
+
+        # --- Question Card ---
+        GlassCard:
             size_hint_y: None
-            height: self.texture_size[1]
-        Label:
-            text: root.question_text
-            font_size: "18sp"
-            color: 0.9, 0.95, 1, 1
-            text_size: self.width, None
-            size_hint_y: None
-            height: self.texture_size[1]
+            height: self.minimum_height
+            padding: "24dp"
+            
+            Label:
+                text: root.question_text
+                font_size: "20sp"
+                bold: True
+                line_height: 1.4
+                color: Theme.color(Theme.TEXT_PRIMARY)
+                text_size: self.width, None
+                size_hint_y: None
+                height: self.texture_size[1]
+                halign: "center"
+
+        # --- Options List ---
         ScrollView:
             do_scroll_x: False
             GridLayout:
                 id: options_container
                 cols: 1
-                spacing: "10dp"
+                spacing: "16dp"
                 size_hint_y: None
                 height: self.minimum_height
+                padding: [0, "10dp", 0, "10dp"]
+
+        # --- Submit Action ---
+        NeonButton:
+            id: submit_btn
+            text: "Submit Answer ⚡"
+            size_hint_y: None
+            height: "56dp"
+            disabled: True
+            opacity: 0.5 if self.disabled else 1
+            on_release: root.submit_selection()
+
+        # --- Bottom Scifier ---
+        Label:
+            text: "QUIZ AI ENGINE // ACTIVE"
+            opacity: 0.4
+            color: Theme.color(Theme.PRIMARY)
+            font_size: "10sp"
+            letter_spacing: 2
+            size_hint_y: None
+            height: "20dp"

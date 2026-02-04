@@ -1,64 +1,158 @@
+#:import Theme app.ui.theme.Theme
+
+
+<ChatBubble>:
+    size_hint_y: None
+    height: self.minimum_height
+    size_hint_x: 1
+    padding: [dp(20), dp(5)] 
+
+    BoxLayout:
+        size_hint_x: 0.85
+        pos_hint: {"right": 1} if root.is_user else {"x": 0}
+        size_hint_y: None
+        height: self.minimum_height
+        orientation: "vertical"
+        
+        canvas.before:
+            Color:
+                rgba: Theme.color(Theme.PRIMARY, 0.2) if root.is_user else Theme.color(Theme.BG_CARD, 0.8)
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [dp(18), dp(18), dp(4), dp(18)] if root.is_user else [dp(18), dp(18), dp(18), dp(4)]
+            # Glow for AI
+            Color:
+                rgba: Theme.color(Theme.SECONDARY, 0.3) if not root.is_user else [0,0,0,0]
+            Line:
+                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(18)]
+                width: 1
+
+        Label:
+            text: root.text
+            size_hint_y: None
+            height: self.texture_size[1] + dp(24) # Padding vertical
+            text_size: self.width - dp(24), None
+            color: Theme.color(Theme.TEXT_PRIMARY)
+            markup: True
+            halign: "left"
+            valign: "middle"
+            padding: dp(12), dp(12)
+
 <AIChatScreen>:
     canvas.before:
         Color:
-            rgba: 0.05, 0.07, 0.12, 1
+            rgba: Theme.color(Theme.BG_DARK)
         Rectangle:
             pos: self.pos
             size: self.size
+        
+        # Tech Lines
+        Color:
+            rgba: Theme.color(Theme.PRIMARY, 0.05)
+        Line:
+            points: [self.width * 0.2, 0, self.width * 0.2, self.height]
+            width: 1
+        Line:
+            points: [self.width * 0.8, 0, self.width * 0.8, self.height]
+            width: 1
+
+
     BoxLayout:
         orientation: "vertical"
-        padding: "20dp"
-        spacing: "12dp"
+        padding: "0dp"
+        spacing: "0dp"
+
+        # --- Header ---
         BoxLayout:
             size_hint_y: None
-            height: "40dp"
+            height: "64dp"
+            spacing: "16dp"
+            padding: "16dp"
+            canvas.before:
+                Color:
+                    rgba: Theme.color(Theme.BG_CARD, 0.8)
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
             Button:
-                text: "← Back"
-                size_hint_x: None
-                width: "90dp"
-                background_normal: ""
-                background_color: 0.16, 0.22, 0.3, 1
-                on_release: app.go_home()
-            Label:
-                text: "AI Doubt Solver"
-                color: 0.7, 0.9, 1, 1
+                text: "← BACK"
+                font_size: "12sp"
                 bold: True
-        ScrollView:
-            do_scroll_x: False
+                size_hint_x: None
+                width: "80dp"
+                background_normal: ""
+                background_color: 0,0,0,0
+                color: Theme.color(Theme.TEXT_SECONDARY)
+                on_release: app.go_home()
+                canvas.before:
+                    Color:
+                        rgba: Theme.color(Theme.BG_CARD)
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [8]
+
             Label:
-                text: root.chat_history if root.chat_history else "Your tutor will respond here."
-                color: 0.85, 0.9, 1, 0.9
-                font_size: "14sp"
-                text_size: self.width, None
+                text: "AI DOUBT SOLVER"
+                font_size: Theme.FONT_H2
+                bold: True
+                color: Theme.color(Theme.TEXT_PRIMARY)
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        # --- Chat Area ---
+        RecycleView:
+            id: chat_list
+            viewclass: "ChatBubble"
+            scroll_type: ['bars', 'content']
+            bar_width: "8dp"
+            
+            RecycleBoxLayout:
+                default_size: None, None
+                default_size_hint: 1, None
                 size_hint_y: None
-                height: self.texture_size[1]
+                height: self.minimum_height
+                orientation: 'vertical'
+                spacing: "16dp"
+                padding: "16dp"
+
+        # --- Loading & Status ---
         Label:
             text: root.status_text
-            font_size: "12sp"
-            color: 0.6, 0.75, 0.9, 0.9
             size_hint_y: None
-            height: self.texture_size[1]
+            height: "24dp" if root.status_text else "0dp"
+            opacity: 1 if root.status_text else 0
+            color: Theme.color(Theme.ACCENT_YELLOW)
+            font_size: "12sp"
+
+        # --- Input Area ---
         BoxLayout:
             size_hint_y: None
-            height: "50dp"
-            spacing: "10dp"
-            TextInput:
-                id: tutor_input
-                hint_text: "Ask your question..."
+            height: "80dp"
+            spacing: "12dp"
+            padding: "16dp"
+            canvas.before:
+                Color:
+                    rgba: Theme.color(Theme.BG_CARD, 0.9)
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+            AnimatedInput:
+                id: msg_input
+                hint_text: "Ask me anything..."
                 multiline: False
-                background_normal: ""
-                background_color: 0.1, 0.14, 0.2, 1
-                foreground_color: 1, 1, 1, 1
-                padding: "12dp", "12dp"
-                cursor_color: 0.6, 0.85, 1, 1
-            Button:
-                text: "Send"
+                on_text_validate: 
+                    root.send_message(self.text)
+                    self.text = ""
+
+            NeonButton:
+                text: "SEND"
                 size_hint_x: None
-                width: "90dp"
-                background_normal: ""
-                background_color: 0.35, 0.55, 0.9, 1
-                disabled: not app.ai_engine.is_available()
-                opacity: 0.5 if self.disabled else 1
-                on_release:
-                    app.send_ai_question(tutor_input.text)
-                    tutor_input.text = ""
+                width: "80dp"
+                on_release: 
+                    root.send_message(msg_input.text)
+                    msg_input.text = ""

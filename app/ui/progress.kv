@@ -1,52 +1,129 @@
+#:import Theme app.ui.theme.Theme
+
+
 <ProgressScreen>:
     canvas.before:
         Color:
-            rgba: 0.05, 0.07, 0.12, 1
+            rgba: Theme.color(Theme.BG_DARK)
         Rectangle:
             pos: self.pos
             size: self.size
+        # Bottom Glow
+        Color:
+            rgba: Theme.color(Theme.ACCENT_TEAL, 0.1)
+        Ellipse:
+            pos: 0, -200
+            size: self.width, 400
+
     BoxLayout:
         orientation: "vertical"
         padding: "20dp"
-        spacing: "12dp"
+        spacing: "20dp"
+
+        # --- Header ---
         BoxLayout:
             size_hint_y: None
-            height: "40dp"
+            height: "48dp"
+            spacing: "12dp"
+            # Back Button
             Button:
-                text: "← Back"
-                size_hint_x: None
-                width: "90dp"
+                text: "←"
+                size_hint: None, None
+                size: "44dp", "44dp"
                 background_normal: ""
-                background_color: 0.16, 0.22, 0.3, 1
+                background_color: 0,0,0,0
+                color: Theme.color(Theme.TEXT_SECONDARY)
                 on_release: app.go_home()
+                canvas.before:
+                    Color:
+                        rgba: Theme.color(Theme.BG_CARD)
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12]
+
             Label:
-                text: "Progress"
-                color: 0.7, 0.9, 1, 1
+                text: "YOUR JOURNEY"
+                font_size: Theme.FONT_H2
                 bold: True
-        Label:
-            text: "Average Score: {}%".format(root.average_score)
-            font_size: "18sp"
-            color: 0.85, 0.9, 1, 1
-            size_hint_y: None
-            height: self.texture_size[1]
-        Label:
-            text: root.streak_text
-            font_size: "13sp"
-            color: 0.6, 0.9, 0.7, 1
-            size_hint_y: None
-            height: self.texture_size[1]
-        Label:
-            text: "Recent activity 📈"
-            font_size: "14sp"
-            color: 0.7, 0.8, 0.9, 1
-            size_hint_y: None
-            height: self.texture_size[1]
+                color: Theme.color(Theme.TEXT_PRIMARY)
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
         ScrollView:
             do_scroll_x: False
-            Label:
-                text: root.history_text
-                font_size: "13sp"
-                color: 0.85, 0.9, 1, 0.9
-                text_size: self.width, None
+            BoxLayout:
+                orientation: "vertical"
                 size_hint_y: None
-                height: self.texture_size[1]
+                height: self.minimum_height
+                spacing: "20dp"
+
+                # --- Stats Row ---
+                BoxLayout:
+                    size_hint_y: None
+                    height: "120dp"
+                    spacing: "16dp"
+
+                    # Average Score
+                    GlassCard:
+                        padding: "16dp"
+                        Label:
+                            text: "AVG SCORE"
+                            font_size: "10sp"
+                            color: Theme.color(Theme.SECONDARY)
+                            size_hint_y: None
+                            height: "16dp"
+                        Label:
+                            text: str(root.average_score) + "%"
+                            font_size: "36sp"
+                            bold: True
+                            color: Theme.color(Theme.PRIMARY)
+
+                    # Streak
+                    GlassCard:
+                        padding: "16dp"
+                        Label:
+                            text: "STREAK"
+                            font_size: "10sp"
+                            color: Theme.color(Theme.ACCENT_YELLOW)
+                            size_hint_y: None
+                            height: "16dp"
+                        Label:
+                            text: root.streak_text.replace("Streak: ", "").replace(" days", "") + " 🔥"
+                            font_size: "36sp"
+                            bold: True
+                            color: Theme.color(Theme.ACCENT_YELLOW)
+
+                # --- History Section ---
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    spacing: "12dp"
+                    
+                    Label:
+                        text: "RECENT ACTIVITY"
+                        font_size: "12sp"
+                        bold: True
+                        color: Theme.color(Theme.TEXT_SECONDARY)
+                        size_hint_y: None
+                        height: "20dp"
+                        halign: "left"
+                        text_size: self.width, None
+
+                    GlassCard:
+                        size_hint_y: None
+                        height: max(self.minimum_height, dp(200))
+                        padding: "20dp"
+                        
+                        Label:
+                            text: root.history_text
+                            font_size: "14sp"
+                            line_height: 1.6
+                            color: Theme.color(Theme.TEXT_PRIMARY)
+                            size_hint_y: None
+                            height: self.texture_size[1]
+                            halign: "left"
+                            valign: "top"
+                            text_size: self.width, None

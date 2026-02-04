@@ -1,171 +1,198 @@
-<CardButton@Button>:
-    background_normal: ""
-    background_color: 0, 0, 0, 0
-    color: 1, 1, 1, 1
-    font_size: "15sp"
-    halign: "left"
-    valign: "middle"
-    padding: "16dp", "16dp"
-    text_size: self.size
-    canvas.before:
-        Color:
-            rgba: 0.16, 0.22, 0.3, 1
-        RoundedRectangle:
-            pos: self.pos
-            size: self.size
-            radius: [18]
+#:import Theme app.ui.theme.Theme
 
-<SectionCard@BoxLayout>:
-    orientation: "vertical"
-    padding: "16dp"
-    spacing: "10dp"
-    size_hint_y: None
-    height: self.minimum_height
-    canvas.before:
-        Color:
-            rgba: 0.12, 0.16, 0.22, 1
-        RoundedRectangle:
-            pos: self.pos
-            size: self.size
-            radius: [18]
+
+<ActionCard@GlassCard>:
+    icon: ""
+    title: ""
+    subtitle: ""
+    action: lambda: None
+    padding: "0dp" # Reset padding for custom layout inside
+
+    Button:
+        background_normal: ""
+        background_color: 0, 0, 0, 0
+        on_release: root.action()
+        
+        BoxLayout:
+            orientation: "vertical"
+            padding: "16dp"
+            spacing: "8dp"
+            pos: self.parent.pos
+            size: self.parent.size
+
+            Label:
+                text: root.icon
+                font_size: "32sp"
+                size_hint_y: None
+                height: "40dp"
+                halign: "left"
+                text_size: self.size
+
+            Label:
+                text: root.title
+                font_size: "18sp"
+                bold: True
+                color: Theme.color(Theme.TEXT_PRIMARY)
+                size_hint_y: None
+                height: "24dp"
+                halign: "left"
+                text_size: self.size
+            
+            Label:
+                text: root.subtitle
+                font_size: "12sp"
+                color: Theme.color(Theme.TEXT_SECONDARY)
+                halign: "left"
+                valign: "top"
+                text_size: self.size
 
 <HomeScreen>:
     canvas.before:
         Color:
-            rgba: 0.05, 0.07, 0.12, 1
+            rgba: Theme.color(Theme.BG_DARK)
         Rectangle:
             pos: self.pos
             size: self.size
+        # Ambient Gradient Spots
+        Color:
+            rgba: Theme.color(Theme.SECONDARY, 0.15)
+        Ellipse:
+            pos: self.width - 200, self.height - 200
+            size: 400, 400
+        Color:
+            rgba: Theme.color(Theme.PRIMARY, 0.1)
+        Ellipse:
+            pos: -100, -100
+            size: 300, 300
+
     ScrollView:
         do_scroll_x: False
         BoxLayout:
             orientation: "vertical"
-            padding: "24dp"
-            spacing: "18dp"
+            padding: "20dp"
+            spacing: "24dp"
             size_hint_y: None
             height: self.minimum_height
 
+            # Header
             BoxLayout:
                 orientation: "vertical"
                 size_hint_y: None
                 height: self.minimum_height
+                spacing: "2dp"
                 Label:
-                    text: "Hello, Learner"
-                    font_size: "26sp"
+                    text: "DASHBOARD"
+                    font_size: "12sp"
                     bold: True
-                    color: 0.75, 0.9, 1, 1
+                    color: Theme.color(Theme.ACCENT_TEAL)
                     size_hint_y: None
-                    height: self.texture_size[1]
+                    height: "16dp"
+                    halign: "left"
+                    text_size: self.width, None
                 Label:
-                    text: "Ask any doubt. Practice smart. Grow fast."
-                    font_size: "14sp"
-                    color: 0.7, 0.8, 0.9, 0.8
+                    text: "Welcome Back"
+                    font_size: Theme.FONT_H1
+                    bold: True
+                    color: Theme.color(Theme.TEXT_PRIMARY)
                     size_hint_y: None
-                    height: self.texture_size[1]
+                    height: "40dp"
+                    halign: "left"
+                    text_size: self.width, None
 
-            SectionCard:
+            # Daily Insight Card
+            GlassCard:
+                size_hint_y: None
+                height: self.minimum_height
+                
+                Label:
+                    text: "DAILY INSIGHT"
+                    font_size: "11sp"
+                    bold: True
+                    color: Theme.color(Theme.SECONDARY)
+                    size_hint_y: None
+                    height: "16dp"
+                    halign: "left"
+                    text_size: self.width, None
+
                 Label:
                     text: root.daily_quote
-                    font_size: "14sp"
-                    color: 0.85, 0.9, 1, 0.9
+                    font_size: "15sp"
+                    italic: True
+                    color: Theme.color(Theme.TEXT_PRIMARY)
                     text_size: self.width, None
                     size_hint_y: None
                     height: self.texture_size[1]
-                Label:
-                    text: root.ai_status
-                    font_size: "12sp"
-                    color: root.ai_status_color
-                    size_hint_y: None
-                    height: self.texture_size[1]
-                Label:
-                    text: root.streak_text
-                    font_size: "13sp"
-                    color: 0.5, 0.9, 0.7, 1
-                    size_hint_y: None
-                    height: self.texture_size[1]
-
-            SectionCard:
-                Label:
-                    text: "Ask any doubt…"
-                    font_size: "13sp"
-                    color: 0.6, 0.7, 0.9, 1
-                    size_hint_y: None
-                    height: self.texture_size[1]
+                
                 BoxLayout:
                     size_hint_y: None
-                    height: "48dp"
+                    height: "20dp"
                     spacing: "10dp"
-                    TextInput:
-                        id: search_input
-                        hint_text: "Type your question"
-                        multiline: False
-                        background_normal: ""
-                        background_color: 0.1, 0.14, 0.2, 1
-                        foreground_color: 1, 1, 1, 1
-                        padding: "12dp", "10dp"
-                        cursor_color: 0.6, 0.85, 1, 1
-                    Button:
-                        text: "Ask"
+                    Label:
+                        text: root.streak_text
+                        font_size: "12sp"
+                        color: Theme.color(Theme.ACCENT_YELLOW)
                         size_hint_x: None
-                        width: "80dp"
-                        background_normal: ""
-                        background_color: 0.35, 0.55, 0.9, 1
-                        disabled: not root.ai_available
-                        opacity: 0.5 if self.disabled else 1
-                        on_release:
-                            app.go_ai_chat()
-                            app.send_ai_question(search_input.text)
-                            search_input.text = ""
+                        width: self.texture_size[0]
+                    Label:
+                        text: root.ai_status
+                        font_size: "12sp"
+                        color: root.ai_status_color
+                        halign: "left"
+                        text_size: self.size
 
-            BoxLayout:
-                orientation: "vertical"
-                spacing: "12dp"
+            # Quick Actions Grid
+            GridLayout:
+                cols: 2
+                spacing: "16dp"
                 size_hint_y: None
-                height: self.minimum_height
-                CardButton:
-                    text: "🤖  Ask AI Doubt"
-                    disabled: not root.ai_available
-                    opacity: 0.5 if self.disabled else 1
-                    on_release: app.go_ai_chat()
-                CardButton:
-                    text: "🧠  Generate AI Quiz"
-                    disabled: not root.ai_available
-                    opacity: 0.5 if self.disabled else 1
-                    on_release: app.go_quiz_setup()
-                CardButton:
-                    text: "📘  Offline Quiz"
-                    on_release: app.go_quiz_setup()
-                CardButton:
-                    text: "✨  Daily Motivation"
-                    disabled: not root.ai_available
-                    opacity: 0.5 if self.disabled else 1
-                    on_release: app.request_daily_motivation()
-                CardButton:
-                    text: "📈  Progress"
-                    on_release: app.go_progress()
-                CardButton:
-                    text: "📚  Study Materials"
-                    on_release: app.go_materials()
+                height: "510dp" # Adjusted for 3 rows
 
-            SectionCard:
-                Label:
-                    text: root.motivation_status
-                    font_size: "13sp"
-                    color: 0.85, 0.9, 1, 0.9
-                    text_size: self.width, None
-                    size_hint_y: None
-                    height: self.texture_size[1]
+                # 1. Start AI Doubt Solver
+                ActionCard:
+                    icon: "🤖"
+                    title: "Ask AI"
+                    subtitle: "Solve academic doubts"
+                    action: lambda: app.go_ai_chat()
 
+                # 2. File-Based Quiz
+                ActionCard:
+                    icon: "📂"
+                    title: "Quiz from File"
+                    subtitle: "PDF / DOCX / TXT"
+                    action: lambda: app.go_quiz_setup(mode="file")
+
+                # 3. Topic-Based Quiz
+                ActionCard:
+                    icon: "✍️"
+                    title: "Quiz from Topic"
+                    subtitle: "Subject & Topic"
+                    action: lambda: app.go_quiz_setup(mode="topic")
+
+                # 4. My Quizzes (History)
+                ActionCard:
+                    icon: "🧠"
+                    title: "My Quizzes"
+                    subtitle: "Saved quiz collection"
+                    action: lambda: app.go_progress()
+
+                # 5. Results & Analytics
+                ActionCard:
+                    icon: "📊"
+                    title: "Results"
+                    subtitle: "Performance review"
+                    action: lambda: app.go_results_overview() # New navigation method
+
+                # 6. Settings
+                ActionCard:
+                    icon: "⚙️"
+                    title: "Settings"
+                    subtitle: "Manage API Keys"
+                    action: lambda: app.open_settings()
+
+            # Footer
             Label:
                 text: root.permission_status
-                font_size: "12sp"
-                color: 0.6, 0.7, 0.8, 0.8
+                font_size: "11sp"
+                color: Theme.color(Theme.TEXT_SECONDARY)
                 size_hint_y: None
-                height: self.texture_size[1]
-
-            Label:
-                text: "Created by Kata Sai Kranthu Reddy"
-                font_size: "12sp"
-                color: 0.5, 0.7, 0.9, 0.8
-                size_hint_y: None
-                height: self.texture_size[1]
+                height: "20dp"

@@ -1,0 +1,8 @@
+{
+    "Science": ["Physics", "Chemistry", "Biology", "Astronomy", "Environmental Science"],
+    "Mathematics": ["Algebra", "Geometry", "Calculus", "Statistics", "Trigonometry"],
+    "History": ["Ancient Civilizations", "Medieval Europe", "Modern History", "World Wars", "Cold War"],
+    "Technology": ["Computer Science", "Artificial Intelligence", "Cybersecurity", "Web Development", "Blockchain"],
+    "General Knowledge": ["Geography", "Literature", "Movies & TV", "Sports", "Music"],
+    "Languages": ["English Grammar", "Spanish", "French", "German", "Mandarin"]
+}
