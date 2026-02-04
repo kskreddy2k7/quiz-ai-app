@@ -21,7 +21,7 @@ version = 0.1
 # =========================
 # Requirements
 # =========================
-requirements = python3,kivy,requests
+requirements = python3,kivy,requests,openai
 
 # =========================
 # UI

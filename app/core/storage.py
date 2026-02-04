@@ -1,66 +1,49 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Dict, List
 
 
-DEFAULT_DATA = {
-    "history": [],
-    "streak": 0,
-    "last_played": None,
-    "scores": [],
-}
-
-
-@dataclass
 class StorageManager:
-    path: Path
-    _cache: Dict[str, Any] = field(default_factory=dict)
-
-    def load(self) -> Dict[str, Any]:
-        if self._cache:
-            return self._cache
+    def __init__(self, path: Path) -> None:
+        self.path = path
         if not self.path.exists():
-            self._cache = DEFAULT_DATA.copy()
-            return self._cache
-        try:
-            self._cache = json.loads(self.path.read_text(encoding="utf-8"))
-        except Exception:
-            self._cache = DEFAULT_DATA.copy()
-        return self._cache
+            self._write({"scores": [], "history": [], "streak": 0, "last_date": "", "materials": []})
 
-    def save(self, data: Dict[str, Any]) -> None:
+    def _write(self, data: Dict) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        self._cache = data
 
-    def add_history(self, entry: Dict[str, Any]) -> None:
-        data = self.load()
-        history: List[Dict[str, Any]] = data.get("history", [])
-        history.insert(0, entry)
-        data["history"] = history[:30]
-        self.save(data)
+    def load(self) -> Dict:
+        return json.loads(self.path.read_text(encoding="utf-8"))
 
     def update_score(self, score: int) -> None:
         data = self.load()
-        scores: List[int] = data.get("scores", [])
-        scores.append(score)
-        data["scores"] = scores[-30:]
-        self.save(data)
+        data.setdefault("scores", []).append(score)
+        self._write(data)
+
+    def add_history(self, entry: Dict) -> None:
+        data = self.load()
+        data.setdefault("history", []).append(entry)
+        self._write(data)
 
     def update_streak(self, today: str) -> int:
         data = self.load()
-        last_played = data.get("last_played")
+        last_date = data.get("last_date", "")
         streak = data.get("streak", 0)
-        if last_played == today:
-            return streak
-        if last_played is None:
-            streak = 1
-        else:
-            streak = streak + 1 if last_played < today else 1
-        data["last_played"] = today
+        if last_date != today:
+            streak = streak + 1 if last_date else 1
+        data["last_date"] = today
         data["streak"] = streak
-        self.save(data)
+        self._write(data)
         return streak
+
+    def add_material(self, entry: Dict) -> None:
+        data = self.load()
+        data.setdefault("materials", []).append(entry)
+        self._write(data)
+
+    def get_materials(self) -> List[Dict]:
+        data = self.load()
+        return data.get("materials", [])

@@ -1,33 +1,39 @@
 from __future__ import annotations
 
-from typing import Callable
+import importlib.util
+from typing import Callable, List
 
 from kivy.utils import platform
 
 
 class PermissionManager:
-    def request_permissions(self, on_status: Callable[[str], None]) -> None:
+    def __init__(self) -> None:
+        self._android_permissions = self._load_android_permissions()
+
+    def _load_android_permissions(self):
         if platform != "android":
-            on_status("Permissions not required on this device.")
-            return
+            return None
+        if not importlib.util.find_spec("android"):
+            return None
+        from android.permissions import Permission, request_permissions
 
-        try:
-            from android.permissions import Permission, request_permissions
-        except Exception:
-            on_status("Permissions unavailable.")
-            return
+        return Permission, request_permissions
 
-        permissions = [
+    def request_permissions(self, update_status: Callable[[str], None]) -> None:
+        if platform != "android" or not self._android_permissions:
+            update_status("Permissions ready.")
+            return
+        Permission, request_permissions = self._android_permissions
+        permissions: List[str] = [
+            Permission.INTERNET,
             Permission.READ_EXTERNAL_STORAGE,
             Permission.WRITE_EXTERNAL_STORAGE,
             Permission.CAMERA,
             Permission.RECORD_AUDIO,
         ]
 
-        def callback(_, grants):
-            if all(grants):
-                on_status("Permissions granted.")
-            else:
-                on_status("Some permissions denied.")
+        def callback(_permissions, _grants):
+            update_status("Permissions updated.")
 
+        update_status("Requesting Android permissions...")
         request_permissions(permissions, callback)

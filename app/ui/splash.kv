@@ -1,39 +1,21 @@
-#:import dp kivy.metrics.dp
-
 <SplashScreen>:
+    canvas.before:
+        Color:
+            rgba: 0.07, 0.09, 0.14, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
     BoxLayout:
         orientation: "vertical"
-        padding: dp(28)
-        spacing: dp(18)
-        canvas.before:
-            Color:
-                rgba: 0.91, 0.94, 1, 1
-            Rectangle:
-                pos: self.pos
-                size: self.size
-            Color:
-                rgba: 0.8, 0.87, 1, 0.5
-            Rectangle:
-                pos: self.x, self.y + self.height * 0.4
-                size: self.width, self.height * 0.6
-        Widget:
+        spacing: "16dp"
+        padding: "32dp"
+        size_hint: 1, 1
         Label:
             text: "Quiz AI"
-            font_size: "32sp"
+            font_size: "36sp"
             bold: True
-            color: 0.15, 0.25, 0.5, 1
+            color: 0.58, 0.85, 1, 1
         Label:
-            text: "Believe in yourself. Small steps every day lead to big success."
-            font_size: "18sp"
-            color: 0.25, 0.3, 0.45, 1
-            text_size: self.width, None
-            halign: "center"
-            valign: "middle"
-        Label:
-            text: "Created with motivation by\nKata Sai Kranthu Reddy"
+            text: "Your futuristic study companion"
             font_size: "16sp"
-            color: 0.3, 0.35, 0.5, 1
-            text_size: self.width, None
-            halign: "center"
-            valign: "middle"
-        Widget:
+            color: 0.8, 0.9, 1, 0.7
