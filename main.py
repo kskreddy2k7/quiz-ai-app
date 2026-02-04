@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import os
 import random
 from typing import Optional
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from typing import List
 
 from kivy.app import App
 from kivy.lang import Builder
+from kivy.clock import Clock
 from kivy.properties import ListProperty, NumericProperty, StringProperty
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen, ScreenManager
@@ -114,28 +116,87 @@ class QuizApp(App):
     def build(self):
         self.active_questions = []
         Window.bind(on_keyboard=self._handle_back)
-        return Builder.load_file("app.kv")
+        if os.path.exists("app.kv"):
+            return Builder.load_file("app.kv")
+        return Builder.load_string(
+            """
+<PrimaryLabel@Label>:
+    color: 0.1, 0.1, 0.15, 1
+    font_size: "18sp"
+    text_size: self.width, None
+    halign: "center"
+    valign: "middle"
+
+ScreenManager:
+    SplashScreen:
+        name: "splash"
+    HomeScreen:
+        name: "home"
+
+<SplashScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: "24dp"
+        spacing: "20dp"
+        canvas.before:
+            Color:
+                rgba: 0.92, 0.95, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Widget:
+        Label:
+            text: "Quiz AI"
+            font_size: "32sp"
+            bold: True
+            color: 0.1, 0.2, 0.4, 1
+        Label:
+            text: "Believe in yourself. Small steps every day lead to big success."
+            font_size: "18sp"
+            color: 0.2, 0.2, 0.3, 1
+            text_size: self.width, None
+            halign: "center"
+        Label:
+            text: "Created with motivation by\\nKata Sai Kranthu Reddy"
+            font_size: "16sp"
+            color: 0.25, 0.25, 0.35, 1
+            text_size: self.width, None
+            halign: "center"
+        Widget:
+
+<HomeScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: "20dp"
+        spacing: "16dp"
+        canvas.before:
+            Color:
+                rgba: 0.98, 0.98, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Label:
+            text: "Welcome, Learner!"
+            font_size: "26sp"
+            bold: True
+            color: 0.15, 0.2, 0.35, 1
+        PrimaryLabel:
+            text: root.daily_quote
+        Widget:
+        """
+        )
 
     def on_start(self):
         self._refresh_daily_quote()
         self.generate_quiz()
-        self._request_storage_permissions()
+        self._show_home_after_splash()
 
-    def _request_storage_permissions(self):
-        try:
-            from android.permissions import Permission, request_permissions  # type: ignore
-        except Exception:
-            return
+    def _show_home_after_splash(self):
+        Clock.schedule_once(self._go_home_from_splash, 2)
 
-        request_permissions(
-            [
-                Permission.READ_EXTERNAL_STORAGE,
-                Permission.WRITE_EXTERNAL_STORAGE,
-                Permission.READ_MEDIA_IMAGES,
-                Permission.READ_MEDIA_VIDEO,
-                Permission.READ_MEDIA_AUDIO,
-            ]
-        )
+    def _go_home_from_splash(self, _dt):
+        if self.root:
+            self.root.current = "home"
 
     def _handle_back(self, _window, key, *_args):
         if key != 27:
