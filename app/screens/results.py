@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from kivy.properties import StringProperty
 from kivy.uix.screenmanager import Screen
 
