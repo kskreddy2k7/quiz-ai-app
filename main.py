@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import os
 import random
 from dataclasses import dataclass
 from typing import List, Optional
@@ -102,7 +103,11 @@ class QuizApp(App):
         if Window:
             Window.bind(on_keyboard=self._handle_back)
 
-        return Builder.load_string(self._kv())
+        kv_path = os.path.join(os.path.dirname(__file__), "app.kv")
+        try:
+            return Builder.load_file(kv_path)
+        except Exception:
+            return Builder.load_string(self._kv())
 
     def on_start(self):
         self._refresh_daily_quote()
@@ -116,7 +121,11 @@ class QuizApp(App):
         if not self.root:
             return
         self.root.current = "home"
-        Clock.schedule_once(self._request_android_permissions, 0.5)
+        home = self.root.get_screen("home")
+        home.permission_status = (
+            "We will request storage, camera, and microphone access next."
+        )
+        Clock.schedule_once(self._request_android_permissions, 0.8)
 
     def go_home(self):
         self._refresh_daily_quote()
@@ -138,6 +147,8 @@ class QuizApp(App):
         permissions = [
             Permission.READ_EXTERNAL_STORAGE,
             Permission.WRITE_EXTERNAL_STORAGE,
+            Permission.CAMERA,
+            Permission.RECORD_AUDIO,
         ]
 
         home = self.root.get_screen("home")
@@ -220,6 +231,30 @@ class QuizApp(App):
 
     def _kv(self):
         return """
+#:import dp kivy.metrics.dp
+
+<PrimaryButton@Button>:
+    background_normal: ""
+    background_color: 0.25, 0.45, 0.85, 1
+    color: 1, 1, 1, 1
+    font_size: "16sp"
+    size_hint_y: None
+    height: dp(48)
+
+<Card@BoxLayout>:
+    orientation: "vertical"
+    padding: dp(16)
+    spacing: dp(12)
+    size_hint_y: None
+    height: self.minimum_height
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [18, 18, 18, 18]
+
 ScreenManager:
     SplashScreen:
         name: "splash"
@@ -235,58 +270,195 @@ ScreenManager:
 <SplashScreen>:
     BoxLayout:
         orientation: "vertical"
-        padding: "24dp"
-        spacing: "20dp"
+        padding: dp(28)
+        spacing: dp(18)
+        canvas.before:
+            Color:
+                rgba: 0.92, 0.95, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Widget:
         Label:
             text: "Quiz AI"
             font_size: "32sp"
+            bold: True
+            color: 0.15, 0.25, 0.5, 1
         Label:
             text: "Believe in yourself. Small steps every day lead to big success."
+            font_size: "18sp"
+            color: 0.25, 0.3, 0.45, 1
+            text_size: self.width, None
+            halign: "center"
+            valign: "middle"
         Label:
             text: "Created with motivation by\\nKata Sai Kranthu Reddy"
+            font_size: "16sp"
+            color: 0.3, 0.35, 0.5, 1
+            text_size: self.width, None
+            halign: "center"
+            valign: "middle"
+        Widget:
 
 <HomeScreen>:
     BoxLayout:
         orientation: "vertical"
-        padding: "20dp"
+        padding: dp(20)
+        spacing: dp(16)
+        canvas.before:
+            Color:
+                rgba: 0.95, 0.96, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
         Label:
-            text: "Welcome!"
+            text: "Welcome, Learner!"
             font_size: "24sp"
+            bold: True
+            color: 0.15, 0.2, 0.4, 1
         Label:
             text: root.daily_quote
-        Label:
-            text: root.permission_status
-        Button:
+            font_size: "16sp"
+            color: 0.25, 0.3, 0.45, 1
+            text_size: self.width, None
+            halign: "center"
+        Card:
+            Label:
+                text: "Permission note"
+                font_size: "16sp"
+                bold: True
+                color: 0.2, 0.25, 0.4, 1
+            Label:
+                text: "We use storage permission to keep study materials offline. Camera and microphone are optional for future learning features."
+                font_size: "14sp"
+                color: 0.3, 0.35, 0.5, 1
+                text_size: self.width, None
+                halign: "center"
+            Label:
+                text: root.permission_status
+                font_size: "14sp"
+                color: 0.3, 0.35, 0.5, 1
+                text_size: self.width, None
+                halign: "center"
+        PrimaryButton:
             text: "Start Quiz"
             on_release: app.start_quiz()
+        PrimaryButton:
+            text: "Study Materials"
+            on_release: app.root.current = "materials"
+        Widget:
 
 <QuizScreen>:
     BoxLayout:
         orientation: "vertical"
+        padding: dp(20)
+        spacing: dp(12)
+        canvas.before:
+            Color:
+                rgba: 1, 1, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Label:
+            text: root.progress_text
+            font_size: "14sp"
+            color: 0.3, 0.35, 0.45, 1
         Label:
             text: root.question_text
-        Button:
-            text: root.option_texts[0] if root.option_texts else ""
+            font_size: "20sp"
+            bold: True
+            color: 0.2, 0.25, 0.4, 1
+            text_size: self.width, None
+            halign: "center"
+        PrimaryButton:
+            text: root.option_texts[0] if len(root.option_texts) > 0 else ""
+            on_release: app.submit_answer(self.text)
+        PrimaryButton:
+            text: root.option_texts[1] if len(root.option_texts) > 1 else ""
+            on_release: app.submit_answer(self.text)
+        PrimaryButton:
+            text: root.option_texts[2] if len(root.option_texts) > 2 else ""
+            on_release: app.submit_answer(self.text)
+        PrimaryButton:
+            text: root.option_texts[3] if len(root.option_texts) > 3 else ""
             on_release: app.submit_answer(self.text)
         Button:
-            text: root.option_texts[1] if root.option_texts else ""
-            on_release: app.submit_answer(self.text)
-        Button:
-            text: root.option_texts[2] if root.option_texts else ""
-            on_release: app.submit_answer(self.text)
-        Button:
-            text: root.option_texts[3] if root.option_texts else ""
-            on_release: app.submit_answer(self.text)
+            text: "Back to Home"
+            size_hint_y: None
+            height: dp(44)
+            background_normal: ""
+            background_color: 0.75, 0.8, 0.9, 1
+            color: 0.2, 0.25, 0.4, 1
+            on_release: app.go_home()
 
 <ResultsScreen>:
     BoxLayout:
         orientation: "vertical"
+        padding: dp(24)
+        spacing: dp(16)
+        canvas.before:
+            Color:
+                rgba: 0.95, 0.98, 0.97, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Label:
+            text: "Quiz Complete!"
+            font_size: "22sp"
+            bold: True
+            color: 0.15, 0.45, 0.35, 1
         Label:
             text: root.score_text
+            font_size: "18sp"
+            color: 0.2, 0.3, 0.4, 1
         Label:
             text: root.encouragement_text
+            font_size: "16sp"
+            color: 0.2, 0.3, 0.4, 1
+            text_size: self.width, None
+            halign: "center"
+        PrimaryButton:
+            text: "Try Another Quiz"
+            on_release: app.start_quiz()
+        PrimaryButton:
+            text: "Back to Home"
+            on_release: app.go_home()
+
+<MaterialsScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(20)
+        spacing: dp(12)
+        canvas.before:
+            Color:
+                rgba: 0.96, 0.97, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        Label:
+            text: "Study Materials"
+            font_size: "22sp"
+            bold: True
+            color: 0.2, 0.25, 0.45, 1
+        Label:
+            text: "Keep your notes and files handy for quick review."
+            font_size: "16sp"
+            color: 0.3, 0.35, 0.5, 1
+            text_size: self.width, None
+            halign: "center"
+        Label:
+            text: "Store PDFs, PPTs, or DOCs on your device and open them anytime."
+            font_size: "14sp"
+            color: 0.35, 0.4, 0.55, 1
+            text_size: self.width, None
+            halign: "center"
         Button:
-            text: "Home"
+            text: "Back to Home"
+            size_hint_y: None
+            height: dp(44)
+            background_normal: ""
+            background_color: 0.75, 0.8, 0.9, 1
+            color: 0.2, 0.25, 0.4, 1
             on_release: app.go_home()
 """
 
