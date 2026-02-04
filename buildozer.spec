@@ -18,9 +18,9 @@ source.include_exts = py,png,jpg,jpeg,kv,json,txt
 version = 0.1
 
 # =========================
-# Requirements (SAFE)
+# Python Requirements (ANDROID SAFE)
 # =========================
-requirements = python3,kivy,requests,python-dotenv,openai
+requirements = python3,kivy,requests,python-dotenv,openai==1.3.7
 
 # =========================
 # UI
@@ -29,20 +29,27 @@ orientation = portrait
 fullscreen = 0
 
 # =========================
-# Android CONFIG (DO NOT FORCE)
+# Android (STABLE CONFIG)
 # =========================
 android.api = 33
 android.minapi = 21
-android.archs = arm64-v8a, armeabi-v7a
+android.archs = arm64-v8a
 
+# 🔥 FORCE GRADLE (CRITICAL)
+p4a.build_tool = gradle
 android.gradle = True
 android.enable_androidx = True
-android.ant_path =
 
+# 🔥 HARD DISABLE ANT (CRITICAL)
+android.ant_path =
+android.ant =
+android.ant_bin =
+
+# Accept licenses automatically (CI safe)
 android.accept_sdk_license = True
 
 # =========================
-# Permissions (MINIMAL)
+# Permissions (MINIMUM)
 # =========================
 android.permissions = INTERNET
 
