@@ -21,7 +21,7 @@ version = 0.1
 # =========================
 # Requirements
 # =========================
-requirements = python3,kivy,pyjnius
+requirements = python3,kivy
 
 # =========================
 # UI
@@ -53,7 +53,7 @@ android.accept_sdk_license = True
 # =========================
 # Permissions
 # =========================
-android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,READ_MEDIA_IMAGES,READ_MEDIA_VIDEO,READ_MEDIA_AUDIO
+android.permissions = INTERNET
 
 # =========================
 # Logging
