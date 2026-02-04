@@ -57,6 +57,8 @@
                 width: "90dp"
                 background_normal: ""
                 background_color: 0.35, 0.55, 0.9, 1
+                disabled: not app.ai_engine.is_available()
+                opacity: 0.5 if self.disabled else 1
                 on_release:
                     app.send_ai_question(tutor_input.text)
                     tutor_input.text = ""

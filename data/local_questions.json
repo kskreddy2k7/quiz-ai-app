@@ -63,5 +63,31 @@
       "Ruby": "Ruby isn't a standard language for Android apps.",
       "Go": "Go is not the primary language used for Android apps."
     }
+  },
+  {
+    "topic": "English",
+    "difficulty": "easy",
+    "prompt": "Which word is a synonym for 'happy'?",
+    "choices": ["Joyful", "Angry", "Sleepy", "Silent"],
+    "answer": "Joyful",
+    "explanation": "'Joyful' means feeling or showing happiness.",
+    "wrong_explanations": {
+      "Angry": "Angry is the opposite of happy.",
+      "Sleepy": "Sleepy describes tiredness, not happiness.",
+      "Silent": "Silent refers to the absence of sound."
+    }
+  },
+  {
+    "topic": "Science",
+    "difficulty": "medium",
+    "prompt": "What gas do plants absorb from the atmosphere for photosynthesis?",
+    "choices": ["Oxygen", "Nitrogen", "Carbon dioxide", "Helium"],
+    "answer": "Carbon dioxide",
+    "explanation": "Plants use carbon dioxide and sunlight to create glucose during photosynthesis.",
+    "wrong_explanations": {
+      "Oxygen": "Oxygen is released by plants as a byproduct, not absorbed for photosynthesis.",
+      "Nitrogen": "Nitrogen is abundant but not the main gas used in photosynthesis.",
+      "Helium": "Helium is inert and not used by plants."
+    }
   }
 ]

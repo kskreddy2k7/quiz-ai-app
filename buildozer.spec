@@ -16,12 +16,12 @@ source.include_exts = py,png,jpg,jpeg,kv,json,txt
 # Version
 # =========================
 version = 1.0.0
-android.version_code = 100
+android.version_code = 1
 
 # =========================
-# Python Requirements (ANDROID SAFE)
+# Python Requirements (PINNED)
 # =========================
-requirements = python3,kivy,requests,openai==1.3.7
+requirements = python3==3.10,kivy==2.2.1,requests==2.31.0,openai==1.3.7,pyjnius==1.4.2,cython==0.29.36
 
 # =========================
 # UI
@@ -35,6 +35,10 @@ fullscreen = 0
 android.api = 33
 android.minapi = 21
 android.archs = arm64-v8a
+android.ndk_version = 25.2.9519653
+
+# 🔥 FORCE python-for-android stable branch
+p4a.branch = stable
 
 # 🔥 FORCE GRADLE (CRITICAL)
 p4a.build_tool = gradle
