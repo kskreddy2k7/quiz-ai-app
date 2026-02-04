@@ -6,13 +6,15 @@ from fastapi import UploadFile
 from app.core.config import get_settings
 from app.core.logging import logger
 
-SUPPORTED_EXTENSIONS = {".txt", ".pdf", ".docx", ".pptx"}
+SUPPORTED_EXTENSIONS = {".txt", ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".jpg", ".jpeg", ".png"}
 
 
 def validate_extension(filename: str) -> None:
     suffix = Path(filename).suffix.lower()
     if suffix not in SUPPORTED_EXTENSIONS:
-        raise ValueError("Unsupported file type. Please upload TXT, PDF, DOCX, or PPTX files.")
+        raise ValueError(
+            "Unsupported file type. Please upload PDF, PPT/PPTX, DOC/DOCX, or image files."
+        )
 
 
 def read_upload(upload: UploadFile) -> str:
@@ -28,6 +30,10 @@ def read_upload(upload: UploadFile) -> str:
         return data.decode("utf-8", errors="ignore")
     if suffix == ".pdf":
         return _read_pdf(data)
+    if suffix in {".jpg", ".jpeg", ".png"}:
+        return _read_image(data)
+    if suffix in {".doc", ".ppt"}:
+        return _read_legacy(data, suffix)
     if suffix == ".docx":
         return _read_docx(data)
     if suffix == ".pptx":
@@ -72,3 +78,33 @@ def _read_pptx(data: bytes) -> str:
     except Exception as exc:  # pragma: no cover
         logger.warning("PPTX extraction failed: %s", exc)
         raise ValueError("PPTX text extraction failed. Please try a different file.")
+
+
+def _read_legacy(data: bytes, suffix: str) -> str:
+    try:
+        import tempfile
+
+        import textract
+
+        with tempfile.NamedTemporaryFile(suffix=suffix) as temp_file:
+            temp_file.write(data)
+            temp_file.flush()
+            text = textract.process(temp_file.name)
+        return text.decode("utf-8", errors="ignore")
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Legacy %s extraction failed: %s", suffix, exc)
+        raise ValueError(
+            f"{suffix.upper()} extraction failed. Please upload a {suffix}x file if possible."
+        )
+
+
+def _read_image(data: bytes) -> str:
+    try:
+        from PIL import Image
+        import pytesseract
+
+        image = Image.open(io.BytesIO(data))
+        return pytesseract.image_to_string(image)
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Image OCR failed: %s", exc)
+        raise ValueError("Image text extraction failed. Please try a clearer image.")
