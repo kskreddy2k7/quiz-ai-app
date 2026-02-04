@@ -29,25 +29,28 @@ jobs:
             libxrender1 \
             libxext6
 
-      # ✅ IMPORTANT: install compatible tooling
       - name: Install Buildozer + compatible Cython
         run: |
           pip install --upgrade pip
           pip install "cython<3.0" buildozer
 
-      # ✅ Clean caches (good practice)
       - name: Clean build caches
         run: |
           rm -rf ~/.buildozer
           rm -rf .buildozer
 
-      - name: Build APK
+      - name: Remove python-for-android cache (AAB fix)
+        run: |
+          rm -rf ~/.buildozer/android/platform/python-for-android
+          rm -rf .buildozer/android/platform/python-for-android
+
+      - name: Build APK (FORCE APK)
         env:
           ANDROID_API: 33
           ANDROID_MINAPI: 21
           P4A_BUILD_ISOLATED: 0
         run: |
-          buildozer android debug
+          buildozer -v android apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
