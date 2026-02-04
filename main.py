@@ -8,6 +8,7 @@ from typing import List
 
 from kivy.app import App
 from kivy.lang import Builder
+from kivy.clock import Clock
 from kivy.properties import ListProperty, NumericProperty, StringProperty
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen, ScreenManager
@@ -119,23 +120,14 @@ class QuizApp(App):
     def on_start(self):
         self._refresh_daily_quote()
         self.generate_quiz()
-        self._request_storage_permissions()
+        self._show_home_after_splash()
 
-    def _request_storage_permissions(self):
-        try:
-            from android.permissions import Permission, request_permissions  # type: ignore
-        except Exception:
-            return
+    def _show_home_after_splash(self):
+        Clock.schedule_once(self._go_home_from_splash, 2)
 
-        request_permissions(
-            [
-                Permission.READ_EXTERNAL_STORAGE,
-                Permission.WRITE_EXTERNAL_STORAGE,
-                Permission.READ_MEDIA_IMAGES,
-                Permission.READ_MEDIA_VIDEO,
-                Permission.READ_MEDIA_AUDIO,
-            ]
-        )
+    def _go_home_from_splash(self, _dt):
+        if self.root:
+            self.root.current = "home"
 
     def _handle_back(self, _window, key, *_args):
         if key != 27:
