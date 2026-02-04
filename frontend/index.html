@@ -33,6 +33,10 @@
             <button class="primary" id="generate-btn">Generate Quiz ✨</button>
             <button class="ghost" id="scroll-chat">Ask a Doubt 💬</button>
           </div>
+          <div class="motivation-card">
+            <span class="muted">Motivation</span>
+            <p id="motivation-message"></p>
+          </div>
         </div>
         <div class="hero-card">
           <div class="stat">
@@ -41,14 +45,32 @@
           </div>
           <div class="stat">
             <span>MCQs from files</span>
-            <strong>TXT • PDF • DOCX • PPTX</strong>
+            <strong>PDF • PPT • DOC • Images</strong>
           </div>
           <div class="stat">
             <span>Difficulty tuning</span>
             <strong>Easy • Medium • Hard</strong>
           </div>
+          <div class="stat highlight">
+            <span>Learning streak 🔥</span>
+            <strong id="streak-count">0 days</strong>
+          </div>
+          <div class="stat highlight">
+            <span>Progress score 🏆</span>
+            <strong id="progress-score">0 XP</strong>
+          </div>
         </div>
       </header>
+
+      <section class="status-banner" id="status-banner">
+        <div>
+          <h2>Connectivity & Offline Mode 📡</h2>
+          <p class="muted">
+            We’ll save your doubts and quizzes so you can learn even without internet.
+          </p>
+        </div>
+        <span class="status-pill" id="connection-status">Online</span>
+      </section>
 
       <section class="panel" id="quiz-panel">
         <h2>Generate your quiz 📘</h2>
@@ -64,9 +86,10 @@
           </label>
           <label>
             Upload a file
-            <input type="file" name="file" accept=".txt,.pdf,.docx,.pptx" />
+            <input type="file" name="file" accept=".pdf,.ppt,.pptx,.doc,.docx,.jpg,.jpeg,.png" />
           </label>
           <p class="file-hint" id="file-hint">No file selected.</p>
+          <div class="file-preview" id="file-preview"></div>
           <div class="grid">
             <label>
               Questions
@@ -78,6 +101,16 @@
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
+              </select>
+            </label>
+            <label>
+              Subject
+              <select name="subject">
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="Biology">Biology</option>
+                <option value="Computer Science">Computer Science</option>
               </select>
             </label>
           </div>
@@ -97,7 +130,7 @@
             <h2>AI Doubt Solver 🤖</h2>
             <p class="muted">Chat with your personal tutor and get step-by-step clarity.</p>
           </div>
-          <span class="status-pill">Online</span>
+          <span class="status-pill" id="chat-status">Online</span>
         </div>
         <div id="chat-window" class="chat-window">
           <div class="chat-message bot">
@@ -105,15 +138,45 @@
           </div>
         </div>
         <form id="chat-form" class="chat-form">
-          <input
-            type="text"
-            name="message"
-            placeholder="Type your doubt here..."
-            autocomplete="off"
-          />
+          <div class="chat-inputs">
+            <input
+              type="text"
+              name="message"
+              placeholder="Type your doubt here..."
+              autocomplete="off"
+            />
+            <select name="subject">
+              <option value="Physics">Physics</option>
+              <option value="Chemistry">Chemistry</option>
+              <option value="Mathematics">Mathematics</option>
+              <option value="Biology">Biology</option>
+              <option value="Computer Science">Computer Science</option>
+            </select>
+          </div>
+          <label class="file-upload">
+            Attach file
+            <input type="file" name="file" accept=".pdf,.ppt,.pptx,.doc,.docx,.jpg,.jpeg,.png" />
+          </label>
           <button type="submit" class="primary">Send ➤</button>
         </form>
         <div id="chat-tips" class="chat-tips"></div>
+      </section>
+
+      <section class="panel vault-panel" id="vault-panel">
+        <h2>Study Vault (Offline Ready) 📚</h2>
+        <p class="muted">
+          Your saved doubts and quizzes live here so you can revise without internet.
+        </p>
+        <div class="vault-grid">
+          <div>
+            <h3>Saved Doubts ✨</h3>
+            <div id="saved-doubts" class="vault-list"></div>
+          </div>
+          <div>
+            <h3>Saved Quizzes 🎯</h3>
+            <div id="saved-quizzes" class="vault-list"></div>
+          </div>
+        </div>
       </section>
     </main>
 

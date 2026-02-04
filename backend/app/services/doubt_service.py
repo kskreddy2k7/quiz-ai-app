@@ -1,53 +1,38 @@
-from app.core.config import get_settings
 from app.core.logging import logger
+from app.services.ai_client import AIClient
 
 
 class DoubtService:
     """Handle chat-based tutoring responses."""
 
     def __init__(self) -> None:
-        self.settings = get_settings()
+        self.client = AIClient()
 
-    def respond(self, message: str, context: str | None = None) -> tuple[str, list[str]]:
-        if self.settings.ai_provider == "openai" and self.settings.openai_api_key:
-            try:
-                return self._respond_openai(message, context)
-            except Exception as exc:  # pragma: no cover
-                logger.warning("OpenAI chat failed: %s. Falling back.", exc)
-
-        response = (
-            "Great question! Here's a clear breakdown:\n"
-            "1) Restate the concept in simple words.\n"
-            "2) Connect it to a real-life example.\n"
-            "3) Summarize the key takeaway.\n\n"
-            "If you share more details, I can tailor the explanation further."
-        )
-        tips = [
-            "Try summarizing the concept in one sentence.",
-            "Teach it to a friend to check your understanding.",
-        ]
-        return response, tips
-
-    def _respond_openai(self, message: str, context: str | None) -> tuple[str, list[str]]:
-        from openai import OpenAI
-
-        client = OpenAI(api_key=self.settings.openai_api_key)
+    def respond(
+        self, message: str, subject: str, context: str | None = None
+    ) -> tuple[str, list[str]]:
+        logger.info("Generating AI doubt response for subject: %s", subject)
         system_prompt = (
-            "You are a friendly AI tutor. Provide step-by-step explanations with a positive tone. "
-            "Always include 2 concise study tips at the end."
+            "You are ChatGPT, an expert AI tutor for school students. Explain concepts clearly, "
+            "step-by-step, with a friendly tone and helpful emojis like 📘✨🧠. "
+            "Support Physics, Chemistry, Maths, Biology, and Computer Science. "
+            "Return JSON with keys response (string) and tips (array of 2-4 short study tips). "
+            "In the response, always include: the correct answer, why it is correct, and a short "
+            "section that lists common incorrect answers (or misconceptions) and why they are wrong."
         )
-        user_prompt = message
-        if context:
-            user_prompt = f"Context: {context}\n\nQuestion: {message}"
+        user_prompt = (
+            f"Subject: {subject}\n"
+            f"Student Question: {message}\n"
+            f"Context (if any): {context or 'None'}\n"
+            "Explain why the answer makes sense and include a quick recap at the end. "
+            "Format sections clearly with labels like ✅ Correct Answer and ❌ Why Common Answers Are Wrong."
+        )
+        payload = self.client.chat_json(system_prompt, user_prompt, temperature=0.5)
 
-        response = client.chat.completions.create(
-            model=self.settings.openai_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.5,
-        )
-        content = response.choices[0].message.content or ""
-        tips = ["Review the key terms mentioned.", "Practice with a short quiz."]
-        return content, tips
+        response = str(payload.get("response", "")).strip()
+        tips_raw = payload.get("tips", [])
+        tips = [str(tip).strip() for tip in tips_raw if str(tip).strip()]
+        if not response:
+            raise ValueError("AI response was empty. Please try again with more detail.")
+
+        return response, tips
