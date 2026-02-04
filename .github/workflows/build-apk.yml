@@ -39,18 +39,13 @@ jobs:
           rm -rf ~/.buildozer
           rm -rf .buildozer
 
-      - name: Remove python-for-android cache (AAB fix)
-        run: |
-          rm -rf ~/.buildozer/android/platform/python-for-android
-          rm -rf .buildozer/android/platform/python-for-android
-
-      - name: Build APK (FORCE APK)
+      - name: Build APK (DEBUG = APK)
         env:
           ANDROID_API: 33
           ANDROID_MINAPI: 21
           P4A_BUILD_ISOLATED: 0
         run: |
-          buildozer -v android apk
+          buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
