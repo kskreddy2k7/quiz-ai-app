@@ -1,5 +1,4 @@
 [app]
-
 # =========================
 # App Info
 # =========================
@@ -19,9 +18,9 @@ source.include_exts = py,png,jpg,jpeg,kv,json,txt
 version = 0.1
 
 # =========================
-# Requirements
+# Requirements (SAFE)
 # =========================
-requirements = python3,kivy,requests,openai
+requirements = python3,kivy,requests,python-dotenv,openai
 
 # =========================
 # UI
@@ -30,30 +29,22 @@ orientation = portrait
 fullscreen = 0
 
 # =========================
-# Android CONFIG (CRITICAL)
+# Android CONFIG (DO NOT FORCE)
 # =========================
 android.api = 33
 android.minapi = 21
-android.build_tools_version = 33.0.2
-android.ndk = 25b
-android.ndk_api = 21
 android.archs = arm64-v8a, armeabi-v7a
 
-# 🔥 FORCE GRADLE (FIXES YOUR ERROR)
 android.gradle = True
 android.enable_androidx = True
-
-# 🔥 DISABLE ANT COMPLETELY
 android.ant_path =
 
-# SDK handling
-android.sdk_path =
 android.accept_sdk_license = True
 
 # =========================
-# Permissions
+# Permissions (MINIMAL)
 # =========================
-android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,CAMERA,RECORD_AUDIO
+android.permissions = INTERNET
 
 # =========================
 # Logging
