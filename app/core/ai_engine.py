@@ -3,10 +3,8 @@ from __future__ import annotations
 import os
 import threading
 from typing import Callable
-from dotenv import load_dotenv
-from openai import OpenAI
 
-load_dotenv()
+from openai import OpenAI
 
 
 class AIEngine:
@@ -18,6 +16,15 @@ class AIEngine:
     def is_available(self) -> bool:
         return self.client is not None
 
+    def _friendly_error(self, exc: Exception | None = None) -> str:
+        if not self.api_key:
+            return "📴 AI is offline. Add an OpenAI API key to enable AI features."
+        if exc:
+            message = str(exc).lower()
+            if "connection" in message or "timeout" in message or "network" in message:
+                return "📴 AI is unavailable. Check your internet connection."
+        return "🤖 AI is unavailable right now. Please try again later."
+
     def run_async(
         self,
         prompt: str,
@@ -28,7 +35,8 @@ class AIEngine:
         def task():
             try:
                 if not self.client:
-                    raise RuntimeError("AI not configured")
+                    on_error(self._friendly_error())
+                    return
 
                 res = self.client.chat.completions.create(
                     model=self.model,
@@ -40,7 +48,7 @@ class AIEngine:
                     max_tokens=900,
                 )
                 on_complete(res.choices[0].message.content.strip())
-            except Exception as e:
-                on_error(str(e))
+            except Exception as exc:
+                on_error(self._friendly_error(exc))
 
         threading.Thread(target=task, daemon=True).start()

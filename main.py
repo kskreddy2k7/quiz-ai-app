@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import json
 from pathlib import Path
 from typing import List
 
@@ -8,6 +9,10 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy.properties import NumericProperty
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import ScreenManager
 
 from app.core.ai_engine import AIEngine
@@ -102,6 +107,7 @@ class QuizAIApp(App):
 
     def on_start(self):
         self._refresh_daily_quote()
+        self._refresh_ai_status()
         Clock.schedule_once(self._go_home_from_splash, 1.5)
 
     # -------------------------
@@ -111,9 +117,11 @@ class QuizAIApp(App):
     def _go_home_from_splash(self, _dt):
         self.root.current = "home"
         Clock.schedule_once(self._request_permissions, 0.5)
+        Clock.schedule_once(self._maybe_show_first_launch_dialog, 0.8)
 
     def go_home(self):
         self._refresh_daily_quote()
+        self._refresh_ai_status()
         self.root.current = "home"
 
     def go_ai_chat(self):
@@ -168,6 +176,7 @@ class QuizAIApp(App):
             questions = self.quiz_generator.get_local_quiz(
                 subject, topic, self.current_difficulty
             )
+            quiz.progress_text = "📴 Offline mode: using demo quiz."
             self._start_questions(questions)
 
         if self.ai_engine.is_available():
@@ -181,7 +190,7 @@ class QuizAIApp(App):
     def _start_questions(self, questions: List[QuizQuestion]):
         if not questions:
             quiz = self.root.get_screen("quiz_play")
-            quiz.question_text = "No questions available."
+            quiz.question_text = "No questions available offline."
             quiz.option_texts = []
             return
 
@@ -210,21 +219,29 @@ class QuizAIApp(App):
 
         explanation = self.root.get_screen("explanation")
         explanation.result_text = "✅ Correct!" if answer == q.answer else "❌ Not quite"
-        explanation.explanation_text = "Thinking..."
+        explanation.explanation_text = (
+            "Great job!" if answer == q.answer else "Let’s review the reasoning."
+        )
         explanation.selected_answer = answer
         explanation.correct_answer = q.answer
+        explanation.correct_explanation = q.explanation
+        explanation.wrong_explanations_text = self._format_wrong_explanations(q)
         explanation.next_label = (
             "Next" if self.current_index + 1 < len(self.active_questions) else "Results"
         )
         self.root.current = "explanation"
 
         def on_complete(text: str):
-            explanation.explanation_text = text
+            explanation.explanation_text = (
+                "Great job!" if answer == q.answer else "Let’s review the reasoning."
+            )
             self.last_explanation = text
 
         def on_error(_msg: str):
             fallback = self.explanation_engine.fallback_explanation(q, answer)
-            explanation.explanation_text = fallback
+            explanation.explanation_text = (
+                "Great job!" if answer == q.answer else "Let’s review the reasoning."
+            )
             self.last_explanation = fallback
 
         self.explanation_engine.request_explanation(q, answer, on_complete, on_error)
@@ -273,6 +290,9 @@ class QuizAIApp(App):
 
         if not question:
             screen.status_text = "Please enter a question."
+            return
+        if not self.ai_engine.is_available():
+            screen.status_text = "📴 AI tutor is offline. Try the quiz mode."
             return
 
         screen.status_text = "Tutor is thinking…"
@@ -331,6 +351,61 @@ class QuizAIApp(App):
     def _refresh_daily_quote(self):
         home = self.root.get_screen("home")
         home.daily_quote = build_daily_quote()
+        self._refresh_ai_status()
+
+    def _refresh_ai_status(self):
+        home = self.root.get_screen("home")
+        available = self.ai_engine.is_available()
+        home.ai_available = available
+        home.ai_status = "AI Mode: Online ✨" if available else "AI Mode: Offline 📴"
+        home.ai_status_color = (
+            [0.6, 1, 0.7, 1] if available else [0.8, 0.85, 0.95, 0.9]
+        )
+
+    def _maybe_show_first_launch_dialog(self, _dt):
+        data = self.storage.load()
+        if data.get("first_launch_shown"):
+            return
+        message = (
+            "Welcome to Quiz AI! 📘\n\n"
+            "• Works offline with demo quizzes\n"
+            "• AI features need internet access\n"
+            "• We do not collect personal data"
+        )
+        content = BoxLayout(orientation="vertical", spacing="12dp", padding="12dp")
+        content.add_widget(
+            Label(
+                text=message,
+                halign="left",
+                valign="middle",
+                color=(0.9, 0.95, 1, 1),
+                text_size=(400, None),
+            )
+        )
+        button = Button(text="Got it", size_hint_y=None, height="44dp")
+        content.add_widget(button)
+        popup = Popup(
+            title="First-time Info",
+            content=content,
+            size_hint=(0.85, None),
+            height="320dp",
+            auto_dismiss=False,
+        )
+        button.bind(on_release=popup.dismiss)
+        popup.open()
+        data["first_launch_shown"] = True
+        self.storage.path.write_text(json.dumps(data, indent=2))
+
+    def _format_wrong_explanations(self, question: QuizQuestion) -> str:
+        if not question.wrong_explanations:
+            return "No additional details available."
+        lines = []
+        for choice in question.choices:
+            if choice == question.answer:
+                continue
+            explanation = question.wrong_explanations.get(choice, "This option is incorrect.")
+            lines.append(f"• {choice}: {explanation}")
+        return "\n".join(lines)
 
     def request_daily_motivation(self):
         home = self.root.get_screen("home")

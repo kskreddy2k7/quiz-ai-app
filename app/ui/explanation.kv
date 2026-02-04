@@ -26,7 +26,13 @@
         Label:
             text: root.result_text
             font_size: "20sp"
-            color: (0.6, 1, 0.7, 1) if root.result_text == "Correct!" else (1, 0.6, 0.6, 1)
+            color: (0.6, 1, 0.7, 1) if root.result_text.startswith("✅") else (1, 0.6, 0.6, 1)
+            size_hint_y: None
+            height: self.texture_size[1]
+        Label:
+            text: root.explanation_text
+            font_size: "13sp"
+            color: 0.8, 0.85, 0.95, 0.9
             size_hint_y: None
             height: self.texture_size[1]
         Label:
@@ -43,13 +49,39 @@
             height: self.texture_size[1]
         ScrollView:
             do_scroll_x: False
-            Label:
-                text: root.explanation_text
-                font_size: "14sp"
-                color: 0.85, 0.9, 1, 0.9
-                text_size: self.width, None
+            BoxLayout:
+                orientation: "vertical"
+                spacing: "8dp"
                 size_hint_y: None
-                height: self.texture_size[1]
+                height: self.minimum_height
+                Label:
+                    text: "Why this answer is correct"
+                    font_size: "14sp"
+                    bold: True
+                    color: 0.6, 0.9, 1, 1
+                    size_hint_y: None
+                    height: self.texture_size[1]
+                Label:
+                    text: root.correct_explanation
+                    font_size: "14sp"
+                    color: 0.85, 0.9, 1, 0.9
+                    text_size: self.width, None
+                    size_hint_y: None
+                    height: self.texture_size[1]
+                Label:
+                    text: "Why other options are wrong"
+                    font_size: "14sp"
+                    bold: True
+                    color: 1, 0.8, 0.7, 1
+                    size_hint_y: None
+                    height: self.texture_size[1]
+                Label:
+                    text: root.wrong_explanations_text
+                    font_size: "13sp"
+                    color: 0.85, 0.9, 1, 0.9
+                    text_size: self.width, None
+                    size_hint_y: None
+                    height: self.texture_size[1]
         Button:
             text: root.next_label
             size_hint_y: None
