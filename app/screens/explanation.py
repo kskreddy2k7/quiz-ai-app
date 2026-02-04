@@ -10,3 +10,5 @@ class ExplanationScreen(Screen):
     selected_answer = StringProperty("")
     correct_answer = StringProperty("")
     next_label = StringProperty("Next")
+    correct_explanation = StringProperty("")
+    wrong_explanations_text = StringProperty("")

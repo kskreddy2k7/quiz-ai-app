@@ -15,12 +15,13 @@ source.include_exts = py,png,jpg,jpeg,kv,json,txt
 # =========================
 # Version
 # =========================
-version = 0.1
+version = 1.0.0
+android.version_code = 100
 
 # =========================
 # Python Requirements (ANDROID SAFE)
 # =========================
-requirements = python3,kivy,requests,python-dotenv,openai==1.3.7
+requirements = python3,kivy,requests,openai==1.3.7
 
 # =========================
 # UI
@@ -39,6 +40,7 @@ android.archs = arm64-v8a
 p4a.build_tool = gradle
 android.gradle = True
 android.enable_androidx = True
+android.aab = True
 
 # 🔥 HARD DISABLE ANT (CRITICAL)
 android.ant_path =

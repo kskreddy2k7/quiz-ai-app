@@ -24,13 +24,7 @@ class PermissionManager:
             update_status("Permissions ready.")
             return
         Permission, request_permissions = self._android_permissions
-        permissions: List[str] = [
-            Permission.INTERNET,
-            Permission.READ_EXTERNAL_STORAGE,
-            Permission.WRITE_EXTERNAL_STORAGE,
-            Permission.CAMERA,
-            Permission.RECORD_AUDIO,
-        ]
+        permissions: List[str] = [Permission.INTERNET]
 
         def callback(_permissions, _grants):
             update_status("Permissions updated.")
