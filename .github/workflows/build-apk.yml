@@ -20,7 +20,6 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt update
-          sudo apt remove -y ant || true
           sudo apt install -y \
             zip unzip \
             openjdk-17-jdk \
@@ -30,20 +29,13 @@ jobs:
             libxrender1 \
             libxext6
 
-      # 🔥 HARD DISABLE ANT (THIS IS THE KEY)
-      - name: Disable ANT completely
-        run: |
-          unset ANT_HOME
-          sed -i '/apache-ant/d' ~/.bashrc || true
-          export PATH=$(echo "$PATH" | sed -e 's|[^:]*ant[^:]*:||g')
-          echo "PATH=$PATH"
-
-      - name: Install Buildozer
+      # ✅ IMPORTANT: install compatible tooling
+      - name: Install Buildozer + compatible Cython
         run: |
           pip install --upgrade pip
-          pip install buildozer cython
+          pip install "cython<3.0" buildozer
 
-      # 🔥 NUKE ALL CACHES (ANT LIVES HERE)
+      # ✅ Clean caches (good practice)
       - name: Clean build caches
         run: |
           rm -rf ~/.buildozer
