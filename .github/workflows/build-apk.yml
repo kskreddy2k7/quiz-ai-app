@@ -9,15 +9,23 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+      # ---------------------------
+      # Checkout
+      # ---------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ---------------------------
+      # Python
+      # ---------------------------
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      # ✅ FORCE JAVA 11
+      # ---------------------------
+      # Java 11 ONLY
+      # ---------------------------
       - name: Set up Java 11
         run: |
           sudo apt update
@@ -26,24 +34,45 @@ jobs:
           echo "ORG_GRADLE_JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64" >> $GITHUB_ENV
           echo "PATH=/usr/lib/jvm/temurin-11-jdk-amd64/bin:$PATH" >> $GITHUB_ENV
 
-      # 🚨 REMOVE SYSTEM GRADLE 9 COMPLETELY
+      # ---------------------------
+      # REMOVE SYSTEM GRADLE (9.x breaks p4a)
+      # ---------------------------
       - name: Remove system Gradle
         run: |
           sudo rm -rf /usr/share/gradle
           echo "GRADLE_HOME=" >> $GITHUB_ENV
 
-      # ✅ INSTALL NDK r25b
+      # ---------------------------
+      # Install Android NDK r25b ONLY
+      # ---------------------------
       - name: Install Android NDK r25b
         run: |
           sudo mkdir -p /usr/local/lib/android/sdk
           cd /usr/local/lib/android/sdk
           sudo curl -L https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -o ndk.zip
           sudo unzip -q ndk.zip
+          sudo mkdir -p ndk
           sudo mv android-ndk-r25b ndk/25.2.9519653
           sudo rm ndk.zip
+
           echo "ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/25.2.9519653" >> $GITHUB_ENV
           echo "ANDROID_NDK_ROOT=/usr/local/lib/android/sdk/ndk/25.2.9519653" >> $GITHUB_ENV
 
+      # ---------------------------
+      # FORCE p4a TO IGNORE WRONG NDK (CRITICAL)
+      # ---------------------------
+      - name: Force python-for-android to use NDK r25b
+        run: |
+          unset ANDROID_NDK
+          unset ANDROID_NDK_LATEST_HOME
+          echo "ANDROID_NDK=" >> $GITHUB_ENV
+          echo "ANDROID_NDK_LATEST_HOME=" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=/usr/local/lib/android/sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+
+      # ---------------------------
+      # System dependencies
+      # ---------------------------
       - name: Install system dependencies
         run: |
           sudo apt install -y \
@@ -54,15 +83,21 @@ jobs:
             libxrender1 \
             libxext6 \
             libffi-dev \
-            libssl-dev
+            libssl-dev \
+            libgles2-mesa-dev \
+            libegl1-mesa-dev
 
-      # ✅ USE STABLE BUILDOZER
+      # ---------------------------
+      # Buildozer (STABLE VERSION)
+      # ---------------------------
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
           pip install "cython<3.0" "buildozer==1.4.0"
 
-      # ✅ BUILD (NO android clean)
+      # ---------------------------
+      # Build APK
+      # ---------------------------
       - name: Build APK
         env:
           ANDROID_API: 33
@@ -73,6 +108,9 @@ jobs:
           rm -rf .buildozer
           buildozer android release
 
+      # ---------------------------
+      # Upload APK
+      # ---------------------------
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
