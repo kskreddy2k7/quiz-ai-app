@@ -9,7 +9,7 @@ source.include_exts = py,png,jpg,jpeg,kv,json,txt
 version = 1.0.0
 android.version_code = 1
 
-requirements = python3,kivy==2.2.1,requests==2.31.0,openai==1.3.7,pyjnius==1.5.0
+requirements = python3,kivy==2.2.1,requests==2.31.0,pyjnius==1.5.0
 
 orientation = portrait
 fullscreen = 0
