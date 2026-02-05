@@ -41,7 +41,7 @@ android.minapi = 21
 android.archs = arm64-v8a, armeabi-v7a
 
 # (str) python-for-android branch to use, defaults to master
-p4a.branch = stable
+p4a.branch = develop
 
 # (bool) Use the new gradle build system
 android.gradle = True
