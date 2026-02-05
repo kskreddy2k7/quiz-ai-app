@@ -25,14 +25,15 @@ android.api = 33
 android.minapi = 21
 android.archs = arm64-v8a
 
-# ✅ REQUIRED
+# 🔥 REQUIRED FOR SUCCESS
+android.ndk = 25b
 p4a.branch = develop
 p4a.build_tool = gradle
 
 android.gradle = True
 android.enable_androidx = True
 
-# ✅ APK (NOT AAB)
+# ✅ APK BUILD
 android.aab = False
 android.build_mode = release
 
