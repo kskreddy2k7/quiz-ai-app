@@ -10,14 +10,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+<<<<<<< HEAD
       - name: Checkout code
         uses: actions/checkout@v4
 
+=======
+      # ---------------------------
+      # Checkout
+      # ---------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---------------------------
+      # Python
+      # ---------------------------
+>>>>>>> 732e6e50c50b1780d5c8d812402d2caeecf4cd05
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
+<<<<<<< HEAD
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
@@ -31,9 +44,62 @@ jobs:
             ${{ runner.os }}-build-cache-
 
       - name: Install system dependencies
+=======
+      # ---------------------------
+      # Java 11 ONLY
+      # ---------------------------
+      - name: Set up Java 11
+>>>>>>> 732e6e50c50b1780d5c8d812402d2caeecf4cd05
         run: |
           sudo apt update
+          sudo apt install -y openjdk-11-jdk
+          echo "JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64" >> $GITHUB_ENV
+          echo "ORG_GRADLE_JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64" >> $GITHUB_ENV
+          echo "PATH=/usr/lib/jvm/temurin-11-jdk-amd64/bin:$PATH" >> $GITHUB_ENV
+
+      # ---------------------------
+      # REMOVE SYSTEM GRADLE (9.x breaks p4a)
+      # ---------------------------
+      - name: Remove system Gradle
+        run: |
+          sudo rm -rf /usr/share/gradle
+          echo "GRADLE_HOME=" >> $GITHUB_ENV
+
+      # ---------------------------
+      # Install Android NDK r25b ONLY
+      # ---------------------------
+      - name: Install Android NDK r25b
+        run: |
+          sudo mkdir -p /usr/local/lib/android/sdk
+          cd /usr/local/lib/android/sdk
+          sudo curl -L https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -o ndk.zip
+          sudo unzip -q ndk.zip
+          sudo mkdir -p ndk
+          sudo mv android-ndk-r25b ndk/25.2.9519653
+          sudo rm ndk.zip
+
+          echo "ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=/usr/local/lib/android/sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+
+      # ---------------------------
+      # FORCE p4a TO IGNORE WRONG NDK (CRITICAL)
+      # ---------------------------
+      - name: Force python-for-android to use NDK r25b
+        run: |
+          unset ANDROID_NDK
+          unset ANDROID_NDK_LATEST_HOME
+          echo "ANDROID_NDK=" >> $GITHUB_ENV
+          echo "ANDROID_NDK_LATEST_HOME=" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=/usr/local/lib/android/sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+
+      # ---------------------------
+      # System dependencies
+      # ---------------------------
+      - name: Install system dependencies
+        run: |
           sudo apt install -y \
+<<<<<<< HEAD
             build-essential \
             git \
             python3-dev \
@@ -62,15 +128,51 @@ jobs:
           pip install "cython<3.0" "setuptools<70" "wheel" "buildozer==1.5.0" "sh"
 
       - name: Build with Buildozer
+=======
+            zip unzip \
+            libgl1-mesa-dev \
+            libglib2.0-0 \
+            libsm6 \
+            libxrender1 \
+            libxext6 \
+            libffi-dev \
+            libssl-dev \
+            libgles2-mesa-dev \
+            libegl1-mesa-dev
+
+      # ---------------------------
+      # Buildozer (STABLE VERSION)
+      # ---------------------------
+      - name: Install Buildozer
+        run: |
+          pip install --upgrade pip
+          pip install "cython<3.0" "buildozer==1.4.0"
+
+      # ---------------------------
+      # Build APK
+      # ---------------------------
+      - name: Build APK
+>>>>>>> 732e6e50c50b1780d5c8d812402d2caeecf4cd05
         env:
           ANDROID_API: 33
           ANDROID_MINAPI: 21
           P4A_BUILD_ISOLATED: 0
         run: |
+<<<<<<< HEAD
           # Use yes to accept licenses if needed, though spec handles it
           yes | buildozer -v android debug
 
       - name: Upload Artifact
+=======
+          rm -rf ~/.buildozer
+          rm -rf .buildozer
+          buildozer android release
+
+      # ---------------------------
+      # Upload APK
+      # ---------------------------
+      - name: Upload APK
+>>>>>>> 732e6e50c50b1780d5c8d812402d2caeecf4cd05
         uses: actions/upload-artifact@v4
         with:
           name: quiz-ai-app-apk
