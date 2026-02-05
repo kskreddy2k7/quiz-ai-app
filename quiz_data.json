@@ -35,6 +35,12 @@
       "topic": "General",
       "difficulty": "easy",
       "score": 40
+    },
+    {
+      "date": "2026-02-05",
+      "topic": "General",
+      "difficulty": "easy",
+      "score": 40
     }
   ],
   "scores": [
@@ -43,6 +49,7 @@
     0,
     0,
     80,
+    40,
     40
   ],
   "streak": 1,
