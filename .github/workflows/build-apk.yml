@@ -38,26 +38,21 @@ jobs:
             libffi-dev \
             libssl-dev
 
-      # ✅ Install ONLY Buildozer (let it manage p4a)
-      - name: Install Buildozer
+      # 🚨 CRITICAL FIX: PIN BUILDOZER
+      - name: Install Buildozer (stable)
         run: |
           pip install --upgrade pip
-          pip install "cython<3.0" buildozer
+          pip install "cython<3.0" "buildozer==1.4.0"
 
-      # ✅ FULL CLEAN
-      - name: Clean build caches
-        run: |
-          rm -rf ~/.buildozer
-          rm -rf .buildozer
-
-      # ✅ BUILD APK
+      # ⚠️ DO NOT run buildozer android clean manually
       - name: Build APK
         env:
           ANDROID_API: 33
           ANDROID_MINAPI: 21
           P4A_BUILD_ISOLATED: 0
         run: |
-          buildozer android clean
+          rm -rf ~/.buildozer
+          rm -rf .buildozer
           buildozer android release
 
       - name: Upload APK
