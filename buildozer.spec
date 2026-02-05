@@ -23,7 +23,7 @@ android.version_code = 1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy==2.2.1,requests==2.31.0,openai>=1.12.0,httpx>=0.27.0,pyjnius==1.4.2,cython<3.0,setuptools<70,wheel,pypdf>=3.17.0,python-docx>=1.1.0,lxml,openssl
+requirements = python3,kivy==2.2.1,requests==2.31.0,pyjnius==1.4.2,cython<3.0,setuptools<70,wheel,pypdf>=3.17.0,docx2txt,openssl
 
 # (str) Supported orientation (one of landscape, sensorLandscape, portrait or all)
 orientation = portrait

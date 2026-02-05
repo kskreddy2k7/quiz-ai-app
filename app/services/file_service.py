@@ -10,9 +10,9 @@ except ImportError:
     pypdf = None
 
 try:
-    import docx
+    import docx2txt
 except ImportError:
-    docx = None
+    docx2txt = None
 
 
 class FileService:
@@ -61,12 +61,10 @@ class FileService:
             raise ValueError(f"Failed to parse PDF: {e}")
 
     def _read_docx(self, path: Path) -> str:
-        if not docx:
-            raise ImportError("python-docx is required for DOCX support.")
+        if not docx2txt:
+            raise ImportError("docx2txt is required for DOCX support.")
         
         try:
-            doc = docx.Document(str(path))
-            text_parts = [para.text for para in doc.paragraphs]
-            return "\n".join(text_parts).strip()
+            return docx2txt.process(str(path)).strip()
         except Exception as e:
             raise ValueError(f"Failed to parse DOCX: {e}")

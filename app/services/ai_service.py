@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import Callable
 
-from openai import OpenAI, OpenAIError
+import requests
 
 from app.utils.helpers import run_in_thread
 
@@ -22,10 +22,6 @@ class AIService:
     def _refresh_client(self) -> None:
         # Prioritize env var, could extend to load from local storage if needed
         self.api_key = os.getenv("OPENAI_API_KEY", "").strip()
-        if self.api_key:
-            self.client = OpenAI(api_key=self.api_key)
-        else:
-            self.client = None
 
     def set_api_key(self, key: str) -> None:
         """Allow setting API key at runtime (e.g. from UI input)"""
@@ -34,7 +30,8 @@ class AIService:
 
     def is_available(self) -> bool:
         self._refresh_client()
-        return self.client is not None
+        self._refresh_client()
+        return bool(self.api_key)
 
     def availability_message(self) -> str:
         self._refresh_client()
@@ -68,21 +65,35 @@ class AIService:
         self._refresh_client()
 
         def task() -> str:
-            if not self.client:
+            if not self.api_key:
                 raise RuntimeError("No API key provided")
 
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}"
+            }
+            payload = {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": temperature,
+                "max_tokens": 1000,
+            }
+
             try:
-                res = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=temperature,
-                    max_tokens=1000,
+                response = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=20
                 )
-                return res.choices[0].message.content.strip()
-            except OpenAIError as e:
+                response.raise_for_status()
+                data = response.json()
+                return data["choices"][0]["message"]["content"].strip()
+            except Exception as e:
+                # Basic error propagation
                 raise e
 
         run_in_thread(
