@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      # ✅ FORCE JAVA 11 (CRITICAL)
+      # ✅ FORCE JAVA 11
       - name: Set up Java 11
         run: |
           sudo apt update
@@ -38,12 +38,11 @@ jobs:
             libffi-dev \
             libssl-dev
 
-      # ✅ Install Buildozer + p4a
+      # ✅ Install ONLY Buildozer (let it manage p4a)
       - name: Install Buildozer
         run: |
           pip install --upgrade pip
           pip install "cython<3.0" buildozer
-          pip install git+https://github.com/kivy/python-for-android.git@develop
 
       # ✅ FULL CLEAN
       - name: Clean build caches
@@ -51,7 +50,7 @@ jobs:
           rm -rf ~/.buildozer
           rm -rf .buildozer
 
-      # ✅ BUILD RELEASE APK (STABLE)
+      # ✅ BUILD APK
       - name: Build APK
         env:
           ANDROID_API: 33
