@@ -9,43 +9,57 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      - name: Install system dependencies
+      # ✅ FORCE JAVA 11 (CRITICAL)
+      - name: Set up Java 11
         run: |
           sudo apt update
+          sudo apt install -y openjdk-11-jdk
+          echo "JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64" >> $GITHUB_ENV
+          echo "ORG_GRADLE_JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64" >> $GITHUB_ENV
+          echo "PATH=/usr/lib/jvm/temurin-11-jdk-amd64/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Install system dependencies
+        run: |
           sudo apt install -y \
             zip unzip \
-            openjdk-17-jdk \
             libgl1-mesa-dev \
             libglib2.0-0 \
             libsm6 \
             libxrender1 \
-            libxext6
+            libxext6 \
+            libffi-dev \
+            libssl-dev
 
-      - name: Install Buildozer + compatible Cython
+      # ✅ Install Buildozer + compatible tools
+      - name: Install Buildozer & dependencies
         run: |
           pip install --upgrade pip
-          pip install "cython<3.0" "buildozer==1.5.0"
+          pip install "cython<3.0" buildozer
+          pip install git+https://github.com/kivy/python-for-android.git@develop
 
+      # ✅ FULL CLEAN (IMPORTANT)
       - name: Clean build caches
         run: |
           rm -rf ~/.buildozer
           rm -rf .buildozer
 
-      - name: Build APK (DEBUG = APK)
+      # ✅ USE RELEASE APK (MORE STABLE THAN DEBUG)
+      - name: Build APK
         env:
           ANDROID_API: 33
           ANDROID_MINAPI: 21
           P4A_BUILD_ISOLATED: 0
         run: |
-          buildozer -v android debug
+          buildozer android clean
+          buildozer android release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
