@@ -9,12 +9,12 @@ source.include_exts = py,png,jpg,jpeg,kv,json,txt
 version = 1.0.0
 android.version_code = 1
 
-# ✅ SAFE + ANDROID-COMPATIBLE ONLY
+# ✅ ANDROID-SAFE REQUIREMENTS ONLY
 requirements = python3,\
 kivy==2.2.1,\
 requests==2.31.0,\
 pyjnius==1.4.2,\
-cython,\
+cython<3.0,\
 setuptools<70,\
 wheel
 
@@ -25,15 +25,15 @@ android.api = 33
 android.minapi = 21
 android.archs = arm64-v8a
 
-# ✅ REQUIRED FOR MODERN BUILDOZER
+# ✅ REQUIRED
 p4a.branch = develop
 p4a.build_tool = gradle
 
 android.gradle = True
 android.enable_androidx = True
 
-# ✅ GOOGLE PLAY READY
-android.aab = True
+# ✅ APK (NOT AAB)
+android.aab = False
 android.build_mode = release
 
 android.accept_sdk_license = True
