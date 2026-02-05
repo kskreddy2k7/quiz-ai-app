@@ -9,7 +9,6 @@ source.include_exts = py,png,jpg,jpeg,kv,json,txt
 version = 1.0.0
 android.version_code = 1
 
-# ✅ SAFE REQUIREMENTS
 requirements = python3,kivy==2.2.1,requests==2.31.0,openai==1.3.7,pyjnius==1.5.0
 
 orientation = portrait
@@ -19,24 +18,18 @@ android.api = 33
 android.minapi = 21
 android.archs = arm64-v8a
 
-# ✅ python-for-android (STABLE)
-p4a.branch = stable
+# ✅ REQUIRED for modern Buildozer
+p4a.branch = develop
 p4a.build_tool = gradle
 
 android.gradle = True
 android.enable_androidx = True
 
-# 🔒 FORCE APK ONLY (NO AAB)
-android.aab = False
-android.build_mode = debug
-
-# ❌ ANT DISABLED
-android.ant_path =
-android.ant =
-android.ant_bin =
+# ✅ PLAY STORE READY
+android.aab = True
+android.build_mode = release
 
 android.accept_sdk_license = True
-
 android.permissions = INTERNET
 
 log_level = 2
