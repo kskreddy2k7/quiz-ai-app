@@ -26,7 +26,13 @@ jobs:
           echo "ORG_GRADLE_JAVA_HOME=/usr/lib/jvm/temurin-11-jdk-amd64" >> $GITHUB_ENV
           echo "PATH=/usr/lib/jvm/temurin-11-jdk-amd64/bin:$PATH" >> $GITHUB_ENV
 
-      # ✅ INSTALL NDK r25b (THIS FIXES THE ERROR)
+      # 🚨 REMOVE SYSTEM GRADLE 9 COMPLETELY
+      - name: Remove system Gradle
+        run: |
+          sudo rm -rf /usr/share/gradle
+          echo "GRADLE_HOME=" >> $GITHUB_ENV
+
+      # ✅ INSTALL NDK r25b
       - name: Install Android NDK r25b
         run: |
           sudo mkdir -p /usr/local/lib/android/sdk
@@ -35,7 +41,6 @@ jobs:
           sudo unzip -q ndk.zip
           sudo mv android-ndk-r25b ndk/25.2.9519653
           sudo rm ndk.zip
-
           echo "ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/25.2.9519653" >> $GITHUB_ENV
           echo "ANDROID_NDK_ROOT=/usr/local/lib/android/sdk/ndk/25.2.9519653" >> $GITHUB_ENV
 
@@ -57,7 +62,7 @@ jobs:
           pip install --upgrade pip
           pip install "cython<3.0" "buildozer==1.4.0"
 
-      # ✅ BUILD (NO MANUAL CLEAN)
+      # ✅ BUILD (NO android clean)
       - name: Build APK
         env:
           ANDROID_API: 33
