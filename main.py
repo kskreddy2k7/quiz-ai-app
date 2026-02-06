@@ -82,7 +82,7 @@ class QuizAIApp(App):
     # -------------------------
     # TODO: Replace with your actual Render/Railway URL after deployment
     # Example: "https://quiz-ai-backend.onrender.com"
-    BACKEND_URL = "https://YOUR-APP-NAME.onrender.com"
+    BACKEND_URL = "https://sai.onrender.com"
 
     # -------------------------
     # APP STARTUP
@@ -105,10 +105,9 @@ class QuizAIApp(App):
         self.active_questions = []
         self.user_answers = {}
 
-        # INSTANTIATE SERVICES
+        # INSTANTIATE SERVICES (minimal for build, full init in on_start)
         self.storage_service = StorageService("quiz_data.json")
-        
-        self.ai_service = AIService()
+        self.ai_service = AIService() # Placeholder, will be re-initialized in on_start
         
         # Determine local questions path relative to data/ dir
         local_q_path = Path(__file__).resolve().parent / "app" / "data" / "local_questions.json"
@@ -148,9 +147,15 @@ class QuizAIApp(App):
             Builder.load_file(str(path))
 
     def on_start(self):
-        # Startup checks
-        self._refresh_daily_quote()
-        self._refresh_ai_status()
+        # Startup checks & Service Initialization
+        self.ai_service = AIService(backend_url=self.BACKEND_URL)
+        self.quiz_service.ai_service = self.ai_service
+        self.tutor_service.ai_service = self.ai_service
+        
+        print(f"DEBUG Mobile AI Status: {self.ai_service.availability_message()}")
+        
+        # Load Daily Quote
+        Clock.schedule_once(lambda dt: self._load_initial_data(), 1)
 
     # ... (other methods unchanged) ...
 

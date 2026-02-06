@@ -33,13 +33,15 @@
 ### Option 1: Premium Desktop App (Recommended)
 Double-click: `START_S_QUIZ.bat`
 
-### Option 2: Web Browser
-1. Run: `python premium_app.py`
-2. Open: `http://localhost:5002`
+### Option 2: Mobile Browser (PWA)
+- Open `https://sai.onrender.com` on your phone.
+- Tap **"Add to Home Screen"** in your browser menu.
+- The website will now run like a native app without the browser bar!
 
 ---
 
-## 📱 Mobile App (Android)
+### Option 3: Android APK (Native)
+- Download the APK from the GitHub Actions artifacts (see below for details).
 This repository is configured with **GitHub Actions** to automatically build an Android APK using **Buildozer**.
 1. Push your code to the `main` branch.
 2. Go to the **Actions** tab in GitHub.
