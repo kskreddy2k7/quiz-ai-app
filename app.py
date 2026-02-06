@@ -1019,6 +1019,12 @@ HTML_TEMPLATE = """
         let userAnswers = {};
 
         function displayQuiz(tab, questions) {
+            if (!questions || !Array.isArray(questions)) {
+                showError(tab, "Invalid quiz data received from AI. Please try again.");
+                console.error("Invalid questions data:", questions);
+                return;
+            }
+            
             currentQuestions = questions;
             userAnswers = {};
             
@@ -1300,16 +1306,36 @@ def generate_topic_quiz():
         response = model.generate_content(prompt)
         text = response.text.strip()
         
+        # Robust parsing
         if '```json' in text:
             text = text.split('```json')[1].split('```')[0]
         elif '```' in text:
             text = text.split('```')[1].split('```')[0]
         
-        questions = json.loads(text)
+        questions = json.loads(text.strip())
+        
+        # Handle cases where AI wraps the list in an object
+        if isinstance(questions, dict) and 'questions' in questions:
+            questions = questions['questions']
+        elif isinstance(questions, dict):
+            # If it's a dict but no 'questions' key, maybe it's a single question? 
+            # Or just wrap it in a list if it looks like a question
+            if 'prompt' in questions:
+                questions = [questions]
+            else:
+                # Fallback: maybe the data is in values?
+                for val in questions.values():
+                    if isinstance(val, list) and len(val) > 0 and 'prompt' in val[0]:
+                        questions = val
+                        break
+        
+        if not isinstance(questions, list):
+            return jsonify({'error': 'AI returned invalid quiz format'}), 500
+
         return jsonify({'questions': questions})
     
     except Exception as e:
-        model_name = model.model_name if model else "None"
+        model_name = getattr(model, 'model_name', 'None')
         return jsonify({'error': f'AI generation failed (Model: {model_name}): {str(e)}'}), 500
 
 @app.route('/generate_file', methods=['POST'])
@@ -1348,21 +1374,49 @@ def generate_file_quiz():
     2. Four options
     3. The correct answer
     4. Explanation of why it's correct
-    5. Explanations of why each wrong option is incorrect
-    
-    Return ONLY a JSON array with the structure shown earlier.
+    Return ONLY a valid JSON array:
+    [
+        {
+            "prompt": "Question text",
+            "choices": ["Option A", "Option B", "Option C", "Option D"],
+            "answer": "The exact correct option text",
+            "explanation": "Why this is correct",
+            "wrong_explanations": {
+                "Choice1": "Why Choice1 is wrong",
+                "Choice2": "Why Choice2 is wrong",
+                "Choice3": "Why Choice3 is wrong"
+            }
+        }
+    ]
     """
     
     try:
         response = model.generate_content(prompt)
         text_response = response.text.strip()
         
+        # Robust parsing
         if '```json' in text_response:
             text_response = text_response.split('```json')[1].split('```')[0]
         elif '```' in text_response:
             text_response = text_response.split('```')[1].split('```')[0]
         
-        questions = json.loads(text_response)
+        questions = json.loads(text_response.strip())
+        
+        # Handle cases where AI wraps the list in an object
+        if isinstance(questions, dict) and 'questions' in questions:
+            questions = questions['questions']
+        elif isinstance(questions, dict):
+            if 'prompt' in questions:
+                questions = [questions]
+            else:
+                for val in questions.values():
+                    if isinstance(val, list) and len(val) > 0 and 'prompt' in val[0]:
+                        questions = val
+                        break
+
+        if not isinstance(questions, list):
+            return jsonify({'error': 'AI returned invalid quiz format'}), 500
+
         return jsonify({
             'questions': questions,
             'filename': filename,

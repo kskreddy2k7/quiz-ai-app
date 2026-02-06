@@ -22,3 +22,7 @@ class SplashScreen(Screen):
         anim_tag = Animation(opacity=1, duration=1.0)
         # Delay tagline slightly
         Clock.schedule_once(lambda dt: anim_tag.start(tagline), 0.8)
+        
+        # Transition to home after animation (3 seconds total)
+        from kivy.app import App
+        Clock.schedule_once(lambda dt: App.get_running_app().go_home(), 3.5)
