@@ -36,27 +36,28 @@ if GEMINI_API_KEY:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
         
-        # We'll use gemini-1.5-flash as the standard fast/reliable model
-        try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
+        # Dynamic discovery of models
+        available_models = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        # Priority order
+        preferred_models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+        selected_model_name = None
+        
+        for pm in preferred_models:
+            if pm in available_models:
+                selected_model_name = pm
+                break
+                
+        if not selected_model_name and available_models:
+            selected_model_name = available_models[0]
+            
+        if selected_model_name:
+            model = genai.GenerativeModel(selected_model_name)
             HAS_GEMINI = True
             AI_STATUS = "Online"
-            print(f"✅ Gemini AI initialized with model: gemini-1.5-flash")
-        except Exception as e1:
-            AI_DEBUG = f"Model init error: {str(e1)}"
-            # Fallback to list_models if flash fails
-            available_models = []
-            for m in genai.list_models():
-                if 'generateContent' in m.supported_generation_methods:
-                    available_models.append(m.name)
-            
-            if available_models:
-                model_name = available_models[0].replace('models/', '')
-                model = genai.GenerativeModel(model_name)
-                HAS_GEMINI = True
-                AI_STATUS = "Online"
-            else:
-                AI_STATUS = "Offline (No available models found)"
+            print(f"✅ Gemini AI initialized with model: {selected_model_name}")
+        else:
+            AI_STATUS = "Offline (No available models found)"
     except Exception as e:
         AI_STATUS = f"Offline (Error: {str(e)[:50]}...)"
         AI_DEBUG = str(e)

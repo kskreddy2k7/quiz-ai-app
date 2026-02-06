@@ -27,8 +27,28 @@ class AIService:
         if self.api_key and HAS_GENAI:
             try:
                 genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel('gemini-1.5-flash')
-                self._setup_complete = True
+                
+                # Dynamic discovery of models
+                available_models = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                
+                # Priority order
+                preferred_models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+                selected_model_name = None
+                
+                for pm in preferred_models:
+                    if pm in available_models:
+                        selected_model_name = pm
+                        break
+                        
+                if not selected_model_name and available_models:
+                    selected_model_name = available_models[0]
+                    
+                if selected_model_name:
+                    self.model = genai.GenerativeModel(selected_model_name)
+                    self._setup_complete = True
+                    print(f"✅ AI Service initialized with model: {selected_model_name}")
+                else:
+                    print("CRITICAL: No AI models available for this API key.")
             except Exception as e:
                 print(f"Direct AI init failed: {e}")
 

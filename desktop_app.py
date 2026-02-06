@@ -5,7 +5,7 @@ Beautiful animated interface with all features
 
 import webview
 import threading
-from premium_app import app, HAS_GEMINI
+from app import app, HAS_GEMINI
 import time
 
 def start_flask():

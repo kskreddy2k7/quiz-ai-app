@@ -11,8 +11,33 @@ from fastapi.middleware.cors import CORSMiddleware
 # For this local session, we'll try to read from env or fallback to the key we know works.
 API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyCzGL07JLc003wfbDLmnarcQb-FGMZRn0s")
 
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash') # Using flash as requested/standard
+# --- Gemini Initialization ---
+try:
+    genai.configure(api_key=API_KEY)
+    # Dynamic discovery of models
+    available_models = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    
+    # Priority order
+    preferred_models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+    selected_model_name = None
+    
+    for pm in preferred_models:
+        if pm in available_models:
+            selected_model_name = pm
+            break
+            
+    if not selected_model_name and available_models:
+        selected_model_name = available_models[0]
+        
+    if selected_model_name:
+        model = genai.GenerativeModel(selected_model_name)
+        print(f"✅ Gemini initialized with model: {selected_model_name}")
+    else:
+        print("CRITICAL: No AI models available for this API key.")
+        model = None
+except Exception as e:
+    print(f"Gemini Init Error: {e}")
+    model = None
 
 app = FastAPI()
 
