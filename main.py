@@ -29,6 +29,13 @@ except ImportError:
     print("="*60 + "\n")
     sys.exit(1)
 
+import os
+try:
+    import certifi
+    os.environ['SSL_CERT_FILE'] = certifi.where()
+except ImportError:
+    pass
+
 # --- Service Imports ---
 from app.services.ai_service import AIService
 from app.services.quiz_service import QuizService, QuizQuestion
@@ -100,8 +107,14 @@ class QuizAIApp(App):
         self.storage_service = StorageService("quiz_data.json")
         self.ai_service = AIService() # Placeholder, will be re-initialized in on_start
         
-        # Determine local questions path relative to data/ dir
-        local_q_path = Path(__file__).resolve().parent / "app" / "data" / "local_questions.json"
+        # Determine local questions path safely
+        try:
+            if self.user_data_dir:
+                local_q_path = Path(self.user_data_dir) / "local_questions.json"
+            else:
+                local_q_path = Path(__file__).resolve().parent / "local_questions.json"
+        except Exception:
+            local_q_path = Path("local_questions.json")
         
         self.quiz_service = QuizService(self.ai_service, local_q_path)
         self.tutor_service = TutorService(self.ai_service)
@@ -126,16 +139,29 @@ class QuizAIApp(App):
         return Path(__file__).resolve().parent / "app" / "data" / filename
 
     def _load_kv_files(self) -> None:
-        ui_dir = Path(__file__).resolve().parent / "app" / "ui"
-        kv_files = [
-            "splash.kv", "home.kv", "ai_chat.kv", 
-            "quiz_setup.kv", "quiz_play.kv", "explanation.kv", 
-            "results.kv", "settings.kv", "progress.kv"
-        ]
-        for file in kv_files:
-            path = ui_dir / file
-            print(f"DEBUG: Loading {file}...")
-            Builder.load_file(str(path))
+        try:
+            # Use a more robust path discovery
+            base_dir = Path(__file__).resolve().parent
+            ui_dir = base_dir / "app" / "ui"
+            
+            # Fallback if app structure is different on device
+            if not ui_dir.exists():
+                ui_dir = base_dir / "ui"
+            
+            kv_files = [
+                "splash.kv", "home.kv", "ai_chat.kv", 
+                "quiz_setup.kv", "quiz_play.kv", "explanation.kv", 
+                "results.kv", "settings.kv", "progress.kv"
+            ]
+            for file in kv_files:
+                path = ui_dir / file
+                if path.exists():
+                    print(f"DEBUG: Loading {file}...")
+                    Builder.load_file(str(path))
+                else:
+                    print(f"WARNING: Could not find {file} at {path}")
+        except Exception as e:
+            print(f"CRITICAL: Failed to load KV files: {e}")
 
     def on_start(self):
         # Startup checks & Service Initialization

@@ -11,15 +11,24 @@ class StorageService:
     """
     def __init__(self, filename: str = "quiz_data.json"):
         # Helper to get writable path even on Android
-        from kivy.utils import platform
-        if platform == 'android':
-            from android.storage import primary_external_storage_path
-            root = Path(primary_external_storage_path()) / "Download" / "QuizAI"
-            root.mkdir(parents=True, exist_ok=True)
-            self.path = root / filename
-        else:
-            # On desktop use local app_data or current dir
-            self.path = Path(filename).resolve()
+        from kivy.app import App
+        try:
+            # Safe writable path for both Desktop and Android
+            app = App.get_running_app()
+            if app and app.user_data_dir:
+                root = Path(app.user_data_dir)
+            else:
+                # Fallback if app not yet running
+                from kivy.utils import platform
+                if platform == 'android':
+                    root = Path("/data/data/org.sai.squiz/files")
+                else:
+                    root = Path(".")
+        except Exception:
+            root = Path(".")
+
+        root.mkdir(parents=True, exist_ok=True)
+        self.path = root / filename
 
         self._init_storage()
 

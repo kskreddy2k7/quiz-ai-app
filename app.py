@@ -16,7 +16,7 @@ from werkzeug.utils import secure_filename
 import secrets as secret_module
 
 # Load API key
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY') or os.environ.get('GEMINIAPIKEY') or ''
 
 if not GEMINI_API_KEY:
     try:
@@ -28,23 +28,41 @@ if not GEMINI_API_KEY:
 # Initialize Gemini
 HAS_GEMINI = False
 model = None
+AI_STATUS = "Offline"
+AI_DEBUG = ""
+
 if GEMINI_API_KEY:
     try:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
         
-        available_models = []
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                available_models.append(m.name)
-        
-        if available_models:
-            model_name = available_models[0].replace('models/', '')
-            model = genai.GenerativeModel(model_name)
+        # We'll use gemini-1.5-flash as the standard fast/reliable model
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash')
             HAS_GEMINI = True
-            print(f"✅ Gemini AI initialized with model: {model_name}")
+            AI_STATUS = "Online"
+            print(f"✅ Gemini AI initialized with model: gemini-1.5-flash")
+        except Exception as e1:
+            AI_DEBUG = f"Model init error: {str(e1)}"
+            # Fallback to list_models if flash fails
+            available_models = []
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    available_models.append(m.name)
+            
+            if available_models:
+                model_name = available_models[0].replace('models/', '')
+                model = genai.GenerativeModel(model_name)
+                HAS_GEMINI = True
+                AI_STATUS = "Online"
+            else:
+                AI_STATUS = "Offline (No available models found)"
     except Exception as e:
+        AI_STATUS = f"Offline (Error: {str(e)[:50]}...)"
+        AI_DEBUG = str(e)
         print(f"⚠️ Gemini initialization failed: {e}")
+else:
+    AI_STATUS = "Offline (No API Key found)"
 
 app = Flask(__name__)
 app.secret_key = secret_module.token_hex(16)
@@ -549,7 +567,7 @@ HTML_TEMPLATE = """
         </div>
         
         <div class="status {{ 'online' if has_ai else 'offline' }}">
-            {{ '✅ AI Online - Unlimited Learning Power!' if has_ai else '❌ Add API Key to Unlock AI Features' }}
+            {{ status_text }}
         </div>
         
         <div class="tabs">
@@ -970,7 +988,17 @@ HTML_TEMPLATE = """
 @app.route('/')
 def home():
     quote = get_random_quote()
-    return render_template_string(HTML_TEMPLATE, has_ai=HAS_GEMINI, quote=quote)
+    # Pass detailed status for debugging if offline
+    status_text = AI_STATUS
+    if not HAS_GEMINI and GEMINI_API_KEY:
+        # Key exists but something else failed
+        status_text = f"❌ AI Offline - {AI_STATUS}"
+    elif not GEMINI_API_KEY:
+        status_text = "❌ Add API Key to Unlock AI Features"
+    else:
+        status_text = "✅ AI Online - Unlimited Learning Power!"
+        
+    return render_template_string(HTML_TEMPLATE, has_ai=HAS_GEMINI, status_text=status_text, quote=quote)
 
 @app.route('/generate_topic', methods=['POST'])
 def generate_topic_quiz():
