@@ -8,3 +8,4 @@ wheel
 pypdf>=3.17.0
 docx2txt
 openssl
+google-generativeai

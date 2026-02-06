@@ -11,21 +11,26 @@ class SettingsScreen(Screen):
 
     def on_enter(self):
         # Load existing key if possible (masked)
-        # Security: We usually shouldn't display it back, but maybe just checking env
-        if os.environ.get("OPENAI_API_KEY"):
-            self.ids.api_key_input.text = "sk-****"
+        app = App.get_running_app()
+        stored_key = app.storage_service.get_api_key()
+        env_key = os.environ.get("GEMINI_API_KEY")
+        
+        current_key = stored_key or env_key
+        if current_key:
+            self.ids.api_key_input.text = f"{current_key[:4]}...{current_key[-4:]}"
             self.status_text = "Current Key Active"
 
     def save_key(self):
         key = self.api_key.strip()
-        if key.startswith("sk-") and len(key) > 20:
-            os.environ["OPENAI_API_KEY"] = key
-            # Persist? Simple app: maybe not needed if we assume env vars set mostly.
-            # But for user convenience we can save to storage or .env file locally?
-            # For now, memory + verify is good enough for this session.
+        # Gemini keys usually start with AIza and are approx 39 chars
+        if key.startswith("AIza") and len(key) > 30:
+            os.environ["GEMINI_API_KEY"] = key
+            
             app = App.get_running_app()
-            app.ai_service.client = None # Force reload
+            app.storage_service.save_api_key(key)
+            app.ai_service.set_api_key(key)
             app._refresh_ai_status()
-            self.status_text = "API Key Updated ✅"
+            
+            self.status_text = "API Key Saved ✅"
         else:
-            self.status_text = "Invalid Key Format ❌"
+            self.status_text = "Invalid Gemini Key (starts with AIza) ❌"

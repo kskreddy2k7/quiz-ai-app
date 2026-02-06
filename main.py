@@ -9,7 +9,7 @@ try:
     from kivy.app import App
     from kivy.clock import Clock
     from kivy.lang import Builder
-    from kivy.properties import NumericProperty
+    from kivy.properties import NumericProperty, ObjectProperty, BooleanProperty
     from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.button import Button
     from kivy.uix.label import Label
@@ -63,6 +63,7 @@ ENCOURAGEMENTS = [
 
 class QuizAIApp(App):
     title = "Quiz AI"
+    has_gradient = BooleanProperty(False)
 
     current_index = NumericProperty(0)
     score = NumericProperty(0)
@@ -73,6 +74,12 @@ class QuizAIApp(App):
     last_explanation: str = ""
     last_selected_answer: str = ""
     user_answers: dict = {}  # Map index -> selected_answer
+    
+    # -------------------------
+    # CONFIG
+    # -------------------------
+    # User provided key to ensure it works in code
+    DEFAULT_API_KEY = "AIzaSyCzGL07JLc003wfbDLmnarcQb-FGMZRn0s"
 
     # -------------------------
     # APP STARTUP
@@ -124,6 +131,17 @@ class QuizAIApp(App):
             Builder.load_file(str(path))
 
     def on_start(self):
+        # Load API key from storage, or use default hardcoded one
+        stored_key = self.storage_service.get_api_key()
+        if stored_key:
+            print("DEBUG: Loaded API Key from storage.")
+            self.ai_service.set_api_key(stored_key)
+        else:
+            print("DEBUG: Using hardcoded default API Key.")
+            self.ai_service.set_api_key(self.DEFAULT_API_KEY)
+            # Optionally save it to storage so settings shows it
+            self.storage_service.save_api_key(self.DEFAULT_API_KEY)
+            
         self._refresh_daily_quote()
         self._refresh_ai_status()
         Clock.schedule_once(self._go_home_from_splash, 1.5)
@@ -415,26 +433,42 @@ class QuizAIApp(App):
             "• AI features need internet + API key\n"
             "• We do not collect personal data"
         )
+        from app.ui.theme import Theme
         content = BoxLayout(orientation="vertical", spacing="12dp", padding="12dp")
         content.add_widget(
             Label(
                 text=message,
                 halign="left",
                 valign="middle",
-                color=(0.9, 0.95, 1, 1),
-                text_size=(400, None),
+                color=Theme.get_color(Theme.TEXT_PRIMARY),
+                text_size=(dp(300), None),
+                font_name=Theme.FONT_BODY,
             )
         )
-        button = Button(text="Got it", size_hint_y=None, height="44dp")
-        content.add_widget(button)
+        
+        # Styled Button equivalent
+        btn = Button(
+            text="Got it", 
+            size_hint_y=None, 
+            height=dp(44),
+            background_normal="",
+            background_color=Theme.get_color(Theme.PRIMARY_START),
+            color=Theme.get_color(Theme.TEXT_PRIMARY),
+            font_name=Theme.FONT_BUTTON,
+            bold=True
+        )
+        content.add_widget(btn)
+        
         popup = Popup(
             title="First-time Info",
+            title_font=Theme.FONT_HEADINGS,
             content=content,
             size_hint=(0.85, None),
-            height="320dp",
+            height=dp(320),
             auto_dismiss=False,
+            separator_color=Theme.get_color(Theme.PRIMARY_START)
         )
-        button.bind(on_release=popup.dismiss)
+        btn.bind(on_release=popup.dismiss)
         popup.open()
         self.storage_service.mark_first_launch_shown()
 

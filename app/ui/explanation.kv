@@ -1,151 +1,130 @@
 #:import Theme app.ui.theme.Theme
+#:include app/ui/components.kv
 
 <ExplanationScreen>:
     canvas.before:
         Color:
-            rgba: Theme.color(Theme.BG_DARK)
+            rgba: Theme.get_color(Theme.BG_DARK)
         Rectangle:
             pos: self.pos
             size: self.size
         # Background Pattern
         Color:
-            rgba: Theme.color(Theme.SECONDARY, 0.05)
+            rgba: Theme.get_color(Theme.SECONDARY, 0.05)
         Ellipse:
             pos: self.width * 0.7, self.height * 0.7
             size: self.width * 0.5, self.width * 0.5
 
     BoxLayout:
         orientation: "vertical"
-        padding: "20dp"
-        spacing: "16dp"
+        padding: dp(20)
+        spacing: dp(16)
 
         # --- Header ---
         BoxLayout:
             size_hint_y: None
-            height: "48dp"
-            spacing: "12dp"
+            height: dp(48)
+            spacing: dp(12)
             Button:
                 text: "← Quit"
                 size_hint: None, None
-                size: "44dp", "44dp"
+                size: dp(44), dp(44)
                 background_normal: ""
-                background_color: Theme.color(Theme.BG_CARD, 0.5)
+                background_color: 0,0,0,0
+                font_name: Theme.FONT_BUTTON
+                color: Theme.get_color(Theme.TEXT_SECONDARY)
                 on_release: app.go_home()
                 canvas.before:
                     Color:
-                        rgba: self.background_color
+                        rgba: Theme.get_color(Theme.CARD_DARK)
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
-                        radius: [12]
+                        radius: [dp(12)]
             Label:
-                text: "Insight"
-                font_size: Theme.FONT_H2
+                text: "Explanation"
+                font_size: Theme.H2_SIZE
                 bold: True
-                color: Theme.color(Theme.TEXT_PRIMARY)
+                font_name: Theme.FONT_HEADINGS
+                color: Theme.get_color(Theme.TEXT_PRIMARY)
                 halign: "left"
                 valign: "middle"
 
-        # --- Status Card ---
+        # --- Status ---
         Label:
             text: root.result_text
             font_size: "24sp"
             bold: True
-            color: Theme.color(Theme.ACCENT_TEAL) if root.result_text.startswith("✅") else Theme.color(Theme.ACCENT_RED)
+            font_name: Theme.FONT_HEADINGS
+            color: Theme.get_color(Theme.TEXT_SUCCESS) if "Correct" in root.result_text else Theme.get_color(Theme.TEXT_ERROR)
             size_hint_y: None
-            height: "40dp"
+            height: dp(40)
             
-        # --- Explanation Content ---
-        BoxLayout:
-            orientation: "vertical"
-            padding: "16dp"
-            spacing: "10dp"
+        # --- Content Card ---
+        KVCard:
+            padding: dp(16)
+            spacing: dp(10)
             
-            canvas.before:
-                Color:
-                    rgba: Theme.color(Theme.BG_CARD, 0.6)
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [20]
-                Color:
-                    rgba: Theme.color(Theme.PRIMARY, 0.3)
-                Line:
-                    rounded_rectangle: [self.x, self.y, self.width, self.height, 20]
-                    width: 1
-
             Label:
                 text: root.explanation_text
                 font_size: "16sp"
-                color: Theme.color(Theme.TEXT_PRIMARY)
+                color: Theme.get_color(Theme.TEXT_PRIMARY)
                 text_size: self.width, None
                 halign: "center"
                 size_hint_y: None
                 height: self.texture_size[1]
+                font_name: Theme.FONT_BODY
             
             ScrollView:
                 do_scroll_x: False
                 BoxLayout:
                     orientation: "vertical"
-                    spacing: "12dp"
+                    spacing: dp(12)
                     size_hint_y: None
                     height: self.minimum_height
-                    padding: [0, "10dp", 0, "10dp"]
+                    padding: [0, dp(10), 0, dp(10)]
                     
                     # Detailed breakdown
                     Label:
-                        text: "Why it's " + ("correct" if root.result_text.startswith("✅") else "incorrect") + ":"
-                        color: Theme.color(Theme.SECONDARY)
+                        text: "Why it's " + ("correct" if "Correct" in root.result_text else "incorrect") + ":"
+                        color: Theme.get_color(Theme.SECONDARY)
                         font_size: "12sp"
                         size_hint_y: None
-                        height: "20dp"
+                        height: dp(20)
                         halign: "left"
                         text_size: self.width, None
+                        font_name: Theme.FONT_BUTTON
 
                     Label:
                         text: root.correct_explanation
-                        color: Theme.color(Theme.TEXT_SECONDARY)
+                        color: Theme.get_color(Theme.TEXT_SECONDARY)
                         text_size: self.width, None
                         size_hint_y: None
                         height: self.texture_size[1]
+                        font_name: Theme.FONT_BODY
                         
                     Label:
                         text: "Did you know?" if root.wrong_explanations_text else ""
-                        color: Theme.color(Theme.SECONDARY)
+                        color: Theme.get_color(Theme.SECONDARY)
                         font_size: "12sp"
                         size_hint_y: None
-                        height: "20dp" if root.wrong_explanations_text else "0dp"
+                        height: dp(20) if root.wrong_explanations_text else dp(0)
                         halign: "left"
                         text_size: self.width, None
+                        font_name: Theme.FONT_BUTTON
                         
                     Label:
                         text: root.wrong_explanations_text
-                        color: Theme.color(Theme.TEXT_SECONDARY)
+                        color: Theme.get_color(Theme.TEXT_SECONDARY)
                         text_size: self.width, None
                         font_size: "13sp"
                         size_hint_y: None
                         height: self.texture_size[1]
+                        font_name: Theme.FONT_BODY
 
         # --- Next Button ---
-        Button:
+        PrimaryButton:
             text: root.next_label
             size_hint_y: None
-            height: "56dp"
-            background_normal: ""
-            background_color: [0, 0, 0, 0]
+            height: dp(56)
             on_release: app.next_question() if root.next_label == "Next" else app.show_results()
-            
-            canvas.before:
-                Color:
-                    rgba: Theme.color(Theme.PRIMARY)
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [28]
-                # Glow
-                Color:
-                    rgba: Theme.color(Theme.PRIMARY, 0.4)
-                RoundedRectangle:
-                    pos: [self.x - 2, self.y - 4]
-                    size: [self.width + 4, self.height + 8]
-                    radius: [32]

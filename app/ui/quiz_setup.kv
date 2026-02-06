@@ -1,70 +1,82 @@
 #:import Theme app.ui.theme.Theme
-#:import os os
-
+#:include app/ui/components.kv
 
 <StyledSpinner@Spinner>:
     background_normal: ""
     background_down: ""
-    background_color: Theme.color(Theme.BG_OVERLAY, 0.5)
-    color: Theme.color(Theme.TEXT_PRIMARY)
-    option_cls: "SpinnerOption"
+    background_color: 0,0,0,0
+    color: Theme.get_color(Theme.TEXT_PRIMARY)
+    font_name: Theme.FONT_BODY
+    option_cls: "SpinnerOptionWidget"
     canvas.before:
         Color:
-            rgba: Theme.color(Theme.PRIMARY, 0.5)
+            rgba: Theme.get_color(Theme.BG_CARD)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(12)]
+        Color:
+            rgba: Theme.get_color(Theme.PRIMARY_START, 0.5)
         Line:
             rounded_rectangle: [self.x, self.y, self.width, self.height, dp(12)]
-            width: 1
+            width: dp(1)
+    # Add an arrow icon? simplified for now
 
-<SpinnerOption>:
+<SpinnerOptionWidget@SpinnerOption>:
     background_normal: ""
-    background_color: Theme.color(Theme.BG_CARD)
-    color: Theme.color(Theme.TEXT_PRIMARY)
-    height: "40dp"
+    background_color: Theme.get_color(Theme.CARD_DARK)
+    color: Theme.get_color(Theme.TEXT_PRIMARY)
+    font_name: Theme.FONT_BODY
+    height: dp(40)
 
 <QuizSetupScreen>:
     canvas.before:
         Color:
-            rgba: Theme.color(Theme.BG_DARK)
+            rgba: Theme.get_color(Theme.BG_DARK)
         Rectangle:
             pos: self.pos
             size: self.size
         # Diagonal Glow
         Color:
-            rgba: Theme.color(Theme.SECONDARY, 0.05)
+            rgba: Theme.get_color(Theme.SECONDARY, 0.05)
         Triangle:
             points: [0, 0, self.width, 0, 0, self.height]
 
     BoxLayout:
         orientation: "vertical"
-        padding: "20dp"
-        spacing: "16dp"
+        padding: dp(20)
+        spacing: dp(16)
 
         # --- Header ---
         BoxLayout:
             size_hint_y: None
-            height: "48dp"
-            spacing: "12dp"
+            height: dp(48)
+            spacing: dp(12)
             Button:
                 text: "←"
+                font_name: Theme.FONT_HEADINGS
+                font_size: "24sp"
                 size_hint: None, None
-                size: "44dp", "44dp"
+                size: dp(44), dp(44)
                 background_normal: ""
                 background_color: 0,0,0,0
                 on_release: app.go_home()
                 canvas.before:
                     Color:
-                        rgba: Theme.color(Theme.BG_CARD, 0.5)
+                        rgba: Theme.get_color(Theme.CARD_DARK)
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
-                        radius: [12]
+                        radius: [dp(12)]
             Label:
-                text: "Create Quiz (File)" if root.mode == 'file' else "Create Quiz (Topic)"
-                font_size: Theme.FONT_H2
+                text: "Setup Quiz"
+                font_size: Theme.H2_SIZE
+                font_name: Theme.FONT_HEADINGS
                 bold: True
                 halign: "left"
                 valign: "middle"
                 text_size: self.size
+                color: Theme.get_color(Theme.TEXT_PRIMARY)
 
         ScrollView:
             do_scroll_x: False
@@ -72,10 +84,10 @@
                 orientation: "vertical"
                 size_hint_y: None
                 height: self.minimum_height
-                spacing: "20dp"
+                spacing: dp(20)
 
-                # --- TOPIC MODE: Subject Selection ---
-                GlassCard:
+                # --- TOPIC MODE ---
+                KVCard:
                     id: topic_card
                     size_hint_y: None
                     height: root.topic_height
@@ -87,69 +99,62 @@
                         text: "TOPIC SELECTION"
                         font_size: "12sp"
                         bold: True
-                        color: Theme.color(Theme.ACCENT_TEAL)
+                        font_name: Theme.FONT_BUTTON
+                        color: Theme.get_color(Theme.ACCENT_CYAN)
                         size_hint_y: None
-                        height: "20dp"
+                        height: dp(20)
                         halign: "left"
                         text_size: self.size
 
                     GridLayout:
                         cols: 1
-                        spacing: "16dp"
+                        spacing: dp(16)
                         size_hint_y: None
                         height: self.minimum_height
 
-                        # Subject
                         BoxLayout:
                             orientation: "vertical"
-                            spacing: "8dp"
+                            spacing: dp(8)
                             size_hint_y: None
-                            height: "60dp"
-                            Label:
+                            height: dp(60)
+                            KVLabel:
                                 text: "Subject"
                                 size_hint_y: None
-                                height: "20dp"
-                                font_size: "14sp"
-                                halign: "left"
-                                text_size: self.size
+                                height: dp(20)
                             StyledSpinner:
                                 text: root.selected_subject or "Choose Subject..."
                                 values: root.subjects
                                 on_text: root.set_subject(self.text, app._data_path("subjects.json"))
 
-                        # Topic
                         BoxLayout:
                             orientation: "vertical"
-                            spacing: "8dp"
+                            spacing: dp(8)
                             size_hint_y: None
-                            height: "60dp"
-                            Label:
+                            height: dp(60)
+                            KVLabel:
                                 text: "Topic (Optional)"
                                 size_hint_y: None
-                                height: "20dp"
-                                font_size: "14sp"
-                                halign: "left"
-                                text_size: self.size
+                                height: dp(20)
                             StyledSpinner:
                                 text: root.selected_topic or "Any Topic"
                                 values: root.topics
                                 on_text: root.set_topic(self.text)
 
-
-                # --- Configuration ---
-                GlassCard:
+                # --- CONFIGURATION ---
+                KVCard:
                     size_hint_y: None
                     height: self.minimum_height
-                    padding: "20dp"
-                    spacing: "16dp"
+                    padding: dp(20)
+                    spacing: dp(16) # Override KVCard spacing
 
                     Label:
                         text: "CONFIGURATION"
                         font_size: "12sp"
                         bold: True
-                        color: Theme.color(Theme.ACCENT_TEAL)
+                        font_name: Theme.FONT_BUTTON
+                        color: Theme.get_color(Theme.ACCENT_CYAN)
                         size_hint_y: None
-                        height: "20dp"
+                        height: dp(20)
                         halign: "left"
                         text_size: self.size
 
@@ -157,22 +162,19 @@
                     BoxLayout:
                         orientation: "vertical"
                         size_hint_y: None
-                        height: "60dp"
-                        spacing: "8dp"
+                        height: dp(60)
+                        spacing: dp(8)
                         BoxLayout:
                             size_hint_y: None
-                            height: "20dp"
-                            Label:
+                            height: dp(20)
+                            KVLabel:
                                 text: "Questions"
-                                font_size: "14sp"
-                                halign: "left"
-                                text_size: self.size
                             Label:
                                 text: str(int(num_q_slider.value))
                                 font_size: "14sp"
                                 bold: True
                                 halign: "right"
-                                color: Theme.color(Theme.PRIMARY)
+                                color: Theme.get_color(Theme.PRIMARY_START)
                                 text_size: self.size
                         
                         Slider:
@@ -182,76 +184,55 @@
                             step: 1
                             value: 5
                             on_value: root.num_questions = int(self.value)
-                            cursor_size: "20dp", "20dp"
+                            cursor_size: dp(20), dp(20)
                             value_track: True
-                            value_track_color: Theme.color(Theme.PRIMARY)
+                            value_track_color: Theme.get_color(Theme.PRIMARY_START)
 
-                    # Question Type
+                    # Difficulty
                     BoxLayout:
                         orientation: "vertical"
                         size_hint_y: None
-                        height: "60dp"
-                        spacing: "8dp"
-                        Label:
-                            text: "Type"
-                            font_size: "14sp"
-                            halign: "left"
-                            text_size: self.size
-                            size_hint_y: None
-                            height: "20dp"
-                        StyledSpinner:
-                            text: root.question_type or "Mixed"
-                            values: ["Multiple Choice", "True/False", "Mixed"]
-                            on_text: root.question_type = self.text
-
-                    # Difficulty (Moved to common config)
-                    BoxLayout:
-                        orientation: "vertical"
-                        size_hint_y: None
-                        height: "60dp"
-                        spacing: "8dp"
-                        Label:
+                        height: dp(60)
+                        spacing: dp(8)
+                        KVLabel:
                             text: "Difficulty"
-                            font_size: "14sp"
-                            halign: "left"
-                            text_size: self.size
                             size_hint_y: None
-                            height: "20dp"
+                            height: dp(20)
                         StyledSpinner:
                             text: root.selected_difficulty
                             values: root.difficulties
                             on_text: root.set_difficulty(self.text)
 
-                # --- FILE MODE: Context & Upload ---
-                GlassCard:
+                # --- FILE MODE ---
+                KVCard:
                     id: file_card
                     size_hint_y: None
                     height: root.file_height
                     opacity: root.file_opacity
                     disabled: root.file_disabled
                     padding: root.file_padding
-                    spacing: "16dp"
+                    spacing: dp(16)
                     
                     Label:
                         text: "SOURCE MATERIAL"
                         font_size: "12sp"
                         bold: True
-                        color: Theme.color(Theme.SECONDARY)
+                        font_name: Theme.FONT_BUTTON
+                        color: Theme.get_color(Theme.SECONDARY)
                         size_hint_y: None
-                        height: "20dp"
+                        height: dp(20)
                         halign: "left"
                         text_size: self.size
 
-                    # File Upload
                     BoxLayout:
                         size_hint_y: None
-                        height: "48dp"
-                        spacing: "12dp"
+                        height: dp(48)
+                        spacing: dp(12)
                         
-                        NeonButton:
+                        AccentButton:
                             text: "Upload File 📂"
                             font_size: "14sp"
-                            size_hint_x: 0.4
+                            size_hint_x: 0.5
                             on_release: root.open_file_chooser()
                         
                         Label:
@@ -260,53 +241,50 @@
                             text_size: self.size
                             halign: "left"
                             valign: "middle"
-                            color: Theme.color(Theme.ACCENT_TEAL) if "Success" in root.upload_status else Theme.color(Theme.SECONDARY)
+                            color: Theme.get_color(Theme.TEXT_SUCCESS) if "Success" in root.upload_status else Theme.get_color(Theme.TEXT_SECONDARY)
 
                     Label:
                         text: "OR Paste Text:"
                         font_size: "14sp"
-                        color: Theme.color(Theme.TEXT_SECONDARY)
+                        color: Theme.get_color(Theme.TEXT_SECONDARY)
                         size_hint_y: None
-                        height: "20dp"
+                        height: dp(20)
                         halign: "left"
                         text_size: self.size
 
-                    AnimatedInput:
+                    InputBox:
                         hint_text: "Paste notes here..."
                         multiline: True
                         on_text: root.custom_text = self.text
 
-                    # Text Validation / Preview
                     BoxLayout:
                         size_hint_y: None
-                        height: "40dp"
+                        height: dp(40)
                         orientation: "vertical"
                         Label:
                             text: f"Total Context: {len(root.custom_text) + len(root.file_text_cache)} chars"
-                            color: Theme.color(Theme.TEXT_SECONDARY)
+                            color: Theme.get_color(Theme.TEXT_SECONDARY)
                             font_size: "12sp"
                             halign: "left"
                             text_size: self.size
                         Label:
-                            text: "Preview Extraction: " + (root.file_text_cache[:50] + "...") if root.file_text_cache else ""
-                            color: Theme.color(Theme.ACCENT_TEAL)
+                            text: "Preview: " + (root.file_text_cache[:40] + "...") if root.file_text_cache else ""
+                            color: Theme.get_color(Theme.ACCENT_CYAN)
                             font_size: "10sp"
                             halign: "left"
                             text_size: self.size
 
-        # --- Status ---
         Label:
             text: root.status_text
             font_size: "12sp"
-            color: Theme.color(Theme.ACCENT_YELLOW)
+            color: Theme.get_color(Theme.ACCENT_PURPLE) # Warning color used for status
             size_hint_y: None
-            height: "20dp" if self.text else "0dp"
+            height: dp(20) if self.text else dp(0)
 
-        # --- Action Button ---
-        NeonButton:
+        PrimaryButton:
             text: "Generate Quiz ✨" if root.mode == 'file' else "Start Quiz 🚀"
             size_hint_y: None
-            height: "56dp"
+            height: dp(56)
             disabled: (root.mode == 'file' and (len(root.custom_text) + len(root.file_text_cache)) < 50) or (root.mode == 'topic' and not root.selected_subject)
             opacity: 0.5 if self.disabled else 1
             on_release: root.create_quiz()

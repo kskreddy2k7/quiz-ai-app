@@ -257,18 +257,18 @@ Format JSON as standard list.
 
     def _demo_questions(self) -> List[QuizQuestion]:
         # Return a small set of hardcoded demo questions
-        # Copied from original file for continuity
         return [
             QuizQuestion(
                 topic="General",
                 difficulty="easy",
-                prompt="What is the capital of France?",
-                choices=["Berlin", "Madrid", "Paris", "Rome"],
-                answer="Paris",
-                explanation="Paris is the capital city of France.",
+                prompt="What is the powerhouse of the cell?",
+                choices=["Mitochondria", "Nucleus", "Ribosome", "Golgi body"],
+                answer="Mitochondria",
+                explanation="Mitochondria are known as the powerhouse of the cell because they generate most of the cell's supply of adenosine triphosphate (ATP).",
                 wrong_explanations={
-                    "Berlin": "Berlin is the capital of Germany.",
-                    "Madrid": "Madrid is the capital of Spain."
+                    "Nucleus": "The nucleus controls the cell's activities.",
+                    "Ribosome": "Ribosomes make proteins.",
+                    "Golgi body": "The Golgi body packages proteins."
                 }
             )
         ]

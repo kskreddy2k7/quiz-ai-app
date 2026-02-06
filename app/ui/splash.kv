@@ -3,13 +3,14 @@
 <SplashScreen>:
     canvas.before:
         Color:
-            rgba: Theme.color(Theme.BG_DARK)
+            rgba: Theme.get_color(Theme.BG_DARK)
         Rectangle:
             pos: self.pos
             size: self.size
+            
         # Background Digital Grid (Subtle)
         Color:
-            rgba: Theme.color(Theme.PRIMARY, 0.05)
+            rgba: Theme.get_color(Theme.PRIMARY_START, 0.05)
         Line:
             points: [0, self.height/3, self.width, self.height/3]
             width: 1
@@ -19,40 +20,38 @@
         
         # Central Glow
         Color:
-            rgba: Theme.color(Theme.PRIMARY, 0.15)
+            rgba: Theme.get_color(Theme.PRIMARY_START, 0.15)
         Ellipse:
-            pos: self.center_x - 150, self.center_y - 150
-            size: 300, 300
+            pos: self.center_x - dp(150), self.center_y - dp(150)
+            size: dp(300), dp(300)
 
     BoxLayout:
         orientation: "vertical"
-        padding: "32dp"
-        spacing: "24dp"
+        padding: dp(32)
+        spacing: dp(24)
         pos_hint: {"center_x": 0.5, "center_y": 0.5}
         size_hint: 0.8, 0.6
         
         Label:
+            id: logo_label
             text: "QUIZ AI"
             font_size: "64sp"
             bold: True
-            font_name: "Roboto" # Or default
-            color: Theme.color(Theme.PRIMARY)
+            font_name: Theme.FONT_HEADINGS
+            color: Theme.get_color(Theme.PRIMARY_START)
             size_hint_y: None
             height: self.texture_size[1]
             halign: "center"
+            opacity: 0 # Start invisible for animation
             
-            canvas.before:
-                Color:
-                    rgba: Theme.color(Theme.PRIMARY_LIGHT, 0.3)
-                Rectangle:
-                    pos: self.x - 10, self.y
-                    size: self.width + 20, self.height
-        
         Label:
+            id: tagline_label
             text: "FUTURISTIC LEARNING"
             font_size: "18sp"
-            letter_spacing: 5
-            color: Theme.color(Theme.ACCENT_TEAL)
+            letter_spacing: dp(5)
+            font_name: Theme.FONT_BODY
+            color: Theme.get_color(Theme.ACCENT_CYAN)
             size_hint_y: None
             height: self.texture_size[1]
             halign: "center"
+            opacity: 0 # Start invisible

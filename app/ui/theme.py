@@ -1,40 +1,58 @@
 from kivy.utils import get_color_from_hex
 
 class Theme:
-    # --- Colors (Hex) ---
+    # --- MANDATORY COLOR PALETTE ---
+    
+    # Primary Gradient
+    PRIMARY_START = "#6A5ACD" # Soft Indigo
+    PRIMARY_END = "#4F46E5"   # Royal Blue
+    
+    # Accents
+    ACCENT_CYAN = "#22D3EE"   # Cyan Glow
+    ACCENT_PURPLE = "#A855F7" # Purple Accent
+    ACCENT_TEAL = "#14B8A6"   # Teal Accent
+    ACCENT_GREEN = "#22C55E"  # Green Accent (Alias)
+    ACCENT_RED = "#EF4444"    # Red Accent (Alias)
+    ACCENT_YELLOW = "#EAB308" # Yellow Accent
+    ACCENT_ORANGE = "#F97316" # Orange Accent
+    
     # Backgrounds
-    BG_DARK = "#0B0F1A"       # Midnight Deep
-    BG_CARD = "#1A1F2C"       # Deep Navy Surface
-    BG_OVERLAY = "#05070A"    # Soft Overlay
+    BG_DARK = "#0F172A"       # Dark Mode BG
+    BG_LIGHT = "#F8FAFC"      # Light Mode BG
     
-    # Futuristic Accents (Premium Palette)
-    PRIMARY = "#3D8BFF"       # Electric Azure
-    PRIMARY_LIGHT = "#7EB2FF" # Soft Blue
-    SECONDARY = "#9D4EDD"     # Vivid Amethyst
-    ACCENT_TEAL = "#00D084"   # Emerald Green (Success)
-    ACCENT_RED = "#FF4D6D"    # Rose Red (Error)
-    ACCENT_YELLOW = "#FFD60A" # Bright Gold (Warning)
-
+    # Cards / Surfaces
+    CARD_DARK = "#1E293B"
+    CARD_LIGHT = "#FFFFFF"
+    
+    # Aliases for compatibility
+    BG_CARD = CARD_DARK
+    
     # Text
-    TEXT_PRIMARY = "#FFFFFF" 
-    TEXT_SECONDARY = "#A0AEC0"
-    
-    # Glassmorphism
-    GLASS_BG = [1, 1, 1, 0.05]
-    GLASS_BORDER = [1, 1, 1, 0.1]
+    TEXT_PRIMARY = "#E5E7EB"
+    TEXT_SECONDARY = "#94A3B8"
+    TEXT_SUCCESS = "#22C55E"
+    TEXT_SUCCESS = "#22C55E"
+    TEXT_ERROR = "#EF4444"
 
-    # --- Fonts ---
-    FONT_H1 = "32sp"
-    FONT_H2 = "24sp"
-    FONT_BODY = "16sp"
-    FONT_SMALL = "13sp"
+    # Additional
+    SECONDARY = "#64748B"
     
-    # --- Dimensions ---
-    RADIUS_STD = "16dp"
-    PADDING_STD = "24dp"
+    # --- FONTS ---
+    FONT_HEADINGS = "Roboto"
+    FONT_BODY = "Roboto"
+    FONT_BUTTON = "Roboto"
+    
+    # --- SIZES ---
+    H1_SIZE = "28sp"
+    H2_SIZE = "22sp"
+    BODY_SIZE = "16sp"
+    SMALL_SIZE = "14sp"
+    
+    RADIUS = "16dp"
+    PADDING = "20dp"
 
     @staticmethod
-    def color(hex_code: str, alpha: float = 1.0) -> list:
+    def get_color(hex_code: str, alpha: float = 1.0) -> list:
         c = get_color_from_hex(hex_code)
         c[-1] = alpha
         return c

@@ -21,14 +21,14 @@ class ChatBubble(BoxLayout):
 
     def on_is_user(self, instance, value):
         if value:
-            # User Bubble: Accent/Primary Gradientish
-            self.bg_color = Theme.color(Theme.PRIMARY, 0.2)
-            self.text_color = Theme.color(Theme.TEXT_PRIMARY)
+            # User Bubble: Primary Gradientish (Simulated)
+            self.bg_color = Theme.get_color(Theme.PRIMARY_START, 0.8)
+            self.text_color = Theme.get_color(Theme.TEXT_PRIMARY)
             self.pos_hint = {"right": 1}
         else:
             # AI Bubble: Card Background
-            self.bg_color = Theme.color(Theme.BG_CARD, 0.4)
-            self.text_color = Theme.color(Theme.TEXT_SECONDARY)
+            self.bg_color = Theme.get_color(Theme.CARD_DARK)
+            self.text_color = Theme.get_color(Theme.TEXT_SECONDARY)
             self.pos_hint = {"x": 0}
 
 

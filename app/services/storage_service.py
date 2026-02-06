@@ -37,7 +37,8 @@ class StorageService:
             "last_played_date": "",
             "settings": {
                 "theme": "dark",
-                "sound_enabled": True
+                "sound_enabled": True,
+                "api_key": ""
             }
         }
         self.save(default_data)
@@ -101,4 +102,14 @@ class StorageService:
     def mark_first_launch_shown(self) -> None:
         data = self.load()
         data["first_launch_shown"] = True
+        self.save(data)
+
+    def get_api_key(self) -> str:
+        return self.load().get("settings", {}).get("api_key", "")
+
+    def save_api_key(self, key: str) -> None:
+        data = self.load()
+        if "settings" not in data:
+            data["settings"] = {}
+        data["settings"]["api_key"] = key
         self.save(data)
