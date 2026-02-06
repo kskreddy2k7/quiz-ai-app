@@ -8,7 +8,7 @@ Features:
 - Beautiful design
 """
 
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, request, jsonify, send_from_directory
 import json
 import os
 import random
@@ -661,11 +661,11 @@ HTML_TEMPLATE = """
         </div>
         
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('topic')">📝 Topic Quiz</div>
-            <div class="tab" onclick="switchTab('file')">📂 File Upload</div>
-            <div class="tab" onclick="switchTab('history')">📜 Recent Tests</div>
-            <div class="tab" onclick="switchTab('teacher')">👨‍🏫 Teacher Tools</div>
-            <div class="tab" onclick="switchTab('help')">💡 AI Help</div>
+            <div id="tab-topic" class="tab active" onclick="switchTab('topic')">📝 Topic Quiz</div>
+            <div id="tab-file" class="tab" onclick="switchTab('file')">📂 File Upload</div>
+            <div id="tab-history" class="tab" onclick="switchTab('history')">📜 Recent Tests</div>
+            <div id="tab-teacher" class="tab" onclick="switchTab('teacher')">👨‍🏫 Teacher Tools</div>
+            <div id="tab-help" class="tab" onclick="switchTab('help')">💡 AI Help</div>
         </div>
         
         <!-- History Tab -->
@@ -844,10 +844,17 @@ HTML_TEMPLATE = """
     
     <script>
         function switchTab(tab) {
+            console.log("Switching to:", tab);
+            // Hide all contents and tabs
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-            document.getElementById(tab + '-content').classList.add('active');
-            event.target.classList.add('active');
+            
+            // Show selected content and highlight tab
+            const content = document.getElementById(tab + '-content');
+            const tabEl = document.getElementById('tab-' + tab);
+            
+            if (content) content.classList.add('active');
+            if (tabEl) tabEl.classList.add('active');
         }
         
         async function generateTopicQuiz() {
@@ -1029,23 +1036,30 @@ HTML_TEMPLATE = """
             userAnswers = {};
             
             const resultDiv = document.getElementById(tab + 'Result');
-            resultDiv.innerHTML = '<h2 style="margin: 40px 0 30px 0; text-align: center;">📚 Your Premium Quiz</h2>';
+            resultDiv.innerHTML = '';
             
             questions.forEach((q, index) => {
                 const card = document.createElement('div');
                 card.className = 'question-card';
                 card.id = `q-card-${index}`;
                 
+                // Defensive checks to prevent crashes if AI data is incomplete
+                const prompt = q.prompt || "No question text available";
+                const choices = Array.isArray(q.choices) ? q.choices : [];
+                const explanation = q.explanation || "No explanation provided.";
+                
                 let html = `
                     <div class="question-text">
-                        <strong>Q${index + 1}:</strong> ${q.prompt}
+                        <strong>Q${index + 1}:</strong> ${prompt}
                     </div>
                     <div class="options-container">
                 `;
                 
-                q.choices.forEach((choice, i) => {
+                choices.forEach((choice, i) => {
+                    // Safe string handling for HTML attributes
+                    const safeChoice = String(choice).replace(/'/g, "\\'").replace(/"/g, "&quot;");
                     html += `
-                        <div class="option" onclick="selectOption(${index}, '${choice.replace(/'/g, "\\'")}', this)">
+                        <div class="option" onclick="selectOption(${index}, '${safeChoice}', this)">
                             ${String.fromCharCode(65 + i)}) ${choice}
                         </div>
                     `;
@@ -1057,17 +1071,17 @@ HTML_TEMPLATE = """
                 html += `
                     <div class="explanation hidden" id="exp-${index}">
                         <div class="explanation-title">💡 Explanation:</div>
-                        ${q.explanation}
+                        ${explanation}
                     </div>
                 `;
                 
-                if (q.wrong_explanations) {
+                if (q.wrong_explanations && typeof q.wrong_explanations === 'object') {
                     html += `<div class="wrong-explanations-group hidden" id="wrong-exp-${index}">`;
-                    for (const [option, explanation] of Object.entries(q.wrong_explanations)) {
+                    for (const [option, exp] of Object.entries(q.wrong_explanations)) {
                         html += `
                             <div class="wrong-explanation">
                                 <strong>❌ Why "${option}" is wrong:</strong><br>
-                                ${explanation}
+                                ${exp}
                             </div>
                         `;
                     }
@@ -1089,7 +1103,8 @@ HTML_TEMPLATE = """
 
         function selectOption(qIndex, choice, element) {
             // Already submitted? Don't allow changes
-            if (document.getElementById('submit-quiz-btn').classList.contains('hidden')) return;
+            const btn = document.getElementById('submit-quiz-btn');
+            if (btn && btn.classList.contains('hidden')) return;
             
             userAnswers[qIndex] = choice;
             
@@ -1113,7 +1128,11 @@ HTML_TEMPLATE = """
                 const options = card.querySelectorAll('.option');
                 
                 options.forEach(opt => {
-                    const optText = opt.textContent.split(') ')[1].trim();
+                    const fullText = opt.textContent.trim();
+                    // Robust splitting: Handles cases where ") " might be missing or different
+                    const separatorIndex = fullText.indexOf(') ');
+                    const optText = separatorIndex !== -1 ? fullText.substring(separatorIndex + 2).trim() : fullText;
+                    
                     if (optText === q.answer) {
                         opt.classList.add('correct');
                         opt.innerHTML += ' ✅ (Correct)';
@@ -1164,36 +1183,41 @@ HTML_TEMPLATE = """
         }
 
         function saveToHistory(quizData) {
-            let history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
-            history.unshift(quizData);
-            if (history.length > 20) history.pop(); // Keep last 20
-            localStorage.setItem('quizHistory', JSON.stringify(history));
-            loadHistory();
+            try {
+                let history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+                history.unshift(quizData);
+                if (history.length > 20) history.pop();
+                localStorage.setItem('quizHistory', JSON.stringify(history));
+                loadHistory();
+            } catch (e) { console.error("History save failed:", e); }
         }
 
         function loadHistory() {
-            const historyList = document.getElementById('historyList');
-            const history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+            try {
+                const historyList = document.getElementById('historyList');
+                const historyStr = localStorage.getItem('quizHistory');
+                const history = JSON.parse(historyStr && historyStr !== 'undefined' ? historyStr : '[]');
             
-            if (history.length === 0) return;
-            
-            historyList.innerHTML = '';
-            history.forEach((item, index) => {
-                const percent = Math.round((item.score / item.total) * 100);
-                const div = document.createElement('div');
-                div.className = 'history-item';
-                div.innerHTML = `
-                    <div class="history-info">
-                        <h4>${item.topic}</h4>
-                        <p>📅 ${item.date} • ${item.total} Questions</p>
-                    </div>
-                    <div style="display: flex; align-items: center;">
-                        <span class="history-score">${percent}%</span>
-                        <button class="share-btn" onclick="shareQuiz(${percent}, '${item.topic.replace(/'/g, "\\'")}')">🔗 Share</button>
-                    </div>
-                `;
-                historyList.appendChild(div);
-            });
+                if (history.length === 0) return;
+                
+                historyList.innerHTML = '';
+                history.forEach((item, index) => {
+                    const percent = Math.round((item.score / item.total) * 100);
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.innerHTML = `
+                        <div class="history-info">
+                            <h4>${item.topic}</h4>
+                            <p>📅 ${item.date} • ${item.total} Questions</p>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <span class="history-score">${percent}%</span>
+                            <button class="share-btn" onclick="shareQuiz(${percent}, '${item.topic.replace(/'/g, "\\'")}')">🔗 Share</button>
+                        </div>
+                    `;
+                    historyList.appendChild(div);
+                });
+            } catch (e) { console.error("History load failed:", e); }
         }
 
         async function shareQuiz(score, topic = "a Quiz") {
@@ -1364,7 +1388,11 @@ def generate_file_quiz():
     
     file = request.files['file']
     difficulty = request.form.get('difficulty', 'easy')
-    num_questions = min(int(request.form.get('num_questions', 5)), 100)
+    try:
+        num_questions = int(request.form.get('num_questions', 5))
+    except (ValueError, TypeError):
+        num_questions = 5
+    num_questions = min(num_questions, 100)
     
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
@@ -1441,6 +1469,18 @@ def generate_file_quiz():
     
     except Exception as e:
         return jsonify({'error': f'Quiz generation failed: {str(e)}'}), 500
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory('.', 'manifest.json')
+
+@app.route('/sw.js')
+def serve_sw():
+    return send_from_directory('.', 'sw.js')
+
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
 
 @app.route('/teacher_help', methods=['POST'])
 def teacher_help():
