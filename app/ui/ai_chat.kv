@@ -1,5 +1,5 @@
 #:import Theme app.ui.theme.Theme
-#:include app/ui/components.kv
+# components.kv is loaded in main.py, removing duplicate include to prevent warnings
 
 <ChatBubble>:
     size_hint_y: None
@@ -32,7 +32,8 @@
             text: root.text
             size_hint_y: None
             height: self.texture_size[1] + dp(24) # Padding vertical
-            text_size: self.width - dp(24), None
+            # Fix: Bind text_size directly to root width to avoid sub-pixel jitter loops
+            text_size: (root.width * 0.85) - dp(24), None 
             color: root.text_color
             markup: True
             halign: "left"

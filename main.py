@@ -78,8 +78,9 @@ class QuizAIApp(App):
     # -------------------------
     # CONFIG
     # -------------------------
-    # User provided key to ensure it works in code
-    DEFAULT_API_KEY = "AIzaSyCzGL07JLc003wfbDLmnarcQb-FGMZRn0s"
+    # TODO: Replace with your actual Render/Railway URL after deployment
+    # Example: "https://quiz-ai-backend.onrender.com"
+    BACKEND_URL = "https://YOUR-APP-NAME.onrender.com"
 
     # -------------------------
     # APP STARTUP
@@ -90,8 +91,13 @@ class QuizAIApp(App):
         self.user_answers = {}
 
         # INSTANTIATE SERVICES
-        self.ai_service = AIService()
         self.storage_service = StorageService("quiz_data.json")
+        
+        # Load custom backend URL if set
+        stored_url = self.storage_service.get_backend_url()
+        final_url = stored_url if stored_url else self.BACKEND_URL
+        
+        self.ai_service = AIService(backend_url=final_url)
         
         # Determine local questions path relative to data/ dir
         local_q_path = Path(__file__).resolve().parent / "app" / "data" / "local_questions.json"
@@ -131,19 +137,43 @@ class QuizAIApp(App):
             Builder.load_file(str(path))
 
     def on_start(self):
-        # Load API key from storage, or use default hardcoded one
-        stored_key = self.storage_service.get_api_key()
-        if stored_key:
-            print("DEBUG: Loaded API Key from storage.")
-            self.ai_service.set_api_key(stored_key)
-        else:
-            print("DEBUG: Using hardcoded default API Key.")
-            self.ai_service.set_api_key(self.DEFAULT_API_KEY)
-            # Optionally save it to storage so settings shows it
-            self.storage_service.save_api_key(self.DEFAULT_API_KEY)
-            
+        # Startup checks
         self._refresh_daily_quote()
         self._refresh_ai_status()
+
+    # ... (other methods unchanged) ...
+
+    def request_daily_motivation(self):
+        home = self.root.get_screen("home")
+        if not self.ai_service.is_available():
+            try:
+                home.motivation_status = "📴 Offline: Keep learning!"
+            except AttributeError:
+                pass
+            return
+
+        try:
+            home.motivation_status = "✨ Loading motivation..."
+        except AttributeError:
+            pass
+
+        def on_complete(text: str):
+            try:
+                home.motivation_status = text
+            except AttributeError:
+                pass
+
+        def on_error(_msg: str):
+            try:
+                home.motivation_status = "Keep pushing forward! 🚀"
+            except AttributeError:
+                pass
+
+        self.ai_service.solve_doubt(
+            "Give a short study motivation with emojis. Max 10 words.",
+            on_complete,
+            on_error,
+        )
         Clock.schedule_once(self._go_home_from_splash, 1.5)
 
     # -------------------------

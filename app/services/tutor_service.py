@@ -24,25 +24,10 @@ class TutorService:
             return
 
         if not self.ai.is_available():
-            on_error("📴 AI Offline. Please check your API key.")
+            on_error(self.ai.availability_message())
             return
 
-        # Improved prompt for structure
-        system_instructions = (
-            "You are a Pure Academic Doubt Solver. Your ONLY goal is to explain concepts clearly. "
-            "Do NOT reference quiz logic, file generation, or other app features unless asked. "
-            "Use step-by-step logic, active voice, and encouraging emojis."
-        )
-        prompt = f"""
-Student Inquiry: "{question}"
-
-Instructions:
-1. Provide a clear, correct explanation.
-2. If math/science, show step-by-step logic.
-3. Keep the tone professional but student-friendly.
-4. Maximum length: 150 words.
-"""
-        self.ai.run_async(prompt, system_instructions, on_complete, on_error)
+        self.ai.solve_doubt(question, on_complete, on_error)
 
     # --- Quiz Explanations ---
 
@@ -61,19 +46,7 @@ Instructions:
             on_complete(base_text)
             return
 
-        # Enhanced AI explanation
-        context = f"""
-Question: {question.prompt}
-Correct Answer: {question.answer}
-Student Selected: {selected_option}
-Base Explanation: {base_text}
-"""
-        prompt = f"""
-The student answered {'correctly' if is_correct else 'incorrectly'}.
-Give a brief, encouraging explanation (max 2 sentences) reinforcing why the answer is {question.answer}.
-{context}
-"""
-        
+        # Backend AI explanation
         def success(text: str):
             on_complete(text.strip())
             
@@ -81,4 +54,10 @@ Give a brief, encouraging explanation (max 2 sentences) reinforcing why the answ
             # Fallback silently to base text
             on_complete(base_text)
 
-        self.ai.run_async(prompt, "You are a supportive tutor.", success, fail)
+        self.ai.explain_answer(
+            question_text=question.prompt,
+            correct_answer=question.answer,
+            user_answer=selected_option,
+            on_complete=success,
+            on_error=fail
+        )

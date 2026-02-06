@@ -1,90 +1,131 @@
 from __future__ import annotations
 
-import os
-import google.generativeai as genai
-from typing import Callable
+import requests
+import json
+from typing import Callable, List, Dict, Any
 from app.utils.helpers import run_in_thread
 
 class AIService:
     """
-    Central service for interacting with Google Gemini AI.
-    Handles API keys, client initialization, and error formatting.
+    Client-side service that communicates with the Backend API.
+    Does NOT hold API keys. Does NOT import google.generativeai.
     """
-    def __init__(self, model_name: str = "gemini-pro"):
-        self.model_name = model_name
-        self.model = None
-        self.api_key = None
-        self._refresh_client()
-
-    def _refresh_client(self) -> None:
-        # Load API key from env
-        self.api_key = os.getenv("GEMINI_API_KEY", "").strip()
-        if self.api_key:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel(self.model_name)
-
-    def set_api_key(self, key: str) -> None:
-        """Allow setting API key at runtime"""
-        os.environ["GEMINI_API_KEY"] = key
-        self._refresh_client()
+    def __init__(self, backend_url: str = "http://127.0.0.1:8000"):
+        self.backend_url = backend_url.rstrip("/")
 
     def is_available(self) -> bool:
-        self._refresh_client()
-        return bool(self.api_key)
+        """Check if backend is reachable"""
+        try:
+            resp = requests.get(f"{self.backend_url}/health", timeout=5)
+            return resp.status_code == 200
+        except:
+            return False
 
     def availability_message(self) -> str:
-        self._refresh_client()
-        if not self.api_key:
-            return "AI Mode: Offline 📴 (Missing Gemini Key)"
-        return "AI Mode: Online ✨ (Gemini Active)"
+        if self.is_available():
+            return "Server: Online 🟢"
+        return "Server: Offline 🔴 (Check Connection)"
 
-    def _friendly_error(self, exc: Exception | None = None) -> str:
-        if not self.api_key:
-            return "📴 AI is offline. Please enter your Gemini API key."
+    def _handle_request_error(self, e: Exception) -> str:
+        """Maps technical errors to user-friendly messages."""
+        if isinstance(e, requests.exceptions.Timeout):
+            return "Network is slow. Please check your internet and try again."
         
-        message = str(exc).lower() if exc else ""
-        if "connection" in message or "timeout" in message:
-            return "📴 Check your internet connection."
-        if "quota" in message or "429" in message:
-            return "⚠️ AI quota exceeded. Try again later."
-            
-        print(f"DEBUG: Gemini Error: {exc}") 
-        return "🤖 AI service unavailable."
+        if isinstance(e, requests.exceptions.ConnectionError):
+            return "Unable to connect to server. Please try later."
 
-    def run_async(
-        self,
-        prompt: str,
-        system_prompt: str,
-        on_complete: Callable[[str], None],
-        on_error: Callable[[str], None],
-        temperature: float = 0.7
-    ) -> None:
-        self._refresh_client()
-
-        def task() -> str:
-            if not self.api_key or not self.model:
-                raise RuntimeError("No Gemini API key provided")
-
-            # Gemini doesn't use system prompts the same way as GPT, 
-            # but we can prepend it or use the safety settings/config.
-            # For simplicity, we prepend context.
-            full_prompt = f"{system_prompt}\n\nUser: {prompt}"
-            
+        if isinstance(e, requests.exceptions.HTTPError):
+            code = e.response.status_code
+            if code == 429:
+                return "AI usage limit reached. Please try again later."
+            if code >= 500:
+                return "Our servers are busy. Please try again in a moment."
+            # Extract detail if possible
             try:
-                response = self.model.generate_content(
-                    full_prompt,
-                    generation_config=genai.types.GenerationConfig(
-                        temperature=temperature
-                    )
-                )
-                if response.parts:
-                    return response.text.strip()
-                return ""
+                return e.response.json().get("detail", "Unexpected response. Please retry.")
+            except:
+                pass
+        
+        return "Unexpected error. Please check your connection."
+
+    def generate_quiz(
+        self,
+        topic: str,
+        difficulty: str,
+        content_text: str,
+        on_complete: Callable[[List[Dict]], None],
+        on_error: Callable[[str], None]
+    ) -> None:
+        
+        def task() -> List[Dict]:
+            payload = {
+                "topic": topic,
+                "difficulty": difficulty,
+                "content_text": content_text
+            }
+            try:
+                resp = requests.post(f"{self.backend_url}/generate-quiz", json=payload, timeout=45)
+                resp.raise_for_status()
+                return resp.json()
+            except requests.exceptions.RequestException as e:
+                raise Exception(self._handle_request_error(e))
             except Exception as e:
-                raise e
+                # Json parse error etc
+                raise Exception("Invalid response from server. Please retry.")
 
         run_in_thread(
             task,
             on_complete,
-            lambda message: on_error(self._friendly_error(Exception(message))),
+            lambda err_msg: on_error(str(err_msg))
         )
+        
+    def explain_answer(
+        self,
+        question_text: str,
+        correct_answer: str,
+        user_answer: str,
+        on_complete: Callable[[str], None],
+        on_error: Callable[[str], None]
+    ) -> None:
+        
+        def task() -> str:
+            payload = {
+                "question_text": question_text,
+                "correct_answer": correct_answer,
+                "user_answer": user_answer
+            }
+            try:
+                resp = requests.post(f"{self.backend_url}/explain-answer", json=payload, timeout=20)
+                resp.raise_for_status()
+                return resp.json().get("explanation", "")
+            except requests.exceptions.RequestException as e:
+                raise Exception(self._handle_request_error(e))
+
+        run_in_thread(
+            task,
+            on_complete,
+            lambda err_msg: on_error(str(err_msg))
+        )
+
+    def solve_doubt(
+        self,
+        question: str,
+        on_complete: Callable[[str], None],
+        on_error: Callable[[str], None]
+    ) -> None:
+        
+        def task() -> str:
+            payload = {"question": question}
+            try:
+                resp = requests.post(f"{self.backend_url}/ask-doubt", json=payload, timeout=20)
+                resp.raise_for_status()
+                return resp.json().get("answer", "")
+            except requests.exceptions.RequestException as e:
+                raise Exception(self._handle_request_error(e))
+
+        run_in_thread(
+            task,
+            on_complete,
+            lambda err_msg: on_error(str(err_msg))
+        )
+

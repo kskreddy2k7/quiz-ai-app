@@ -52,7 +52,7 @@
                 valign: "middle"
                 text_size: self.size
 
-        # --- API Key Section ---
+        # --- Configuration Section ---
         KVCard:
             size_hint_y: None
             height: dp(220)
@@ -61,7 +61,7 @@
             orientation: "vertical"
 
             Label:
-                text: "AI CONFIGURATION"
+                text: "SERVER CONFIGURATION"
                 font_size: "12sp"
                 bold: True
                 font_name: Theme.FONT_BUTTON
@@ -72,7 +72,7 @@
                 text_size: self.width, None
 
             Label:
-                text: "Gemini API Key"
+                text: "Backend URL"
                 font_size: "14sp"
                 color: Theme.get_color(Theme.TEXT_PRIMARY)
                 size_hint_y: None
@@ -82,17 +82,16 @@
                 font_name: Theme.FONT_BODY
 
             InputBox:
-                id: api_key_input
-                hint_text: "AIzaSy..."
-                password: True
+                id: backend_url_input
+                hint_text: "http://127.0.0.1:8001"
                 multiline: False
-                on_text: root.api_key = self.text
+                on_text: root.backend_url = self.text
 
             AccentButton:
-                text: "Save Key 💾"
+                text: "Connect & Save 🔗"
                 size_hint_y: None
                 height: dp(44)
-                on_release: root.save_key()
+                on_release: root.save_backend()
 
         # --- Status ---
         Label:

@@ -104,12 +104,12 @@ class StorageService:
         data["first_launch_shown"] = True
         self.save(data)
 
-    def get_api_key(self) -> str:
-        return self.load().get("settings", {}).get("api_key", "")
+    def get_backend_url(self) -> str:
+        return self.load().get("settings", {}).get("backend_url", "")
 
-    def save_api_key(self, key: str) -> None:
+    def save_backend_url(self, url: str) -> None:
         data = self.load()
         if "settings" not in data:
             data["settings"] = {}
-        data["settings"]["api_key"] = key
+        data["settings"]["backend_url"] = url
         self.save(data)

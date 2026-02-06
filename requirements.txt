@@ -1,11 +1,5 @@
-python3
 kivy==2.2.1
 requests==2.31.0
-pyjnius==1.4.2
-cython<3.0
-setuptools<70
-wheel
 pypdf>=3.17.0
 docx2txt
-openssl
-google-generativeai
+docx2txt

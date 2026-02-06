@@ -6,31 +6,33 @@ from kivy.uix.screenmanager import Screen
 import os
 
 class SettingsScreen(Screen):
-    api_key = StringProperty("")
+    backend_url = StringProperty("http://127.0.0.1:8001")
     status_text = StringProperty("")
 
     def on_enter(self):
-        # Load existing key if possible (masked)
+        # Load existing url
         app = App.get_running_app()
-        stored_key = app.storage_service.get_api_key()
-        env_key = os.environ.get("GEMINI_API_KEY")
+        self.backend_url = app.ai_service.backend_url
+        self.ids.backend_url_input.text = self.backend_url
         
-        current_key = stored_key or env_key
-        if current_key:
-            self.ids.api_key_input.text = f"{current_key[:4]}...{current_key[-4:]}"
-            self.status_text = "Current Key Active"
-
-    def save_key(self):
-        key = self.api_key.strip()
-        # Gemini keys usually start with AIza and are approx 39 chars
-        if key.startswith("AIza") and len(key) > 30:
-            os.environ["GEMINI_API_KEY"] = key
-            
-            app = App.get_running_app()
-            app.storage_service.save_api_key(key)
-            app.ai_service.set_api_key(key)
-            app._refresh_ai_status()
-            
-            self.status_text = "API Key Saved ✅"
+        # Check status
+        if app.ai_service.is_available():
+            self.status_text = "Connected ✅"
         else:
-            self.status_text = "Invalid Gemini Key (starts with AIza) ❌"
+            self.status_text = "Not Connected ❌"
+
+    def save_backend(self):
+        url = self.backend_url.strip().rstrip("/")
+        if not url.startswith("http"):
+            self.status_text = "Invalid URL (must start with http) ❌"
+            return
+            
+        app = App.get_running_app()
+        app.ai_service.backend_url = url
+        app.storage_service.save_backend_url(url)
+        
+        # Check connection
+        if app.ai_service.is_available():
+            self.status_text = "Connected & Saved ✅"
+        else:
+            self.status_text = "Saved, but Offline ⚠️"
