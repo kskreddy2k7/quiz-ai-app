@@ -1273,34 +1273,53 @@ def generate_topic_quiz():
     topic = data.get('topic', '')
     difficulty = data.get('difficulty', 'easy')
     language = data.get('language', 'English')
-    num_questions = min(data.get('num_questions', 5), 100)  # Cap at 100
+    num_questions = min(data.get('num_questions', 5), 100)
+    context = data.get('context') or data.get('content_text') or ''
     
-    prompt = f"""
-    Generate {num_questions} multiple-choice questions about "{topic}" in {language}.
-    Difficulty: {difficulty}
-    
-    For EACH question, provide:
-    1. The question text
-    2. Four options (A, B, C, D)
-    3. The correct answer
-    4. A simple explanation of why it's correct
-    5. Brief explanations of why EACH wrong option is incorrect
-    
-    Return ONLY a JSON array:
-    [
-        {{
-            "prompt": "Question text",
-            "choices": ["Option A", "Option B", "Option C", "Option D"],
-            "answer": "The exact correct option text",
-            "explanation": "Why this is correct",
-            "wrong_explanations": {{
-                "Wrong Option 1": "Why this is wrong",
-                "Wrong Option 2": "Why this is wrong",
-                "Wrong Option 3": "Why this is wrong"
+    if context:
+        prompt = f"""
+        Generate {num_questions} multiple-choice questions based on this text in {language}:
+        "{context[:5000]}"
+        
+        Difficulty: {difficulty}
+        Topic: {topic}
+        
+        For EACH question, provide:
+        1. The question text
+        2. Four options (A, B, C, D)
+        3. The correct answer
+        4. A simple explanation
+        5. Brief explanations for wrong options
+        
+        Return ONLY a JSON array as shown earlier.
+        """
+    else:
+        prompt = f"""
+        Generate {num_questions} multiple-choice questions about "{topic}" in {language}.
+        Difficulty: {difficulty}
+        
+        For EACH question, provide:
+        1. The question text
+        2. Four options (A, B, C, D)
+        3. The correct answer
+        4. A simple explanation
+        5. Brief explanations for wrong options
+        
+        Return ONLY a JSON array:
+        [
+            {{
+                "prompt": "Question text",
+                "choices": ["Option A", "Option B", "Option C", "Option D"],
+                "answer": "The exact correct option text",
+                "explanation": "Why this is correct",
+                "wrong_explanations": {{
+                    "Wrong Option 1": "Why this is wrong",
+                    "Wrong Option 2": "Why this is wrong",
+                    "Wrong Option 3": "Why this is wrong"
+                }}
             }}
-        }}
-    ]
-    """
+        ]
+        """
     
     try:
         response = model.generate_content(prompt)
@@ -1318,12 +1337,9 @@ def generate_topic_quiz():
         if isinstance(questions, dict) and 'questions' in questions:
             questions = questions['questions']
         elif isinstance(questions, dict):
-            # If it's a dict but no 'questions' key, maybe it's a single question? 
-            # Or just wrap it in a list if it looks like a question
             if 'prompt' in questions:
                 questions = [questions]
             else:
-                # Fallback: maybe the data is in values?
                 for val in questions.values():
                     if isinstance(val, list) and len(val) > 0 and 'prompt' in val[0]:
                         questions = val

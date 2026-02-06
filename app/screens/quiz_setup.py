@@ -183,12 +183,10 @@ class QuizSetupScreen(Screen):
         # Ensure UI is correctly updated based on mode
         self._update_visibility()
         
-        # Load subjects if empty
-        if not self.subjects:
-            app = App.get_running_app()
-            subjects_path = app._data_path("subjects.json")
-            if subjects_path.exists():
-                self.load_subjects(subjects_path)
+        # Load subjects
+        app = App.get_running_app()
+        subjects_path = app._data_path("subjects.json")
+        self.load_subjects(subjects_path)
 
     def load_subjects(self, path: Path):
         try:

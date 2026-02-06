@@ -1,53 +1,44 @@
 #:import Theme app.ui.theme.Theme
 #:include app/ui/components.kv
 
-<ActionCard@KVCard>:
+<ActionCard@ButtonBehavior+KVCard>:
     icon: ""
     title: ""
     subtitle: ""
-    action: lambda: None
-    padding: dp(0) # Reset padding for custom layout inside
-    # Clickable behavior via transparent button overlay
+    padding: dp(0)
+    
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(16)
+        spacing: dp(8)
 
-    Button:
-        background_normal: ""
-        background_color: 0, 0, 0, 0
-        on_release: root.action()
+        Label:
+            text: root.icon
+            font_size: "32sp"
+            size_hint_y: None
+            height: dp(40)
+            halign: "left"
+            text_size: self.size
+
+        Label:
+            text: root.title
+            font_size: "18sp"
+            bold: True
+            font_name: Theme.FONT_HEADINGS
+            color: Theme.get_color(Theme.TEXT_PRIMARY)
+            size_hint_y: None
+            height: dp(24)
+            halign: "left"
+            text_size: self.size
         
-        BoxLayout:
-            orientation: "vertical"
-            padding: dp(16)
-            spacing: dp(8)
-            pos: self.parent.pos
-            size: self.parent.size
-
-            Label:
-                text: root.icon
-                font_size: "32sp"
-                size_hint_y: None
-                height: dp(40)
-                halign: "left"
-                text_size: self.size
-
-            Label:
-                text: root.title
-                font_size: "18sp"
-                bold: True
-                font_name: Theme.FONT_HEADINGS
-                color: Theme.get_color(Theme.TEXT_PRIMARY)
-                size_hint_y: None
-                height: dp(24)
-                halign: "left"
-                text_size: self.size
-            
-            Label:
-                text: root.subtitle
-                font_size: "12sp"
-                font_name: Theme.FONT_BODY
-                color: Theme.get_color(Theme.TEXT_SECONDARY)
-                halign: "left"
-                valign: "top"
-                text_size: self.size
+        Label:
+            text: root.subtitle
+            font_size: "12sp"
+            font_name: Theme.FONT_BODY
+            color: Theme.get_color(Theme.TEXT_SECONDARY)
+            halign: "left"
+            valign: "top"
+            text_size: self.size
 
 <HomeScreen>:
     FloatLayout:
@@ -186,42 +177,42 @@
                         icon: "🤖"
                         title: "Ask AI"
                         subtitle: "Solve academic doubts"
-                        action: lambda: app.go_ai_chat()
+                        on_release: app.go_ai_chat()
 
                     # 2. File-Based Quiz
                     ActionCard:
                         icon: "📂"
                         title: "Quiz from File"
                         subtitle: "PDF / DOCX / TXT"
-                        action: lambda: app.go_quiz_setup(mode="file")
+                        on_release: app.go_quiz_setup(mode="file")
 
                     # 3. Topic-Based Quiz
                     ActionCard:
                         icon: "✍️"
                         title: "Quiz from Topic"
                         subtitle: "Subject & Topic"
-                        action: lambda: app.go_quiz_setup(mode="topic")
+                        on_release: app.go_quiz_setup(mode="topic")
 
                     # 4. My Quizzes (History)
                     ActionCard:
                         icon: "🧠"
                         title: "My Quizzes"
                         subtitle: "Saved quiz collection"
-                        action: lambda: app.go_progress()
+                        on_release: app.go_progress()
 
                     # 5. Results & Analytics
                     ActionCard:
                         icon: "📊"
                         title: "Results"
                         subtitle: "Performance review"
-                        action: lambda: app.go_results_overview()
+                        on_release: app.go_results_overview()
 
                     # 6. Settings
                     ActionCard:
                         icon: "⚙️"
                         title: "Settings"
                         subtitle: "Manage API Keys"
-                        action: lambda: app.open_settings()
+                        on_release: app.open_settings()
 
         # Footer Status
         Label:
