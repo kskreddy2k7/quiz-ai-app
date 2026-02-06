@@ -1,0 +1,5 @@
+# --- LOCAL DESKTOP & MOBILE REQUIREMENTS ---
+# Use this for local development only
+kivy==2.2.1
+pywebview==6.1
+pyinstaller>=6.0.0

@@ -1,21 +1,8 @@
-# Quiz AI Academy - Python Dependencies
-
-# Core Framework
+# --- WEB SERVER REQUIREMENTS (Render.com) ---
 flask==3.1.2
 google-generativeai==0.8.4
-
-# Desktop App
-pywebview==6.1
-
-# Mobile App (Kivy)
-kivy==2.2.1
-
-# File Processing
 pypdf>=3.17.0
 docx2txt
-
-# Build Tools (optional)
-pyinstaller>=6.0.0
-
-# Web Server (for production deployment)
 gunicorn>=21.2.0
+requests
+certifi
