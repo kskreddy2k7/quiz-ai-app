@@ -89,18 +89,9 @@ class QuizAIApp(App):
     # -------------------------
 
     def build(self):
-        # Force window to be visible and centered
+        # Mobile app window setup
         from kivy.core.window import Window
-        Window.size = (400, 700)
         Window.clearcolor = (0.06, 0.09, 0.16, 1)  # Dark background
-        
-        # Try to center the window (this might not work on all systems)
-        try:
-            Window.left = (Window.system_size[0] - 400) // 2
-            Window.top = (Window.system_size[1] - 700) // 2
-        except:
-            Window.left = 100
-            Window.top = 50
         
         self.active_questions = []
         self.user_answers = {}
@@ -154,8 +145,13 @@ class QuizAIApp(App):
         
         print(f"DEBUG Mobile AI Status: {self.ai_service.availability_message()}")
         
-        # Load Daily Quote
+        # Start initial data loading
         Clock.schedule_once(lambda dt: self._load_initial_data(), 1)
+
+    def _load_initial_data(self):
+        """Loads quotes and status after app has drawn."""
+        self._refresh_daily_quote()
+        self._refresh_ai_status()
 
     # ... (other methods unchanged) ...
 

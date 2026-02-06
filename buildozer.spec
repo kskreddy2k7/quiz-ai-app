@@ -10,7 +10,7 @@ version = 1.0.0
 requirements = python3,kivy==2.2.1,requests,pyjnius,certifi,openssl
 
 orientation = portrait
-fullscreen = 0
+fullscreen = 1
 android.api = 33
 android.minapi = 21
 android.archs = arm64-v8a, armeabi-v7a
