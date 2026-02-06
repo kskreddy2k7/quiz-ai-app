@@ -1,84 +1,133 @@
 from __future__ import annotations
 
-import requests
+import os
 import json
-from typing import Callable, List, Dict, Any
+import threading
+from typing import Callable, List, Dict, Any, Optional
+
+try:
+    import google.generativeai as genai
+    HAS_GENAI = True
+except ImportError:
+    HAS_GENAI = False
+
 from app.utils.helpers import run_in_thread
 
 class AIService:
     """
-    Client-side service that communicates with the Backend API.
-    Does NOT hold API keys. Does NOT import google.generativeai.
+    Direct client for Google Gemini API.
+    Removes the need for a separate backend server.
     """
-    def __init__(self, backend_url: str = "http://127.0.0.1:8000"):
-        self.backend_url = backend_url.rstrip("/")
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        self.model = None
+        self._setup_complete = False
+        
+        # Try to load from local secrets if not invalid
+        if not self.api_key:
+            self._try_load_secrets()
+
+        if self.api_key and HAS_GENAI:
+            try:
+                genai.configure(api_key=self.api_key)
+                self.model = genai.GenerativeModel('gemini-1.5-flash')
+                self._setup_complete = True
+            except Exception as e:
+                print(f"AI Service configuration error: {e}")
+
+    def _try_load_secrets(self):
+        try:
+            # Look in various locations
+            paths = ["secrets.json", "app/secrets.json", "../secrets.json"]
+            for p in paths:
+                if os.path.exists(p):
+                    with open(p, 'r') as f:
+                        data = json.load(f)
+                        if "GEMINI_API_KEY" in data:
+                            self.api_key = data["GEMINI_API_KEY"]
+                            print(f"Loaded API Key from {p}")
+                            break
+        except Exception as e:
+            print(f"Failed to load secrets: {e}")
 
     def is_available(self) -> bool:
-        """Check if backend is reachable"""
-        try:
-            resp = requests.get(f"{self.backend_url}/health", timeout=5)
-            return resp.status_code == 200
-        except:
-            return False
+        return self._setup_complete and HAS_GENAI
 
     def availability_message(self) -> str:
-        if self.is_available():
-            return "Server: Online 🟢"
-        return "Server: Offline 🔴 (Check Connection)"
-
-    def _handle_request_error(self, e: Exception) -> str:
-        """Maps technical errors to user-friendly messages."""
-        if isinstance(e, requests.exceptions.Timeout):
-            return "Network is slow. Please check your internet and try again."
-        
-        if isinstance(e, requests.exceptions.ConnectionError):
-            return "Unable to connect to server. Please try later."
-
-        if isinstance(e, requests.exceptions.HTTPError):
-            code = e.response.status_code
-            if code == 429:
-                return "AI usage limit reached. Please try again later."
-            if code >= 500:
-                return "Our servers are busy. Please try again in a moment."
-            # Extract detail if possible
-            try:
-                return e.response.json().get("detail", "Unexpected response. Please retry.")
-            except:
-                pass
-        
-        return "Unexpected error. Please check your connection."
+        if not HAS_GENAI:
+            return "Missing Library (pip install google-generativeai)"
+        if not self.api_key:
+            return "Missing API Key"
+        if self._setup_complete:
+            return "AI Online 🟢"
+        return "AI Error 🔴"
 
     def generate_quiz(
         self,
         topic: str,
         difficulty: str,
-        content_text: str,
-        on_complete: Callable[[List[Dict]], None],
-        on_error: Callable[[str], None]
+        language: str = "English",
+        content_text: str = "",
+        num_questions: int = 5,
+        on_complete: Callable[[List[Dict]], None] = None, 
+        on_error: Callable[[str], None] = None
     ) -> None:
         
-        def task() -> List[Dict]:
-            payload = {
-                "topic": topic,
-                "difficulty": difficulty,
-                "content_text": content_text
-            }
-            try:
-                resp = requests.post(f"{self.backend_url}/generate-quiz", json=payload, timeout=45)
-                resp.raise_for_status()
-                return resp.json()
-            except requests.exceptions.RequestException as e:
-                raise Exception(self._handle_request_error(e))
-            except Exception as e:
-                # Json parse error etc
-                raise Exception("Invalid response from server. Please retry.")
+        if not self.is_available():
+            if on_error: on_error("AI Service Unavailable")
+            return
 
-        run_in_thread(
-            task,
-            on_complete,
-            lambda err_msg: on_error(str(err_msg))
-        )
+        prompt = self._build_quiz_prompt(topic, difficulty, language, content_text, num_questions)
+
+        def task():
+            try:
+                response = self.model.generate_content(prompt)
+                text = response.text
+                # Cleanup typical markdown json blocks
+                text = text.replace("```json", "").replace("```", "").strip()
+                data = json.loads(text)
+                return data
+            except Exception as e:
+                raise Exception(f"AI Generation Failed: {str(e)}")
+
+        run_in_thread(task, on_complete, lambda e: on_error(str(e)))
+
+    def _build_quiz_prompt(self, topic: str, difficulty: str, language: str, context: str, num: int) -> str:
+        # Heavily engineered prompt for the requirement
+        base = f"""
+        Act as an expert tutor for Indian students.
+        Generate {num} multiple-choice questions (MCQs) on the topic: '{topic}'.
+        Difficulty Level: {difficulty}.
+        Language: {language} (If not English, provide the question in {language} but keep technical terms clear).
+
+        CRITICAL: The output must be a valid JSON list of objects.
         
+        Required JSON Structure for each question:
+        {{
+            "prompt": "The question text here",
+            "choices": ["Option A", "Option B", "Option C", "Option D"],
+            "answer": "The exact text of the correct option",
+            "explanation": "A simple student-friendly explanation of why the answer is correct.",
+            "wrong_explanations": {{
+                "Option A": "Specific reason why this option is wrong (keep it simple)",
+                "Option B": "Specific reason why this option is wrong",
+                ... (for all wrong options)
+            }},
+            "topic": "{topic}",
+            "difficulty": "{difficulty}"
+        }}
+
+        Constraints:
+        1. "wrong_explanations" keys must match the incorrect options exactly.
+        2. Explanations should be encouraging and educational ("Why this answer is wrong").
+        3. No simple "It is wrong" answers. Explain the CONCEPT error.
+        """
+        
+        if context:
+            base += f"\n\nContext Material to use for questions:\n{context[:5000]}"
+            
+        return base
+
     def explain_answer(
         self,
         question_text: str,
@@ -87,25 +136,23 @@ class AIService:
         on_complete: Callable[[str], None],
         on_error: Callable[[str], None]
     ) -> None:
+        # If we have pre-generated explanations, we might not strictly need this,
+        # but for dynamic chat or deeper explanation:
+        prompt = f"""
+        Student answered: "{user_answer}"
+        Correct answer: "{correct_answer}"
+        Question: "{question_text}"
         
-        def task() -> str:
-            payload = {
-                "question_text": question_text,
-                "correct_answer": correct_answer,
-                "user_answer": user_answer
-            }
-            try:
-                resp = requests.post(f"{self.backend_url}/explain-answer", json=payload, timeout=20)
-                resp.raise_for_status()
-                return resp.json().get("explanation", "")
-            except requests.exceptions.RequestException as e:
-                raise Exception(self._handle_request_error(e))
+        Explain why their answer is wrong (if it is) and why the correct one is right.
+        Keep it short (max 2 sentences) and friendly.
+        """
+        
+        def task():
+            if not self.is_available(): return "Offline mode explanation."
+            resp = self.model.generate_content(prompt)
+            return resp.text
 
-        run_in_thread(
-            task,
-            on_complete,
-            lambda err_msg: on_error(str(err_msg))
-        )
+        run_in_thread(task, on_complete, lambda e: on_error(str(e)))
 
     def solve_doubt(
         self,
@@ -114,18 +161,9 @@ class AIService:
         on_error: Callable[[str], None]
     ) -> None:
         
-        def task() -> str:
-            payload = {"question": question}
-            try:
-                resp = requests.post(f"{self.backend_url}/ask-doubt", json=payload, timeout=20)
-                resp.raise_for_status()
-                return resp.json().get("answer", "")
-            except requests.exceptions.RequestException as e:
-                raise Exception(self._handle_request_error(e))
+        def task():
+            if not self.is_available(): return "AI is offline."
+            resp = self.model.generate_content(f"You are a helpful tutor. Student asks: {question}\nAnswer briefly and clearly.")
+            return resp.text
 
-        run_in_thread(
-            task,
-            on_complete,
-            lambda err_msg: on_error(str(err_msg))
-        )
-
+        run_in_thread(task, on_complete, lambda e: on_error(str(e)))

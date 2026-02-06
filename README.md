@@ -1,69 +1,107 @@
-# QuizAI Academy 🎯
+# 🎓 S Quiz by Sai - Premium AI Learning Platform
 
-QuizAI Academy is a production-ready AI education platform that turns study material into interactive MCQs and provides an AI-powered doubt solver. It ships with a scalable FastAPI backend, a modern responsive frontend, and AI-ready infrastructure for real-world deployment.
+## 🌟 Overview
 
-## ✨ Features
-
-- **MCQ generation from text, PDF, PPT, and DOC files**
-- **AI-powered Doubt Solver** with chat-style UX
-- **Step-by-step explanations** for correct answers
-- **Clear reasons why incorrect options are wrong**
-- **Difficulty levels** (easy, medium, hard)
-- **Responsive UI** with smooth animations, loading screen, and friendly tone
-- **Production-ready backend** with validation, logging, security headers, and configuration support
-
-## 🧱 Tech Stack
-
-- **Backend:** FastAPI, Pydantic, Uvicorn
-- **Frontend:** HTML, CSS, Vanilla JavaScript
-- **AI Provider:** OpenAI (optional) + smart fallback generator
-- **Docs & Deploy:** Docker-ready structure with `.env` support
-
-## ✅ Local Setup
-
-### 1. Clone & install
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
-```
-
-### 2. Configure environment
-
-```bash
-cp .env.example .env
-```
-
-Set your `OPENAI_API_KEY` and update `AI_PROVIDER=openai` to enable AI-powered generation.
-
-### 3. Run the app
-
-```bash
-uvicorn app.main:app --reload --app-dir backend
-```
-
-Open [http://localhost:8000](http://localhost:8000).
-
-## 🧪 API Endpoints
-
-- `POST /api/quiz/generate` – Generate MCQs from text or uploaded file
-- `POST /api/chat` – Chat with the AI tutor
-- `GET /api/health` – Health check
-
-## 🚀 Deployment
-
-- Use a simple Dockerfile or cloud runtime of choice (Render, Fly.io, AWS App Runner).
-- Configure environment variables for OpenAI or connect to an internal LLM endpoint.
-
-## 🗺️ Future Roadmap
-
-- User accounts & progress tracking
-- Adaptive learning paths and personalization
-- Rich analytics dashboards for educators
-- Multi-language content generation
-- Mobile app packaging (Play Store ready)
+**S Quiz** is a comprehensive, premium AI-powered learning platform designed for both teachers and students. Created by **Sai**, it leverages Google Gemini AI to generate quizzes, provide deep explanations, and assist with complex educational tasks.
 
 ---
 
-Built with ❤️ for students and lifelong learners.
+## ✨ Features
+
+### 📝 Smart Quiz Generation
+- **Topic-Based**: Generate quizzes on any topic instantly (1 to 100 questions).
+- **File Upload**: Upload PDF, DOCX, or TXT files to generate quizzes from your own study material.
+- **Multi-Language**: Support for English, Hindi, and Telugu.
+- **Deep Explanations**: 
+  - Detailed reasoning for correct answers.
+  - Educational "Why this is wrong" explanations for EVERY incorrect option.
+
+### 👨‍🏫 Teacher Assistant Tools
+- **Lesson Planner**: Create structured lesson plans in seconds.
+- **Concept Simplifier**: Transform complex topics into student-friendly explanations.
+- **Activity Suggester**: Get creative ideas for classroom or home learning.
+- **Rubric Creator**: Generate professional assessment rubrics.
+
+### 💬 AI Study Help
+- **Instant Doubt Solving**: Ask any academic question.
+- **Customizable Styles**: Simple, Detailed, Step-by-Step, or Example-based responses.
+
+---
+
+## 🚀 Quick Start (Windows)
+
+### Option 1: Premium Desktop App (Recommended)
+Double-click: `START_S_QUIZ.bat`
+
+### Option 2: Web Browser
+1. Run: `python premium_app.py`
+2. Open: `http://localhost:5002`
+
+---
+
+## 📱 Mobile App (Android)
+This repository is configured with **GitHub Actions** to automatically build an Android APK using **Buildozer**.
+1. Push your code to the `main` branch.
+2. Go to the **Actions** tab in GitHub.
+3. Download the generated APK from the successful "Build Android APK" workflow.
+
+---
+
+## 📦 Installation & Setup
+
+### 1. Requirements
+- Python 3.10+
+- Google Gemini API Key
+
+### 2. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Configure API Key
+Create or edit `secrets.json` in the root directory:
+```json
+{
+    "GEMINI_API_KEY": "YOUR_ACTUAL_API_KEY_HERE"
+}
+```
+*Note: Your `secrets.json` is automatically ignored by git to keep your key safe.*
+
+---
+
+## 📂 File Structure (Keep for GitHub)
+```
+S-Quiz/
+├── premium_app.py             # Main Premium Web Logic
+├── premium_desktop_app.py     # Desktop Wrapper (PyWebView)
+├── main.py                    # Mobile App Logic (Kivy)
+├── buildozer.spec             # Android Build Configuration
+├── requirements.txt           # Project Dependencies
+├── START_S_QUIZ.bat           # Easy Windows Launcher
+├── BRANDED_VERSION.md         # Branding Documentation
+├── .github/workflows/         # Auto-APK Build Workflow
+└── secrets.json               # (Local only) Your API key
+```
+
+---
+
+## 🔐 Privacy & Security
+- **No Data Collection**: Your files and questions are processed in real-time and not stored.
+- **Secure API**: Uses standard Google Generative AI integration.
+- **Safety First**: Your API keys are excluded from version control via `.gitignore`.
+
+---
+
+## 🎨 Premium Branding
+This version of the app features the **"S Quiz"** branding by **Sai**, including a floating animated logo and a modern glassmorphism UI design.
+
+---
+
+## 🎉 Credits
+- Created by: **Sai**
+- Powered by: **Google Gemini AI**
+- Frameworks: **Flask, Kivy, PyWebView**
+
+---
+
+**Enjoy your premium AI learning experience with S Quiz!** 🚀🎓

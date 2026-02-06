@@ -1,13 +1,13 @@
 [app]
 
 # (str) Title of your application
-title = Quiz AI
+title = S Quiz
 
 # (str) Package name
-package.name = quizai
+package.name = squizbysai
 
 # (str) Package domain (needed for android packaging)
-package.domain = org.kata.quizai
+package.domain = org.sai.squiz
 
 # (str) Source code where the main.py live
 source.dir = .

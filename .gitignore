@@ -7,5 +7,20 @@ __pycache__/
 .venv/
 venv/
 
+# Secrets (CRITICAL)
+secrets.json
+.agent/
+.gemini/
+
+# Build and local files
+.buildozer/
+bin/
+*.exe
+*.bat
+!START_S_QUIZ.bat
+uploads/
+data/
+*.log
+
 # OS
 .DS_Store

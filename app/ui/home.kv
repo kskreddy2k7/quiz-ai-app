@@ -84,24 +84,50 @@
                     size_hint_y: None
                     height: self.minimum_height
                     spacing: dp(2)
-                    Label:
-                        text: "DASHBOARD"
-                        font_size: "12sp"
-                        bold: True
-                        font_name: Theme.FONT_BUTTON
-                        color: Theme.get_color(Theme.ACCENT_CYAN)
+                    BoxLayout:
                         size_hint_y: None
-                        height: dp(16)
-                        halign: "left"
-                        text_size: self.width, None
+                        height: dp(24)
+                        
+                        Label:
+                            text: "DASHBOARD"
+                            font_size: "12sp"
+                            bold: True
+                            font_name: Theme.FONT_BUTTON
+                            color: Theme.get_color(Theme.ACCENT_CYAN)
+                            size_hint_x: 1
+                            halign: "left"
+                            text_size: self.size
+                            valign: "middle"
+
+                        Button:
+                            text: "🌐 " + app.language
+                            font_size: "12sp"
+                            size_hint_x: None
+                            width: dp(100)
+                            background_normal: ""
+                            background_color: 0,0,0,0
+                            color: Theme.get_color(Theme.TEXT_SECONDARY)
+                            on_release: app.cycle_language()
+                            bold: True
+                            valign: "middle"
                     Label:
-                        text: "Welcome Back"
-                        font_size: Theme.H1_SIZE
+                        text: "S Quiz"
+                        font_size: dp(36)
                         bold: True
                         font_name: Theme.FONT_HEADINGS
                         color: Theme.get_color(Theme.TEXT_PRIMARY)
                         size_hint_y: None
-                        height: dp(40)
+                        height: dp(44)
+                        halign: "left"
+                        text_size: self.width, None
+                    
+                    Label:
+                        text: "✨ Created by Sai ✨"
+                        font_size: "14sp"
+                        font_name: Theme.FONT_BODY
+                        color: Theme.get_color(Theme.ACCENT_PURPLE)
+                        size_hint_y: None
+                        height: dp(24)
                         halign: "left"
                         text_size: self.width, None
 

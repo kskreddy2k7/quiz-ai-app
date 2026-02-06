@@ -103,6 +103,7 @@ class QuizService:
         subject: str,
         topic: str,
         difficulty: str,
+        language: str = "English",
         content_context: str = "",
         file_path: str = "",
         num_questions: int = 5,
@@ -127,25 +128,36 @@ class QuizService:
             if on_error: on_error("File/Text content is too short or empty.")
             return
             
-        # 3. Call Backend via AI Service
+        # 3. Call AI Service
         def success(data: List[Dict]) -> None:
             try:
                 questions: List[QuizQuestion] = []
                 for item in data:
                     item["topic"] = topic or subject
                     item["difficulty"] = difficulty
+                    
+                    # Ensure choices is list
+                    if "choices" in item and isinstance(item["choices"], str):
+                         # sometimes AI acts up and gives a string
+                         try: item["choices"] = json.loads(item["choices"])
+                         except: pass
+                         
                     if self._is_valid_question(item):
-                        questions.append(QuizQuestion(**item))
+                        # Filter out extra keys that match QuizQuestion fields but might be wrong type
+                        valid_keys = QuizQuestion.__dataclass_fields__.keys()
+                        filtered_item = {k: v for k, v in item.items() if k in valid_keys}
+                        # Add missing defaults if needed? Dataclass handles it mostly
+                        questions.append(QuizQuestion(**filtered_item))
                 
                 if not questions:
-                    fail("No valid questions generated from backend.")
+                    fail("No valid questions generated from AI.")
                     return
 
                 self.save_quiz_offline(questions)
                 if on_complete:
                     on_complete(questions)
             except Exception as e:
-                fail(f"Parsing Error: {e}")
+                fail(f"Parsing Logic Error: {e}")
 
         def fail(msg: str) -> None:
             print(f"DEBUG: Quiz Gen Failed -> {msg}")
@@ -157,7 +169,9 @@ class QuizService:
         self.ai.generate_quiz(
             topic=target_topic,
             difficulty=difficulty,
+            language=language,
             content_text=final_context,
+            num_questions=num_questions,
             on_complete=success,
             on_error=fail
         )

@@ -9,7 +9,8 @@ try:
     from kivy.app import App
     from kivy.clock import Clock
     from kivy.lang import Builder
-    from kivy.properties import NumericProperty, ObjectProperty, BooleanProperty
+    from kivy.metrics import dp
+    from kivy.properties import NumericProperty, ObjectProperty, BooleanProperty, StringProperty
     from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.button import Button
     from kivy.uix.label import Label
@@ -62,7 +63,7 @@ ENCOURAGEMENTS = [
 
 
 class QuizAIApp(App):
-    title = "Quiz AI"
+    title = "S Quiz by Sai"
     has_gradient = BooleanProperty(False)
 
     current_index = NumericProperty(0)
@@ -74,6 +75,7 @@ class QuizAIApp(App):
     last_explanation: str = ""
     last_selected_answer: str = ""
     user_answers: dict = {}  # Map index -> selected_answer
+    language = StringProperty("English") # Added Language Property
     
     # -------------------------
     # CONFIG
@@ -87,17 +89,26 @@ class QuizAIApp(App):
     # -------------------------
 
     def build(self):
+        # Force window to be visible and centered
+        from kivy.core.window import Window
+        Window.size = (400, 700)
+        Window.clearcolor = (0.06, 0.09, 0.16, 1)  # Dark background
+        
+        # Try to center the window (this might not work on all systems)
+        try:
+            Window.left = (Window.system_size[0] - 400) // 2
+            Window.top = (Window.system_size[1] - 700) // 2
+        except:
+            Window.left = 100
+            Window.top = 50
+        
         self.active_questions = []
         self.user_answers = {}
 
         # INSTANTIATE SERVICES
         self.storage_service = StorageService("quiz_data.json")
         
-        # Load custom backend URL if set
-        stored_url = self.storage_service.get_backend_url()
-        final_url = stored_url if stored_url else self.BACKEND_URL
-        
-        self.ai_service = AIService(backend_url=final_url)
+        self.ai_service = AIService()
         
         # Determine local questions path relative to data/ dir
         local_q_path = Path(__file__).resolve().parent / "app" / "data" / "local_questions.json"
@@ -127,7 +138,7 @@ class QuizAIApp(App):
     def _load_kv_files(self) -> None:
         ui_dir = Path(__file__).resolve().parent / "app" / "ui"
         kv_files = [
-            "components.kv", "splash.kv", "home.kv", "ai_chat.kv", 
+            "splash.kv", "home.kv", "ai_chat.kv", 
             "quiz_setup.kv", "quiz_play.kv", "explanation.kv", 
             "results.kv", "settings.kv", "progress.kv"
         ]
@@ -257,7 +268,7 @@ class QuizAIApp(App):
         self.root.current = "quiz_play"
 
         quiz = self.root.get_screen("quiz_play")
-        quiz.question_text = "🧠 Analyzing content..." if file_path or content_context else "🧠 Preparing your quiz..."
+        quiz.question_text = f"🧠 Analyzing in {self.language}..." if file_path or content_context else f"🧠 Preparing {self.language} quiz..."
         quiz.option_texts = []
         quiz.progress_text = ""
 
@@ -290,11 +301,21 @@ class QuizAIApp(App):
                 file_path=file_path,
                 num_questions=num_questions,
                 q_type=q_type,
+                language=self.language,
                 on_complete=on_complete, 
                 on_error=on_error
             )
         else:
             on_error("offline_no_context")
+
+    def cycle_language(self):
+        langs = ["English", "Hindi", "Telugu"]
+        try:
+            current_idx = langs.index(self.language)
+            next_idx = (current_idx + 1) % len(langs)
+            self.language = langs[next_idx]
+        except ValueError:
+            self.language = "English"
 
     def _start_questions(self, questions: List[QuizQuestion]):
         if not questions:
