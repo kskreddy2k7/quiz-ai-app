@@ -31,8 +31,16 @@ class AIService:
                 # Dynamic discovery of models
                 available_models = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                 
-                # Priority order
-                preferred_models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+                # Priority order for models (Updated for latest Gemini versions)
+                preferred_models = [
+                    'gemini-2.5-flash', 
+                    'gemini-2.0-flash', 
+                    'gemini-1.5-flash', 
+                    'gemini-flash-latest', 
+                    'gemini-1.5-flash-latest', 
+                    'gemini-1.5-pro', 
+                    'gemini-pro-latest'
+                ]
                 selected_model_name = None
                 
                 for pm in preferred_models:
@@ -56,8 +64,9 @@ class AIService:
         return (self._setup_complete and HAS_GENAI) or bool(self.backend_url)
 
     def availability_message(self) -> str:
+        model_name = getattr(self.model, 'model_name', 'None') if self.model else 'None'
         if self._setup_complete and HAS_GENAI:
-            return "AI Online (Direct) 🟢"
+            return f"AI Online ({model_name}) 🟢"
         if self.backend_url:
             return "AI Online (Remote) 🟢"
         return "AI Error (Setup Key) 🔴"
@@ -84,11 +93,12 @@ class AIService:
 
     def _generate_direct(self, topic, diff, lang, context, num, on_complete, on_error):
         prompt = self._build_quiz_prompt(topic, diff, lang, context, num)
+        model_name = getattr(self.model, 'model_name', 'None') if self.model else 'None'
         def task():
             response = self.model.generate_content(prompt)
             text = response.text.replace("```json", "").replace("```", "").strip()
             return json.loads(text)
-        run_in_thread(task, on_complete, lambda e: on_error(str(e)))
+        run_in_thread(task, on_complete, lambda e: on_error(f"Generation failed ({model_name}): {str(e)}"))
 
     def _generate_remote(self, topic, diff, lang, context, num, on_complete, on_error):
         def task():

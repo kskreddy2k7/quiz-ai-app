@@ -17,8 +17,16 @@ try:
     # Dynamic discovery of models
     available_models = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
     
-    # Priority order
-    preferred_models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+    # Priority order for models
+    preferred_models = [
+        'gemini-2.5-flash', 
+        'gemini-2.0-flash', 
+        'gemini-1.5-flash', 
+        'gemini-flash-latest', 
+        'gemini-1.5-flash-latest', 
+        'gemini-1.5-pro', 
+        'gemini-pro-latest'
+    ]
     selected_model_name = None
     
     for pm in preferred_models:
@@ -127,8 +135,9 @@ async def generate_quiz(req: QuizRequest):
         return json.loads(text)
         
     except Exception as e:
-        print(f"Error generating quiz: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        model_name = model.model_name if model else "None"
+        print(f"Error generating quiz ({model_name}): {e}")
+        raise HTTPException(status_code=500, detail=f"Generation failed ({model_name}): {str(e)}")
 
 @app.post("/ask-doubt")
 async def ask_doubt(req: DoubtRequest):

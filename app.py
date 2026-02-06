@@ -39,8 +39,16 @@ if GEMINI_API_KEY:
         # Dynamic discovery of models
         available_models = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
-        # Priority order
-        preferred_models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro']
+        # Priority order for models (Updated for latest Gemini versions)
+        preferred_models = [
+            'gemini-2.5-flash', 
+            'gemini-2.0-flash', 
+            'gemini-1.5-flash', 
+            'gemini-flash-latest', 
+            'gemini-1.5-flash-latest', 
+            'gemini-1.5-pro', 
+            'gemini-pro-latest'
+        ]
         selected_model_name = None
         
         for pm in preferred_models:
@@ -1052,7 +1060,8 @@ def generate_topic_quiz():
         return jsonify({'questions': questions})
     
     except Exception as e:
-        return jsonify({'error': f'AI generation failed: {str(e)}'}), 500
+        model_name = model.model_name if model else "None"
+        return jsonify({'error': f'AI generation failed (Model: {model_name}): {str(e)}'}), 500
 
 @app.route('/generate_file', methods=['POST'])
 def generate_file_quiz():
