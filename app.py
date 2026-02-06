@@ -1155,4 +1155,5 @@ if __name__ == '__main__':
     
     threading.Thread(target=open_browser, daemon=True).start()
     
-    app.run(debug=False, port=5002)
+    port = int(os.environ.get('PORT', 5002))
+    app.run(host='0.0.0.0', port=port, debug=False)
