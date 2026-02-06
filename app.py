@@ -576,6 +576,61 @@ HTML_TEMPLATE = """
             box-shadow: 0 10px 30px rgba(102,126,234,0.3);
         }
         
+        .history-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .history-item:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.02);
+        }
+        
+        .history-info h4 {
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+        
+        .history-info p {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .history-score {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #38ef7d;
+        }
+        
+        .share-btn {
+            background: linear-gradient(135deg, #00B4DB 0%, #0083B0 100%);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .share-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,180,219,0.4);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
         @media (max-width: 768px) {
             h1 { font-size: 2.5rem; }
             .grid-2 { grid-template-columns: 1fr; }
@@ -608,8 +663,19 @@ HTML_TEMPLATE = """
         <div class="tabs">
             <div class="tab active" onclick="switchTab('topic')">📝 Topic Quiz</div>
             <div class="tab" onclick="switchTab('file')">📂 File Upload</div>
+            <div class="tab" onclick="switchTab('history')">📜 Recent Tests</div>
             <div class="tab" onclick="switchTab('teacher')">👨‍🏫 Teacher Tools</div>
             <div class="tab" onclick="switchTab('help')">💡 AI Help</div>
+        </div>
+        
+        <!-- History Tab -->
+        <div id="history-content" class="tab-content">
+            <div class="card">
+                <h2>📜 Your Recent Tests</h2>
+                <div id="historyList">
+                    <p style="text-align: center; color: rgba(255,255,255,0.6); padding: 20px;">No tests taken yet. Start a quiz to see it here!</p>
+                </div>
+            </div>
         </div>
         
         <!-- Topic Quiz Tab -->
@@ -1058,6 +1124,15 @@ HTML_TEMPLATE = """
                 if (wrongExp) wrongExp.classList.remove('hidden');
             });
             
+            // Save to history
+            saveToHistory({
+                topic: tab === 'topic' ? document.getElementById('topic').value : 'File Quiz',
+                score: score,
+                total: currentQuestions.length,
+                date: new Date().toLocaleString(),
+                questions: currentQuestions
+            });
+            
             // Show score summary
             const resultDiv = document.getElementById(tab + 'Result');
             const summary = document.createElement('div');
@@ -1066,8 +1141,11 @@ HTML_TEMPLATE = """
             summary.innerHTML = `
                 <h1 style="margin:0; font-size: 3rem;">${percent}%</h1>
                 <p style="font-size: 1.5rem;">Score: ${score} / ${currentQuestions.length}</p>
-                <div class="creator-badge" style="background: rgba(255,255,255,0.2);">
+                <div class="creator-badge" style="background: rgba(255,255,255,0.2); margin-bottom: 15px;">
                     ${score === currentQuestions.length ? '🌟 PERFECT! 🌟' : score > currentQuestions.length / 2 ? '👏 GREAT JOB! 👏' : '📚 Keep Learning! 📚'}
+                </div>
+                <div class="btn-group" style="justify-content: center;">
+                    <button class="share-btn" onclick="shareQuiz(${percent})">📢 Share with Friends</button>
                 </div>
             `;
             resultDiv.insertBefore(summary, resultDiv.firstChild);
@@ -1078,6 +1156,68 @@ HTML_TEMPLATE = """
             // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+
+        function saveToHistory(quizData) {
+            let history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+            history.unshift(quizData);
+            if (history.length > 20) history.pop(); // Keep last 20
+            localStorage.setItem('quizHistory', JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            const historyList = document.getElementById('historyList');
+            const history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+            
+            if (history.length === 0) return;
+            
+            historyList.innerHTML = '';
+            history.forEach((item, index) => {
+                const percent = Math.round((item.score / item.total) * 100);
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `
+                    <div class="history-info">
+                        <h4>${item.topic}</h4>
+                        <p>📅 ${item.date} • ${item.total} Questions</p>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <span class="history-score">${percent}%</span>
+                        <button class="share-btn" onclick="shareQuiz(${percent}, '${item.topic.replace(/'/g, "\\'")}')">🔗 Share</button>
+                    </div>
+                `;
+                historyList.appendChild(div);
+            });
+        }
+
+        async function shareQuiz(score, topic = "a Quiz") {
+            const text = `🚀 I just scored ${score}% on ${topic} in the S Quiz AI Academy! Can you beat me? 🎓✨`;
+            const url = window.location.href;
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'S Quiz Result',
+                        text: text,
+                        url: url
+                    });
+                } catch (err) {
+                    console.log('Share failed:', err);
+                }
+            } else {
+                // Fallback: Copy to clipboard
+                const dummy = document.createElement("textarea");
+                document.body.appendChild(dummy);
+                dummy.value = text + " " + url;
+                dummy.select();
+                document.execCommand("copy");
+                document.body.removeChild(dummy);
+                alert("Score & Link copied to clipboard! Share it with your friends! 🚀");
+            }
+        }
+
+        // Load history on startup
+        document.addEventListener('DOMContentLoaded', loadHistory);
         
         function displayTeacherHelp(response) {
             const resultDiv = document.getElementById('teacherResult');
