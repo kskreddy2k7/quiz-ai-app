@@ -82,7 +82,7 @@ class QuizAIApp(App):
     # -------------------------
     # TODO: Replace with your actual Render/Railway URL after deployment
     # Example: "https://quiz-ai-backend.onrender.com"
-    BACKEND_URL = "https://sai.onrender.com"
+    BACKEND_URL = "https://s-quiz-lo7f.onrender.com"
 
     # -------------------------
     # APP STARTUP

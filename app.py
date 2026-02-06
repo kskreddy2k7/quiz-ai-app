@@ -16,11 +16,14 @@ from werkzeug.utils import secure_filename
 import secrets as secret_module
 
 # Load API key
-try:
-    with open('secrets.json', 'r') as f:
-        GEMINI_API_KEY = json.load(f).get('GEMINI_API_KEY', '')
-except:
-    GEMINI_API_KEY = ''
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+
+if not GEMINI_API_KEY:
+    try:
+        with open('secrets.json', 'r') as f:
+            GEMINI_API_KEY = json.load(f).get('GEMINI_API_KEY', '')
+    except:
+        GEMINI_API_KEY = ''
 
 # Initialize Gemini
 HAS_GEMINI = False
