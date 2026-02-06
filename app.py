@@ -488,6 +488,32 @@ HTML_TEMPLATE = """
             border-color: #f45c43;
         }
         
+        .option.selected {
+            background: rgba(255,255,255,0.3);
+            border-color: #fff;
+            transform: translateX(10px);
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .score-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            animation: bounce 0.8s ease;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-20px);}
+            60% {transform: translateY(-10px);}
+        }
+        
         .explanation {
             background: rgba(56,239,125,0.2);
             border: 2px solid #38ef7d;
@@ -923,38 +949,48 @@ HTML_TEMPLATE = """
             document.getElementById(tab + 'Error').style.display = 'block';
         }
         
+        let currentQuestions = [];
+        let userAnswers = {};
+
         function displayQuiz(tab, questions) {
+            currentQuestions = questions;
+            userAnswers = {};
+            
             const resultDiv = document.getElementById(tab + 'Result');
             resultDiv.innerHTML = '<h2 style="margin: 40px 0 30px 0; text-align: center;">📚 Your Premium Quiz</h2>';
             
             questions.forEach((q, index) => {
                 const card = document.createElement('div');
                 card.className = 'question-card';
+                card.id = `q-card-${index}`;
                 
                 let html = `
                     <div class="question-text">
                         <strong>Q${index + 1}:</strong> ${q.prompt}
                     </div>
+                    <div class="options-container">
                 `;
                 
                 q.choices.forEach((choice, i) => {
-                    const isCorrect = choice === q.answer;
                     html += `
-                        <div class="option ${isCorrect ? 'correct' : ''}">
+                        <div class="option" onclick="selectOption(${index}, '${choice.replace(/'/g, "\\'")}', this)">
                             ${String.fromCharCode(65 + i)}) ${choice}
-                            ${isCorrect ? ' ✅' : ''}
                         </div>
                     `;
                 });
                 
+                html += `</div>`; // End options-container
+                
+                // Add hidden result sections
                 html += `
-                    <div class="explanation">
+                    <div class="explanation hidden" id="exp-${index}">
                         <div class="explanation-title">💡 Explanation:</div>
                         ${q.explanation}
                     </div>
                 `;
                 
                 if (q.wrong_explanations) {
+                    html += `<div class="wrong-explanations-group hidden" id="wrong-exp-${index}">`;
                     for (const [option, explanation] of Object.entries(q.wrong_explanations)) {
                         html += `
                             <div class="wrong-explanation">
@@ -963,11 +999,84 @@ HTML_TEMPLATE = """
                             </div>
                         `;
                     }
+                    html += `</div>`;
                 }
                 
                 card.innerHTML = html;
                 resultDiv.appendChild(card);
             });
+            
+            // Add submit button
+            const submitBtn = document.createElement('button');
+            submitBtn.id = 'submit-quiz-btn';
+            submitBtn.style.marginTop = '30px';
+            submitBtn.textContent = '✅ Submit Quiz & Get Results';
+            submitBtn.onclick = () => checkQuiz(tab);
+            resultDiv.appendChild(submitBtn);
+        }
+
+        function selectOption(qIndex, choice, element) {
+            // Already submitted? Don't allow changes
+            if (document.getElementById('submit-quiz-btn').classList.contains('hidden')) return;
+            
+            userAnswers[qIndex] = choice;
+            
+            // UI Update
+            const container = element.parentElement;
+            container.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+
+        function checkQuiz(tab) {
+            if (Object.keys(userAnswers).length < currentQuestions.length) {
+                if (!confirm('You haven\'t answered all questions. Submit anyway?')) return;
+            }
+            
+            let score = 0;
+            currentQuestions.forEach((q, index) => {
+                const isCorrect = userAnswers[index] === q.answer;
+                if (isCorrect) score++;
+                
+                const card = document.getElementById(`q-card-${index}`);
+                const options = card.querySelectorAll('.option');
+                
+                options.forEach(opt => {
+                    const optText = opt.textContent.split(') ')[1].trim();
+                    if (optText === q.answer) {
+                        opt.classList.add('correct');
+                        opt.innerHTML += ' ✅ (Correct)';
+                    } else if (userAnswers[index] === optText) {
+                        opt.classList.add('wrong');
+                        opt.innerHTML += ' ❌ (Your Choice)';
+                    }
+                    opt.classList.remove('selected');
+                });
+                
+                // Reveal explanations
+                document.getElementById(`exp-${index}`).classList.remove('hidden');
+                const wrongExp = document.getElementById(`wrong-exp-${index}`);
+                if (wrongExp) wrongExp.classList.remove('hidden');
+            });
+            
+            // Show score summary
+            const resultDiv = document.getElementById(tab + 'Result');
+            const summary = document.createElement('div');
+            summary.className = 'score-summary';
+            const percent = Math.round((score / currentQuestions.length) * 100);
+            summary.innerHTML = `
+                <h1 style="margin:0; font-size: 3rem;">${percent}%</h1>
+                <p style="font-size: 1.5rem;">Score: ${score} / ${currentQuestions.length}</p>
+                <div class="creator-badge" style="background: rgba(255,255,255,0.2);">
+                    ${score === currentQuestions.length ? '🌟 PERFECT! 🌟' : score > currentQuestions.length / 2 ? '👏 GREAT JOB! 👏' : '📚 Keep Learning! 📚'}
+                </div>
+            `;
+            resultDiv.insertBefore(summary, resultDiv.firstChild);
+            
+            // Hide submit button
+            document.getElementById('submit-quiz-btn').classList.add('hidden');
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         
         function displayTeacherHelp(response) {

@@ -370,38 +370,17 @@ class QuizAIApp(App):
 
     def submit_answer(self, answer: str):
         q = self.active_questions[self.current_index]
-        self.last_selected_answer = answer
         self.user_answers[self.current_index] = answer
 
         if answer == q.answer:
             self.score += 1
-
-        explanation = self.root.get_screen("explanation")
-        explanation.result_text = "✅ Correct!" if answer == q.answer else "❌ Not quite"
-        explanation.explanation_text = "Analyzing..." # Placeholder
-        explanation.selected_answer = answer
-        explanation.correct_answer = q.answer
-        explanation.correct_explanation = q.explanation
-        explanation.wrong_explanations_text = self._format_wrong_explanations(q)
-        explanation.next_label = (
-            "Next" if self.current_index + 1 < len(self.active_questions) else "Results"
-        )
-        self.root.current = "explanation"
-
-        def on_complete(text: str):
-            explanation.explanation_text = text
-            self.last_explanation = text
-
-        def on_error(_msg: str):
-            # Fallback already handled in tutor_service but redundancy is fine
-            pass
-
-        self.tutor_service.explain_answer(q, answer, on_complete, on_error)
+            
+        # Move to next question immediately (Test first, review later)
+        self.next_question()
 
     def next_question(self):
         self.current_index += 1
         self._load_question()
-        self.root.current = "quiz_play"
 
     def show_results(self):
         results = self.root.get_screen("results")
