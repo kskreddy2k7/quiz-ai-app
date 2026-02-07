@@ -63,22 +63,26 @@ async function generateTopicQuiz() {
             body: JSON.stringify({ topic, difficulty, language, num_questions })
         });
 
-        console.log("Response status:", response.status);
         if (!response.ok) {
-            throw new Error(`Server Error: ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Server Error: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log("Data received:", data);
-
         if (data.error) {
             showError('topic', data.error);
+        } else if (!data.questions || data.questions.length === 0) {
+            showError('topic', "AI could not generate questions for this topic. Try being more specific.");
         } else {
             displayQuiz('topic', data.questions);
         }
     } catch (error) {
         console.error("Fetch Error:", error);
-        showError('topic', `Failed: ${error.message}`);
+        if (error.message.includes('Failed to fetch')) {
+            showError('topic', "Network error: AI is currently unreachable. Please check your connection.");
+        } else {
+            showError('topic', `AI Generation Failed: ${error.message}`);
+        }
     } finally {
         hideLoading('topic');
         if (btn) {
@@ -117,8 +121,12 @@ async function generateFileQuiz() {
             body: formData
         });
 
-        const data = await response.json();
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Server Error: ${response.status}`);
+        }
 
+        const data = await response.json();
         if (data.error) {
             showError('file', data.error);
         } else {
@@ -130,7 +138,7 @@ async function generateFileQuiz() {
             displayQuiz('file', data.questions);
         }
     } catch (error) {
-        showError('file', error.message);
+        showError('file', `File Processing Failed: ${error.message}`);
     } finally {
         hideLoading('file');
     }
@@ -155,15 +163,19 @@ async function getTeacherHelp() {
             body: JSON.stringify({ task, topic, details })
         });
 
-        const data = await response.json();
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Server Error: ${response.status}`);
+        }
 
+        const data = await response.json();
         if (data.error) {
             showError('teacher', data.error);
         } else {
             displayTeacherHelp(data.response);
         }
     } catch (error) {
-        showError('teacher', error.message);
+        showError('teacher', `Teacher AI Failed: ${error.message}`);
     } finally {
         hideLoading('teacher');
     }
@@ -187,15 +199,19 @@ async function getAIHelp() {
             body: JSON.stringify({ question, style })
         });
 
-        const data = await response.json();
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Server Error: ${response.status}`);
+        }
 
+        const data = await response.json();
         if (data.error) {
             showError('help', data.error);
         } else {
             displayAIHelp(data.response);
         }
     } catch (error) {
-        showError('help', error.message);
+        showError('help', `AI Help Failed: ${error.message}`);
     } finally {
         hideLoading('help');
     }
