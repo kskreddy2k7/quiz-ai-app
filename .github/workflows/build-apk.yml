@@ -50,8 +50,13 @@ jobs:
         # Accept licenses
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
         
-        # Install required components
-        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.0"
+        # Install required components (including 36.1.0 which Buildozer demands)
+        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.0" "build-tools;36.1.0"
+
+        # Force Buildozer to use the system SDK by symlinking it to where Buildozer looks
+        mkdir -p $HOME/.buildozer/android/platform
+        rm -rf $HOME/.buildozer/android/platform/android-sdk
+        ln -sf $ANDROID_SDK_ROOT $HOME/.buildozer/android/platform/android-sdk
 
     - name: Build with Buildozer
       run: |
