@@ -17,24 +17,60 @@ import time
 from werkzeug.utils import secure_filename
 import secrets as secret_module
 
-# Load API key
+# Load API keys for multiple providers
+CLOUDFLARE_API_KEY = os.environ.get('CLOUDFLARE_API_KEY') or ''
+CLOUDFLARE_ACCOUNT_ID = os.environ.get('CLOUDFLARE_ACCOUNT_ID') or ''
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY') or os.environ.get('GEMINIAPIKEY') or ''
 
-if not GEMINI_API_KEY:
+# Try loading from secrets.json if environment variables not set
+if not CLOUDFLARE_API_KEY or not GEMINI_API_KEY:
     try:
         with open('secrets.json', 'r') as f:
-            GEMINI_API_KEY = json.load(f).get('GEMINI_API_KEY', '')
+            secrets = json.load(f)
+            if not CLOUDFLARE_API_KEY:
+                CLOUDFLARE_API_KEY = secrets.get('CLOUDFLARE_API_KEY', '')
+            if not CLOUDFLARE_ACCOUNT_ID:
+                CLOUDFLARE_ACCOUNT_ID = secrets.get('CLOUDFLARE_ACCOUNT_ID', '')
+            if not GEMINI_API_KEY:
+                GEMINI_API_KEY = secrets.get('GEMINI_API_KEY', '')
     except:
-        GEMINI_API_KEY = ''
+        pass
 
 
-# Initialize Gemini
-HAS_GEMINI = False
-model = None
+
+# Initialize AI Providers
+HAS_AI = False
+AI_PROVIDER = "None"
 AI_STATUS = "Offline"
 AI_DEBUG = ""
+model = None  # For Gemini fallback
+fallback_models = []
 
-if GEMINI_API_KEY:
+# Try Cloudflare Workers AI first (10,000 free requests/day!)
+if CLOUDFLARE_API_KEY and CLOUDFLARE_ACCOUNT_ID:
+    try:
+        # Test Cloudflare API connection
+        test_url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/models"
+        test_headers = {"Authorization": f"Bearer {CLOUDFLARE_API_KEY}"}
+        
+        import requests
+        test_response = requests.get(test_url, headers=test_headers, timeout=5)
+        
+        if test_response.status_code == 200:
+            HAS_AI = True
+            AI_PROVIDER = "Cloudflare"
+            AI_STATUS = "Online (Cloudflare Workers AI)"
+            print(f"✅ Cloudflare Workers AI initialized successfully!")
+        else:
+            AI_STATUS = f"Cloudflare Error: HTTP {test_response.status_code}"
+            print(f"⚠️ Cloudflare API test failed: {test_response.status_code}")
+    except Exception as e:
+        AI_STATUS = f"Cloudflare Error: {str(e)[:50]}..."
+        AI_DEBUG = str(e)
+        print(f"⚠️ Cloudflare initialization failed: {e}")
+
+# Fallback to Gemini if Cloudflare not available
+if not HAS_AI and GEMINI_API_KEY:
     try:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
@@ -42,7 +78,7 @@ if GEMINI_API_KEY:
         # Dynamic discovery of models
         available_models = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
-        # Priority order for models (Updated for latest Gemini versions)
+        # Priority order for models
         preferred_models = [
             'gemini-2.5-flash', 
             'gemini-2.0-flash', 
@@ -52,22 +88,22 @@ if GEMINI_API_KEY:
             'gemini-1.5-pro', 
             'gemini-pro-latest'
         ]
-        selected_model_name = None
         
-        # Helper to find best available models
+        # Find best available models
         fallback_models = []
         for pm in preferred_models:
             if pm in available_models:
                 fallback_models.append(pm)
         
         if not fallback_models and available_models:
-             fallback_models = available_models[:3] # Take top 3 as fallback
+             fallback_models = available_models[:3]
 
         if fallback_models:
             selected_model_name = fallback_models[0]
             model = genai.GenerativeModel(selected_model_name)
-            HAS_GEMINI = True
-            AI_STATUS = "Online"
+            HAS_AI = True
+            AI_PROVIDER = "Gemini"
+            AI_STATUS = "Online (Gemini - Fallback)"
             print(f"✅ Gemini AI initialized. Primary: {selected_model_name}. Backups: {fallback_models[1:]}")
         else:
             AI_STATUS = "Offline (No available models found)"
@@ -77,71 +113,128 @@ if GEMINI_API_KEY:
         AI_DEBUG = str(e)
         print(f"⚠️ Gemini initialization failed: {e}")
 else:
-    AI_STATUS = "Offline (No API Key found)"
-    fallback_models = []
+    if not HAS_AI:
+        AI_STATUS = "Offline (No API Key found)"
+
+def generate_with_cloudflare(prompt):
+    """Generate content using Cloudflare Workers AI"""
+    url = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+    
+    headers = {
+        "Authorization": f"Bearer {CLOUDFLARE_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": 4096
+    }
+    
+    import requests
+    response = requests.post(url, headers=headers, json=payload, timeout=60)
+    
+    if response.status_code == 200:
+        result = response.json()
+        if 'result' in result and 'response' in result['result']:
+            return result['result']['response']
+        else:
+            raise Exception(f"Unexpected Cloudflare response format: {result}")
+    else:
+        raise Exception(f"Cloudflare API error: HTTP {response.status_code} - {response.text}")
 
 def generate_with_fallback(prompt):
-    """Attempts to generate content using fallback models if 429 quota limit is hit."""
-    global model
+    """Attempts to generate content using Cloudflare first, then Gemini fallback"""
+    global model, AI_PROVIDER
     
-    # Try primary model first
-    try:
-        if model is None:
-             raise Exception("AI Model is not initialized")
-             
-        return model.generate_content(prompt)
-        
-    except Exception as e:
-        error_str = str(e)
-        # Check for 429 Resource Exhausted
-        if "429" in error_str or "quota" in error_str.lower():
-            print(f"⚠️ Quota hit on {getattr(model, 'model_name', 'current model')}. Trying fallbacks...")
+    # Try Cloudflare first
+    if AI_PROVIDER == "Cloudflare" or (CLOUDFLARE_API_KEY and CLOUDFLARE_ACCOUNT_ID):
+        try:
+            print(f"🚀 Using Cloudflare Workers AI...")
+            response_text = generate_with_cloudflare(prompt)
             
-            # Ensure we have a list of fallbacks even if initial discovery failed or was limited
-            candidates = []
-            if fallback_models:
-                candidates.extend(fallback_models)
+            # Create a response object similar to Gemini's format
+            class CloudflareResponse:
+                def __init__(self, text):
+                    self.text = text
             
-            # Always add these standard reliable models if not already present
-            standard_backups = ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro']
-            for backup in standard_backups:
-                if backup not in candidates:
-                    candidates.append(backup)
+            return CloudflareResponse(response_text)
             
-            for model_name in candidates:
-                # Strip 'models/' prefix for comparison
-                current_model = getattr(model, 'model_name', '')
-                if current_model:
-                     current_model = current_model.replace('models/', '')
-                     
-                if current_model == model_name:
-                    continue
-                    
-                print(f"🔄 Switching to fallback model: {model_name}")
-                time.sleep(2) # Wait 2s before trying new model
-                try:
-                    fallback_model = genai.GenerativeModel(model_name)
-                    response = fallback_model.generate_content(prompt)
-                    
-                    # If successful, permanently switch to this model to avoid immediate next failure
-                    print(f"✅ Fallback successful. Switching primary model to {model_name}")
-                    model = fallback_model 
-                    return response
-                except Exception as fallback_error:
-                    error_msg = f"❌ Fallback {model_name} failed: {fallback_error}"
-                    print(error_msg)
+        except Exception as e:
+            error_str = str(e)
+            print(f"⚠️ Cloudflare failed: {error_str[:100]}")
+            
+            # If Cloudflare fails, try Gemini fallback
+            if GEMINI_API_KEY and model is not None:
+                print(f"🔄 Falling back to Gemini...")
+                AI_PROVIDER = "Gemini"
+            else:
+                raise Exception(f"Cloudflare AI error: {error_str}")
+    
+    # Try Gemini (either as primary or fallback)
+    if AI_PROVIDER == "Gemini" or model is not None:
+        try:
+            if model is None:
+                 raise Exception("AI Model is not initialized")
+                 
+            return model.generate_content(prompt)
+            
+        except Exception as e:
+            error_str = str(e)
+            # Check for 429 Resource Exhausted
+            if "429" in error_str or "quota" in error_str.lower():
+                print(f"⚠️ Quota hit on {getattr(model, 'model_name', 'current model')}. Trying fallbacks...")
+                
+                # Ensure we have a list of fallbacks
+                candidates = []
+                if fallback_models:
+                    candidates.extend(fallback_models)
+                
+                # Always add these standard reliable models if not already present
+                standard_backups = ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro']
+                for backup in standard_backups:
+                    if backup not in candidates:
+                        candidates.append(backup)
+                
+                for model_name in candidates:
+                    # Strip 'models/' prefix for comparison
+                    current_model = getattr(model, 'model_name', '')
+                    if current_model:
+                         current_model = current_model.replace('models/', '')
+                         
+                    if current_model == model_name:
+                        continue
+                        
+                    print(f"🔄 Switching to fallback model: {model_name}")
+                    time.sleep(2)
                     try:
-                        with open('debug_error.log', 'a') as f:
-                             f.write(f"{error_msg}\n")
-                    except:
-                        pass
-                    continue
+                        import google.generativeai as genai
+                        fallback_model = genai.GenerativeModel(model_name)
+                        response = fallback_model.generate_content(prompt)
+                        
+                        print(f"✅ Fallback successful. Switching primary model to {model_name}")
+                        model = fallback_model 
+                        return response
+                    except Exception as fallback_error:
+                        error_msg = f"❌ Fallback {model_name} failed: {fallback_error}"
+                        print(error_msg)
+                        try:
+                            with open('debug_error.log', 'a') as f:
+                                 f.write(f"{error_msg}\n")
+                        except:
+                            pass
+                        continue
+                
+                # If all fail
+                raise Exception("All AI models busy or quota exceeded. Please wait 1 minute.")
             
-            # If all fail
-            raise Exception("All AI models busy or quota exceeded. Please wait 1 minute.")
-        
-        # If not a 429 error, re-raise original
-        raise e
+            # If not a 429 error, re-raise original
+            raise e
+    
+    # If no provider available
+    raise Exception("No AI provider available. Please configure CLOUDFLARE_API_KEY or GEMINI_API_KEY.")
+
 
 app = Flask(__name__)
 app.secret_key = secret_module.token_hex(16)
@@ -920,19 +1013,19 @@ def home():
     quote = get_random_quote()
     # Pass detailed status for debugging if offline
     status_text = AI_STATUS
-    if not HAS_GEMINI and GEMINI_API_KEY:
+    if not HAS_AI and (CLOUDFLARE_API_KEY or GEMINI_API_KEY):
         # Key exists but something else failed
         status_text = f"❌ AI Offline - {AI_STATUS}"
-    elif not GEMINI_API_KEY:
-        status_text = "❌ Add API Key to Unlock AI Features"
+    elif not CLOUDFLARE_API_KEY and not GEMINI_API_KEY:
+        status_text = "❌ Add API Key to Unlock AI Features (Cloudflare or Gemini)"
     else:
-        status_text = "✅ AI Online - Unlimited Learning Power!"
+        status_text = f"✅ AI Online ({AI_PROVIDER}) - Unlimited Learning Power!"
         
-    return render_template_string(HTML_TEMPLATE, has_ai=HAS_GEMINI, status_text=status_text, quote=quote)
+    return render_template_string(HTML_TEMPLATE, has_ai=HAS_AI, status_text=status_text, quote=quote)
 
 @app.route('/generate_topic', methods=['POST'])
 def generate_topic_quiz():
-    if not HAS_GEMINI:
+    if not HAS_AI:
         return jsonify({'error': 'AI not configured'}), 400
     
     data = request.json
@@ -1054,7 +1147,7 @@ def generate_topic_quiz():
 @app.route('/generate_file', methods=['POST'])
 def generate_file_quiz():
     try:
-        if not HAS_GEMINI:
+        if not HAS_AI:
             return jsonify({'error': 'AI not configured'}), 400
         
         if 'file' not in request.files:
@@ -1200,7 +1293,7 @@ def serve_icons():
 
 @app.route('/teacher_help', methods=['POST'])
 def teacher_help():
-    if not HAS_GEMINI:
+    if not HAS_AI:
         return jsonify({'error': 'AI not configured'}), 400
     
     data = request.json
@@ -1240,7 +1333,7 @@ def teacher_help():
 
 @app.route('/ai_help', methods=['POST'])
 def ai_help():
-    if not HAS_GEMINI:
+    if not HAS_AI:
         return jsonify({'error': 'AI not configured'}), 400
     
     data = request.json
