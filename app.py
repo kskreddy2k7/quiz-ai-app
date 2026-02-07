@@ -137,10 +137,23 @@ def generate_with_cloudflare(prompt):
     
     if response.status_code == 200:
         result = response.json()
-        if 'result' in result and 'response' in result['result']:
-            return result['result']['response']
-        else:
-            raise Exception(f"Unexpected Cloudflare response format: {result}")
+        print(f"DEBUG: Cloudflare response: {result}")  # Debug logging
+        
+        # Cloudflare Workers AI returns: {"result": {"response": "text"}} or {"success": true, "result": {"response": "text"}}
+        if 'result' in result:
+            # Handle different response formats
+            if isinstance(result['result'], dict):
+                if 'response' in result['result']:
+                    return result['result']['response']
+                elif 'text' in result['result']:
+                    return result['result']['text']
+                elif 'content' in result['result']:
+                    return result['result']['content']
+            elif isinstance(result['result'], str):
+                return result['result']
+        
+        # If we get here, the format is unexpected
+        raise Exception(f"Unexpected Cloudflare response format: {result}")
     else:
         raise Exception(f"Cloudflare API error: HTTP {response.status_code} - {response.text}")
 
