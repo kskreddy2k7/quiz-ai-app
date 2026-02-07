@@ -1,67 +1,35 @@
 import os
-from dotenv import load_dotenv
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.webview import WebView
+from kivy.config import Config
 
-# Load environment variables FIRST before other imports read them
-load_dotenv()
+# Set window properties
+Config.set('graphics', 'width', '360')
+Config.set('graphics', 'height', '640')
+Config.set('graphics', 'fullscreen', '0')
 
-from fastapi import FastAPI, Request
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-from api.routes import router as api_router
-from utils.helpers import get_random_quote
-from services.ai_service import ai_service
-from utils.limiter import limiter
-from fastapi.responses import FileResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-
-app = FastAPI(title="S Quiz AI Academy - PRO")
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-@app.get("/manifest.json")
-async def manifest():
-    return FileResponse("manifest.json")
-
-@app.get("/sw.js")
-async def service_worker():
-    return FileResponse("sw.js")
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Serves static files (CSS, JS, Images)
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Templates
-templates = Jinja2Templates(directory="static")
-
-@app.get("/")
-async def home(request: Request):
-    quote = get_random_quote()
-    status_text = ai_service.status
-    if ai_service.has_ai:
-        status_text = f"✅ AI Online ({ai_service.provider}) - Unlimited Learning Power!"
-    else:
-        status_text = "❌ AI Offline - Please check API keys"
+class QuizApp(App):
+    def build(self):
+        layout = BoxLayout(orientation='vertical')
         
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "has_ai": ai_service.has_ai,
-        "status_text": status_text,
-        "quote": quote
-    })
+        # Create webview to load the local web app
+        webview = WebView()
+        
+        # Check if we're running in debug mode or production
+        if os.environ.get('QUIZ_DEBUG'):
+            # Load from local server in debug mode
+            webview.load_url('http://localhost:8000')
+        else:
+            # Load from packaged files in production
+            webview.load_html_from_file('static/index.html')
+        
+        layout.add_widget(webview)
+        return layout
+    
+    def on_pause(self):
+        # Handle app pause (phone call, etc.)
+        return True
 
-app.include_router(api_router)
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+if __name__ == '__main__':
+    QuizApp().run()
