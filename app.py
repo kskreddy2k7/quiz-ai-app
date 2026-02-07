@@ -1367,7 +1367,7 @@ if __name__ == '__main__':
     print("\n" + "="*60)
     print("🌟 QUIZ AI ACADEMY - PREMIUM VERSION 🌟")
     print("="*60)
-    print(f"✅ AI Status: {'Online' if HAS_GEMINI else 'Offline'}")
+    print(f"✅ AI Status: {'Online (' + AI_PROVIDER + ')' if HAS_AI else 'Offline'}")
     print("✨ Premium Features:")
     print("   - Custom question count (1-100)")
     print("   - Beautiful animated UI")
