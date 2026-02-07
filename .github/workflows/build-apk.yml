@@ -49,6 +49,10 @@ jobs:
         echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
         echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
         echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+        echo "$HOME/android-sdk/tools/bin" >> $GITHUB_PATH
+
+        # Create 'tools' symlink for Buildozer compatibility (it looks for tools/bin/sdkmanager)
+        ln -sf $HOME/android-sdk/cmdline-tools/latest $HOME/android-sdk/tools
 
         # Symlink to Buildozer's expected path to prevent it from ignoring ANDROID_HOME
         mkdir -p $HOME/.buildozer/android/platform
