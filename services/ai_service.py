@@ -3,6 +3,8 @@ import json
 import asyncio
 import aiohttp
 import google.generativeai as genai
+import ast
+import re
 from typing import List, Dict, Any, Optional
 
 class AIService:
@@ -64,13 +66,15 @@ class AIService:
                     result = await response.json()
                     res = result.get('result', {})
                     if isinstance(res, dict):
-                        return res.get('response') or res.get('text') or res.get('content') or ""
+                        val = res.get('response') or res.get('text') or res.get('content') or ""
+                        return str(val) if not isinstance(val, (str, bytes)) else val
                     elif isinstance(res, str):
                         return res
                     elif isinstance(res, list) and len(res) > 0:
                         first = res[0]
                         if isinstance(first, dict):
-                            return first.get('response') or first.get('text') or ""
+                            val = first.get('response') or first.get('text') or ""
+                            return str(val) if not isinstance(val, (str, bytes)) else val
                         return str(first)
                     raise Exception(f"Unexpected Cloudflare format: {result}")
                 else:
@@ -107,14 +111,39 @@ class AIService:
         except Exception as e:
             raise Exception(f"AI Generation Error: {str(e)}")
 
-    def _parse_json(self, text: str) -> List[Dict[str, Any]]:
-        cleaned = text.strip()
-        if '```json' in cleaned:
-            cleaned = cleaned.split('```json')[1].split('```')[0]
-        elif '```' in cleaned:
-            cleaned = cleaned.split('```')[1].split('```')[0]
+    def _parse_json(self, text: Any) -> List[Dict[str, Any]]:
+        if isinstance(text, list):
+            return text
+        if isinstance(text, dict):
+            data = text
+        else:
+            cleaned = str(text).strip()
+            if '```json' in cleaned:
+                cleaned = cleaned.split('```json')[1].split('```')[0]
+            elif '```' in cleaned:
+                cleaned = cleaned.split('```')[1].split('```')[0]
             
-        data = json.loads(cleaned.strip())
+            try:
+                data = json.loads(cleaned.strip())
+            except Exception as e:
+                # Fallback: try ast.literal_eval which is more lenient with single quotes
+                try:
+                    # Clean the string slightly for literal_eval (remove common AI markers)
+                    eval_ready = cleaned.strip()
+                    data = ast.literal_eval(eval_ready)
+                except:
+                    # Last ditch: try to find anything that looks like [ ... ]
+                    match = re.search(r'\[.*\]', cleaned, re.DOTALL)
+                    if match:
+                        try:
+                            data = json.loads(match.group(0))
+                        except:
+                            try:
+                                data = ast.literal_eval(match.group(0))
+                            except:
+                                raise e
+                    else:
+                        raise e
         
         # Standardize format
         if isinstance(data, dict):
