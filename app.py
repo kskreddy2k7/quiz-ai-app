@@ -12,6 +12,8 @@ from flask import Flask, render_template_string, request, jsonify, send_from_dir
 import json
 import os
 import random
+import traceback
+import time
 from werkzeug.utils import secure_filename
 import secrets as secret_module
 
@@ -51,27 +53,94 @@ if GEMINI_API_KEY:
         ]
         selected_model_name = None
         
+        # Helper to find best available models
+        fallback_models = []
         for pm in preferred_models:
             if pm in available_models:
-                selected_model_name = pm
-                break
-                
-        if not selected_model_name and available_models:
-            selected_model_name = available_models[0]
-            
-        if selected_model_name:
+                fallback_models.append(pm)
+        
+        if not fallback_models and available_models:
+             fallback_models = available_models[:3] # Take top 3 as fallback
+
+        if fallback_models:
+            selected_model_name = fallback_models[0]
             model = genai.GenerativeModel(selected_model_name)
             HAS_GEMINI = True
             AI_STATUS = "Online"
-            print(f"✅ Gemini AI initialized with model: {selected_model_name}")
+            print(f"✅ Gemini AI initialized. Primary: {selected_model_name}. Backups: {fallback_models[1:]}")
         else:
             AI_STATUS = "Offline (No available models found)"
+
     except Exception as e:
         AI_STATUS = f"Offline (Error: {str(e)[:50]}...)"
         AI_DEBUG = str(e)
         print(f"⚠️ Gemini initialization failed: {e}")
 else:
     AI_STATUS = "Offline (No API Key found)"
+    fallback_models = []
+
+def generate_with_fallback(prompt):
+    """Attempts to generate content using fallback models if 429 quota limit is hit."""
+    global model
+    
+    # Try primary model first
+    try:
+        if model is None:
+             raise Exception("AI Model is not initialized")
+             
+        return model.generate_content(prompt)
+        
+    except Exception as e:
+        error_str = str(e)
+        # Check for 429 Resource Exhausted
+        if "429" in error_str or "quota" in error_str.lower():
+            print(f"⚠️ Quota hit on {getattr(model, 'model_name', 'current model')}. Trying fallbacks...")
+            
+            # Ensure we have a list of fallbacks even if initial discovery failed or was limited
+            candidates = []
+            if fallback_models:
+                candidates.extend(fallback_models)
+            
+            # Always add these standard reliable models if not already present
+            standard_backups = ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro']
+            for backup in standard_backups:
+                if backup not in candidates:
+                    candidates.append(backup)
+            
+            for model_name in candidates:
+                # Strip 'models/' prefix for comparison
+                current_model = getattr(model, 'model_name', '')
+                if current_model:
+                     current_model = current_model.replace('models/', '')
+                     
+                if current_model == model_name:
+                    continue
+                    
+                print(f"🔄 Switching to fallback model: {model_name}")
+                time.sleep(2) # Wait 2s before trying new model
+                try:
+                    fallback_model = genai.GenerativeModel(model_name)
+                    response = fallback_model.generate_content(prompt)
+                    
+                    # If successful, permanently switch to this model to avoid immediate next failure
+                    print(f"✅ Fallback successful. Switching primary model to {model_name}")
+                    model = fallback_model 
+                    return response
+                except Exception as fallback_error:
+                    error_msg = f"❌ Fallback {model_name} failed: {fallback_error}"
+                    print(error_msg)
+                    try:
+                        with open('debug_error.log', 'a') as f:
+                             f.write(f"{error_msg}\n")
+                    except:
+                        pass
+                    continue
+            
+            # If all fail
+            raise Exception("All AI models busy or quota exceeded. Please wait 1 minute.")
+        
+        # If not a 429 error, re-raise original
+        raise e
 
 app = Flask(__name__)
 app.secret_key = secret_module.token_hex(16)
@@ -137,6 +206,35 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="/manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script>
+        // CRITICAL: Define switchTab in head so it's ready immediately
+        function switchTab(tab) {
+            console.log("Tab click:", tab);
+            try {
+                const contents = document.querySelectorAll('.tab-content');
+                const tabs = document.querySelectorAll('.tab');
+                
+                for (let i = 0; i < contents.length; i++) {
+                    contents[i].style.display = 'none';
+                    contents[i].classList.remove('active');
+                }
+                for (let i = 0; i < tabs.length; i++) {
+                    tabs[i].classList.remove('active');
+                }
+                
+                const targetContent = document.getElementById(tab + '-content');
+                const targetTab = document.getElementById('tab-' + tab);
+                
+                if (targetContent) {
+                    targetContent.style.display = 'block';
+                    setTimeout(() => targetContent.classList.add('active'), 10);
+                }
+                if (targetTab) targetTab.classList.add('active');
+            } catch (e) {
+                console.error("Tab error:", e);
+            }
+        }
+    </script>
     <style>
         * {
             margin: 0;
@@ -298,6 +396,9 @@ HTML_TEMPLATE = """
             margin-bottom: 30px;
             flex-wrap: wrap;
             justify-content: center;
+            position: relative;
+            z-index: 10000;
+            pointer-events: auto !important;
         }
         
         .tab {
@@ -306,11 +407,15 @@ HTML_TEMPLATE = """
             backdrop-filter: blur(10px);
             border: 2px solid rgba(255,255,255,0.2);
             border-radius: 50px;
-            cursor: pointer;
+            cursor: pointer !important;
             transition: all 0.3s ease;
             color: #fff;
             font-weight: 600;
             font-size: 1.05rem;
+            position: relative;
+            z-index: 10001;
+            pointer-events: auto !important;
+            user-select: none;
         }
         
         .tab.active {
@@ -576,38 +681,7 @@ HTML_TEMPLATE = """
             box-shadow: 0 10px 30px rgba(102,126,234,0.3);
         }
         
-        .history-item {
-            background: rgba(255,255,255,0.1);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.3s ease;
-        }
         
-        .history-item:hover {
-            background: rgba(255,255,255,0.2);
-            transform: scale(1.02);
-        }
-        
-        .history-info h4 {
-            margin-bottom: 5px;
-            font-size: 1.1rem;
-        }
-        
-        .history-info p {
-            font-size: 0.9rem;
-            color: rgba(255,255,255,0.7);
-        }
-        
-        .history-score {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #38ef7d;
-        }
         
         .share-btn {
             background: linear-gradient(135deg, #00B4DB 0%, #0083B0 100%);
@@ -642,7 +716,9 @@ HTML_TEMPLATE = """
     <div class="container">
         <header>
             <div class="logo-container">
-                <div class="logo">S</div>
+                <div class="logo">
+                    <img src="/static/logo.png" alt="S" style="width: 100%; height: 100%; object-fit: contain; border-radius: 15px;" onerror="this.style.display='none'; this.parentElement.innerText='S'">
+                </div>
                 <div>
                     <h1>S Quiz</h1>
                     <div class="creator-badge">✨ Created by Sai ✨</div>
@@ -663,20 +739,11 @@ HTML_TEMPLATE = """
         <div class="tabs">
             <div id="tab-topic" class="tab active" onclick="switchTab('topic')">📝 Topic Quiz</div>
             <div id="tab-file" class="tab" onclick="switchTab('file')">📂 File Upload</div>
-            <div id="tab-history" class="tab" onclick="switchTab('history')">📜 Recent Tests</div>
             <div id="tab-teacher" class="tab" onclick="switchTab('teacher')">👨‍🏫 Teacher Tools</div>
             <div id="tab-help" class="tab" onclick="switchTab('help')">💡 AI Help</div>
         </div>
         
-        <!-- History Tab -->
-        <div id="history-content" class="tab-content">
-            <div class="card">
-                <h2>📜 Your Recent Tests</h2>
-                <div id="historyList">
-                    <p style="text-align: center; color: rgba(255,255,255,0.6); padding: 20px;">No tests taken yet. Start a quiz to see it here!</p>
-                </div>
-            </div>
-        </div>
+        
         
         <!-- Topic Quiz Tab -->
         <div id="topic-content" class="tab-content active">
@@ -842,433 +909,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
     
-    <script>
-        function switchTab(tab) {
-            console.log("Switching to:", tab);
-            // Hide all contents and tabs
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-            
-            // Show selected content and highlight tab
-            const content = document.getElementById(tab + '-content');
-            const tabEl = document.getElementById('tab-' + tab);
-            
-            if (content) content.classList.add('active');
-            if (tabEl) tabEl.classList.add('active');
-        }
-        
-        async function generateTopicQuiz() {
-            const topic = document.getElementById('topic').value;
-            const difficulty = document.getElementById('difficulty').value;
-            const language = document.getElementById('language').value;
-            const num_questions = parseInt(document.getElementById('num_questions').value);
-            
-            if (!topic) {
-                alert('Please enter a topic!');
-                return;
-            }
-            
-            if (num_questions < 1 || num_questions > 100) {
-                alert('Please enter a number between 1 and 100!');
-                return;
-            }
-            
-            showLoading('topic');
-            
-            try {
-                const response = await fetch('/generate_topic', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({topic, difficulty, language, num_questions})
-                });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    showError('topic', data.error);
-                } else {
-                    displayQuiz('topic', data.questions);
-                }
-            } catch (error) {
-                showError('topic', error.message);
-            } finally {
-                hideLoading('topic');
-            }
-        }
-        
-        async function generateFileQuiz() {
-            const fileInput = document.getElementById('fileInput');
-            const difficulty = document.getElementById('fileDifficulty').value;
-            const num_questions = parseInt(document.getElementById('fileNumQuestions').value);
-            
-            if (!fileInput.files[0]) {
-                alert('Please select a file!');
-                return;
-            }
-            
-            if (num_questions < 1 || num_questions > 100) {
-                alert('Please enter a number between 1 and 100!');
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            formData.append('difficulty', difficulty);
-            formData.append('num_questions', num_questions);
-            
-            showLoading('file');
-            
-            try {
-                const response = await fetch('/generate_file', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    showError('file', data.error);
-                } else {
-                    document.getElementById('fileInfo').style.display = 'block';
-                    document.getElementById('fileInfo').textContent = `✅ Processed: ${data.filename} (${data.text_length} characters)`;
-                    displayQuiz('file', data.questions);
-                }
-            } catch (error) {
-                showError('file', error.message);
-            } finally {
-                hideLoading('file');
-            }
-        }
-        
-        async function getTeacherHelp() {
-            const task = document.getElementById('teacherTask').value;
-            const topic = document.getElementById('teacherTopic').value;
-            const details = document.getElementById('teacherDetails').value;
-            
-            if (!topic) {
-                alert('Please enter a topic!');
-                return;
-            }
-            
-            showLoading('teacher');
-            
-            try {
-                const response = await fetch('/teacher_help', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({task, topic, details})
-                });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    showError('teacher', data.error);
-                } else {
-                    displayTeacherHelp(data.response);
-                }
-            } catch (error) {
-                showError('teacher', error.message);
-            } finally {
-                hideLoading('teacher');
-            }
-        }
-        
-        async function getAIHelp() {
-            const question = document.getElementById('helpQuestion').value;
-            const style = document.getElementById('helpStyle').value;
-            
-            if (!question) {
-                alert('Please enter a question!');
-                return;
-            }
-            
-            showLoading('help');
-            
-            try {
-                const response = await fetch('/ai_help', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({question, style})
-                });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    showError('help', data.error);
-                } else {
-                    displayAIHelp(data.response);
-                }
-            } catch (error) {
-                showError('help', error.message);
-            } finally {
-                hideLoading('help');
-            }
-        }
-        
-        function showLoading(tab) {
-            document.getElementById(tab + 'Loading').style.display = 'block';
-            document.getElementById(tab + 'Error').style.display = 'none';
-            document.getElementById(tab + 'Result').innerHTML = '';
-            document.getElementById(tab + 'Btn').disabled = true;
-        }
-        
-        function hideLoading(tab) {
-            document.getElementById(tab + 'Loading').style.display = 'none';
-            document.getElementById(tab + 'Btn').disabled = false;
-        }
-        
-        function showError(tab, message) {
-            document.getElementById(tab + 'Error').textContent = '❌ ' + message;
-            document.getElementById(tab + 'Error').style.display = 'block';
-        }
-        
-        let currentQuestions = [];
-        let userAnswers = {};
-
-        function displayQuiz(tab, questions) {
-            if (!questions || !Array.isArray(questions)) {
-                showError(tab, "Invalid quiz data received from AI. Please try again.");
-                console.error("Invalid questions data:", questions);
-                return;
-            }
-            
-            currentQuestions = questions;
-            userAnswers = {};
-            
-            const resultDiv = document.getElementById(tab + 'Result');
-            resultDiv.innerHTML = '';
-            
-            questions.forEach((q, index) => {
-                const card = document.createElement('div');
-                card.className = 'question-card';
-                card.id = `q-card-${index}`;
-                
-                // Defensive checks to prevent crashes if AI data is incomplete
-                const prompt = q.prompt || "No question text available";
-                const choices = Array.isArray(q.choices) ? q.choices : [];
-                const explanation = q.explanation || "No explanation provided.";
-                
-                let html = `
-                    <div class="question-text">
-                        <strong>Q${index + 1}:</strong> ${prompt}
-                    </div>
-                    <div class="options-container">
-                `;
-                
-                choices.forEach((choice, i) => {
-                    // Safe string handling for HTML attributes
-                    const safeChoice = String(choice).replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                    html += `
-                        <div class="option" onclick="selectOption(${index}, '${safeChoice}', this)">
-                            ${String.fromCharCode(65 + i)}) ${choice}
-                        </div>
-                    `;
-                });
-                
-                html += `</div>`; // End options-container
-                
-                // Add hidden result sections
-                html += `
-                    <div class="explanation hidden" id="exp-${index}">
-                        <div class="explanation-title">💡 Explanation:</div>
-                        ${explanation}
-                    </div>
-                `;
-                
-                if (q.wrong_explanations && typeof q.wrong_explanations === 'object') {
-                    html += `<div class="wrong-explanations-group hidden" id="wrong-exp-${index}">`;
-                    for (const [option, exp] of Object.entries(q.wrong_explanations)) {
-                        html += `
-                            <div class="wrong-explanation">
-                                <strong>❌ Why "${option}" is wrong:</strong><br>
-                                ${exp}
-                            </div>
-                        `;
-                    }
-                    html += `</div>`;
-                }
-                
-                card.innerHTML = html;
-                resultDiv.appendChild(card);
-            });
-            
-            // Add submit button
-            const submitBtn = document.createElement('button');
-            submitBtn.id = 'submit-quiz-btn';
-            submitBtn.style.marginTop = '30px';
-            submitBtn.textContent = '✅ Submit Quiz & Get Results';
-            submitBtn.onclick = () => checkQuiz(tab);
-            resultDiv.appendChild(submitBtn);
-        }
-
-        function selectOption(qIndex, choice, element) {
-            // Already submitted? Don't allow changes
-            const btn = document.getElementById('submit-quiz-btn');
-            if (btn && btn.classList.contains('hidden')) return;
-            
-            userAnswers[qIndex] = choice;
-            
-            // UI Update
-            const container = element.parentElement;
-            container.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
-            element.classList.add('selected');
-        }
-
-        function checkQuiz(tab) {
-            if (Object.keys(userAnswers).length < currentQuestions.length) {
-                if (!confirm('You haven\'t answered all questions. Submit anyway?')) return;
-            }
-            
-            let score = 0;
-            currentQuestions.forEach((q, index) => {
-                const isCorrect = userAnswers[index] === q.answer;
-                if (isCorrect) score++;
-                
-                const card = document.getElementById(`q-card-${index}`);
-                const options = card.querySelectorAll('.option');
-                
-                options.forEach(opt => {
-                    const fullText = opt.textContent.trim();
-                    // Robust splitting: Handles cases where ") " might be missing or different
-                    const separatorIndex = fullText.indexOf(') ');
-                    const optText = separatorIndex !== -1 ? fullText.substring(separatorIndex + 2).trim() : fullText;
-                    
-                    if (optText === q.answer) {
-                        opt.classList.add('correct');
-                        opt.innerHTML += ' ✅ (Correct)';
-                    } else if (userAnswers[index] === optText) {
-                        opt.classList.add('wrong');
-                        opt.innerHTML += ' ❌ (Your Choice)';
-                    }
-                    opt.classList.remove('selected');
-                });
-                
-                // Reveal explanations
-                document.getElementById(`exp-${index}`).classList.remove('hidden');
-                const wrongExp = document.getElementById(`wrong-exp-${index}`);
-                if (wrongExp) wrongExp.classList.remove('hidden');
-            });
-            
-            // Save to history
-            saveToHistory({
-                topic: tab === 'topic' ? document.getElementById('topic').value : 'File Quiz',
-                score: score,
-                total: currentQuestions.length,
-                date: new Date().toLocaleString(),
-                questions: currentQuestions
-            });
-            
-            // Show score summary
-            const resultDiv = document.getElementById(tab + 'Result');
-            const summary = document.createElement('div');
-            summary.className = 'score-summary';
-            const percent = Math.round((score / currentQuestions.length) * 100);
-            summary.innerHTML = `
-                <h1 style="margin:0; font-size: 3rem;">${percent}%</h1>
-                <p style="font-size: 1.5rem;">Score: ${score} / ${currentQuestions.length}</p>
-                <div class="creator-badge" style="background: rgba(255,255,255,0.2); margin-bottom: 15px;">
-                    ${score === currentQuestions.length ? '🌟 PERFECT! 🌟' : score > currentQuestions.length / 2 ? '👏 GREAT JOB! 👏' : '📚 Keep Learning! 📚'}
-                </div>
-                <div class="btn-group" style="justify-content: center;">
-                    <button class="share-btn" onclick="shareQuiz(${percent})">📢 Share with Friends</button>
-                </div>
-            `;
-            resultDiv.insertBefore(summary, resultDiv.firstChild);
-            
-            // Hide submit button
-            document.getElementById('submit-quiz-btn').classList.add('hidden');
-            
-            // Scroll to top
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function saveToHistory(quizData) {
-            try {
-                let history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
-                history.unshift(quizData);
-                if (history.length > 20) history.pop();
-                localStorage.setItem('quizHistory', JSON.stringify(history));
-                loadHistory();
-            } catch (e) { console.error("History save failed:", e); }
-        }
-
-        function loadHistory() {
-            try {
-                const historyList = document.getElementById('historyList');
-                const historyStr = localStorage.getItem('quizHistory');
-                const history = JSON.parse(historyStr && historyStr !== 'undefined' ? historyStr : '[]');
-            
-                if (history.length === 0) return;
-                
-                historyList.innerHTML = '';
-                history.forEach((item, index) => {
-                    const percent = Math.round((item.score / item.total) * 100);
-                    const div = document.createElement('div');
-                    div.className = 'history-item';
-                    div.innerHTML = `
-                        <div class="history-info">
-                            <h4>${item.topic}</h4>
-                            <p>📅 ${item.date} • ${item.total} Questions</p>
-                        </div>
-                        <div style="display: flex; align-items: center;">
-                            <span class="history-score">${percent}%</span>
-                            <button class="share-btn" onclick="shareQuiz(${percent}, '${item.topic.replace(/'/g, "\\'")}')">🔗 Share</button>
-                        </div>
-                    `;
-                    historyList.appendChild(div);
-                });
-            } catch (e) { console.error("History load failed:", e); }
-        }
-
-        async function shareQuiz(score, topic = "a Quiz") {
-            const text = `🚀 I just scored ${score}% on ${topic} in the S Quiz AI Academy! Can you beat me? 🎓✨`;
-            const url = window.location.href;
-
-            if (navigator.share) {
-                try {
-                    await navigator.share({
-                        title: 'S Quiz Result',
-                        text: text,
-                        url: url
-                    });
-                } catch (err) {
-                    console.log('Share failed:', err);
-                }
-            } else {
-                // Fallback: Copy to clipboard
-                const dummy = document.createElement("textarea");
-                document.body.appendChild(dummy);
-                dummy.value = text + " " + url;
-                dummy.select();
-                document.execCommand("copy");
-                document.body.removeChild(dummy);
-                alert("Score & Link copied to clipboard! Share it with your friends! 🚀");
-            }
-        }
-
-        // Load history on startup
-        document.addEventListener('DOMContentLoaded', loadHistory);
-        
-        function displayTeacherHelp(response) {
-            const resultDiv = document.getElementById('teacherResult');
-            resultDiv.innerHTML = `
-                <div class="card" style="margin-top: 30px; background: rgba(255,255,255,0.2);">
-                    <h3 style="margin-bottom: 20px;">📋 AI Assistant Response</h3>
-                    <div style="white-space: pre-wrap; line-height: 1.8;">${response}</div>
-                </div>
-            `;
-        }
-        
-        function displayAIHelp(response) {
-            const resultDiv = document.getElementById('helpResult');
-            resultDiv.innerHTML = `
-                <div class="card" style="margin-top: 30px; background: rgba(255,255,255,0.2);">
-                    <h3 style="margin-bottom: 20px;">💬 AI Response</h3>
-                    <div style="white-space: pre-wrap; line-height: 1.8;">${response}</div>
-                </div>
-            `;
-        }
-    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
 """
@@ -1346,120 +987,173 @@ def generate_topic_quiz():
         """
     
     try:
-        response = model.generate_content(prompt)
-        text = response.text.strip()
+        if model is None:
+            raise Exception("AI Model is not initialized")
+            
+        print(f"DEBUG Topic: Generating with model {getattr(model, 'model_name', 'Unknown')}")
+        response = generate_with_fallback(prompt)
+        text_response = response.text.strip()
         
         # Robust parsing
-        if '```json' in text:
-            text = text.split('```json')[1].split('```')[0]
-        elif '```' in text:
-            text = text.split('```')[1].split('```')[0]
+        cleaned_text = text_response
+        if '```json' in cleaned_text:
+            cleaned_text = cleaned_text.split('```json')[1].split('```')[0]
+        elif '```' in cleaned_text:
+            cleaned_text = cleaned_text.split('```')[1].split('```')[0]
         
-        questions = json.loads(text.strip())
+        try:
+            questions = json.loads(cleaned_text.strip())
+        except json.JSONDecodeError:
+            print(f"JSON Parse Error in Topic Quiz. Raw: {text_response}")
+            return jsonify({'error': 'AI generation failed (Invalid JSON). Please try again.'}), 500
         
         # Handle cases where AI wraps the list in an object
-        if isinstance(questions, dict) and 'questions' in questions:
-            questions = questions['questions']
-        elif isinstance(questions, dict):
-            if 'prompt' in questions:
-                questions = [questions]
+        if isinstance(questions, dict):
+            if 'questions' in questions:
+                questions = questions['questions']
+            elif 'quiz' in questions:
+                questions = questions['quiz']
             else:
-                for val in questions.values():
-                    if isinstance(val, list) and len(val) > 0 and 'prompt' in val[0]:
+                # Search for any list value
+                found = False
+                for key, val in questions.items():
+                    if isinstance(val, list):
                         questions = val
+                        found = True
                         break
-        
+                
+                if not found:
+                    print(f"DEBUG Topic: Dict returned but no list found. Keys: {list(questions.keys())}")
+                    # If it's a single question object, wrap it
+                    if 'prompt' in questions and 'choices' in questions:
+                        questions = [questions]
+
         if not isinstance(questions, list):
+            print(f"DEBUG Topic: Final type check failed. Got: {type(questions)}")
             return jsonify({'error': 'AI returned invalid quiz format'}), 500
 
         return jsonify({'questions': questions})
     
     except Exception as e:
-        model_name = getattr(model, 'model_name', 'None')
+        # Write robust log
+        try:
+            with open('debug_error.log', 'w') as f:
+                f.write(f"ERROR in generate_topic_quiz: {e}\n")
+                f.write(traceback.format_exc())
+        except:
+            print(f"Failed to write to debug_error.log")
+            
+        print(f"ERROR: {str(e)}")
+        model_name = "Unknown"
+        if model:
+             model_name = getattr(model, 'model_name', 'Unknown')
+             
         return jsonify({'error': f'AI generation failed (Model: {model_name}): {str(e)}'}), 500
 
 @app.route('/generate_file', methods=['POST'])
 def generate_file_quiz():
-    if not HAS_GEMINI:
-        return jsonify({'error': 'AI not configured'}), 400
-    
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
-    
-    file = request.files['file']
-    difficulty = request.form.get('difficulty', 'easy')
     try:
-        num_questions = int(request.form.get('num_questions', 5))
-    except (ValueError, TypeError):
-        num_questions = 5
-    num_questions = min(num_questions, 100)
-    
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(filepath)
-    
-    text = extract_text_from_file(filepath)
-    
-    if text.startswith('Error'):
-        return jsonify({'error': text}), 400
-    
-    prompt = f"""
-    Based on the following text, generate {num_questions} multiple-choice questions.
-    Difficulty: {difficulty}
-    
-    Text:
-    {text[:5000]}
-    
-    For EACH question, provide:
-    1. The question text
-    2. Four options
-    3. The correct answer
-    4. Explanation of why it's correct
-    Return ONLY a valid JSON array:
-    [
-        {
-            "prompt": "Question text",
-            "choices": ["Option A", "Option B", "Option C", "Option D"],
-            "answer": "The exact correct option text",
-            "explanation": "Why this is correct",
-            "wrong_explanations": {
-                "Choice1": "Why Choice1 is wrong",
-                "Choice2": "Why Choice2 is wrong",
-                "Choice3": "Why Choice3 is wrong"
-            }
-        }
-    ]
-    """
-    
-    try:
-        response = model.generate_content(prompt)
+        if not HAS_GEMINI:
+            return jsonify({'error': 'AI not configured'}), 400
+        
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['file']
+        difficulty = request.form.get('difficulty', 'easy')
+        try:
+            num_questions = int(request.form.get('num_questions', 5))
+        except (ValueError, TypeError):
+            num_questions = 5
+        num_questions = min(num_questions, 100)
+        
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        text = extract_text_from_file(filepath)
+        
+        if text.startswith('Error'):
+            return jsonify({'error': text}), 400
+            
+        if model is None:
+            raise Exception("AI Model is not initialized")
+        
+        prompt = f"""
+        Based on the following text, generate {num_questions} multiple-choice questions.
+        Difficulty: {difficulty}
+        
+        Text:
+        {text[:5000]}
+        
+        For EACH question, provide:
+        1. The question text
+        2. Four options
+        3. The correct answer
+        4. Explanation of why it's correct
+        Return ONLY a valid JSON array:
+        [
+            {{
+                "prompt": "Question text",
+                "choices": ["Option A", "Option B", "Option C", "Option D"],
+                "answer": "The exact correct option text",
+                "explanation": "Why this is correct",
+                "wrong_explanations": {{
+                    "Choice1": "Why Choice1 is wrong",
+                    "Choice2": "Why Choice2 is wrong",
+                    "Choice3": "Why Choice3 is wrong"
+                }}
+            }}
+        ]
+        """
+        
+        response = generate_with_fallback(prompt)
         text_response = response.text.strip()
         
         # Robust parsing
-        if '```json' in text_response:
-            text_response = text_response.split('```json')[1].split('```')[0]
-        elif '```' in text_response:
-            text_response = text_response.split('```')[1].split('```')[0]
+        cleaned_text = text_response.strip()
+        if '```json' in cleaned_text:
+            cleaned_text = cleaned_text.split('```json')[1].split('```')[0]
+        elif '```' in cleaned_text:
+            cleaned_text = cleaned_text.split('```')[1].split('```')[0]
         
-        questions = json.loads(text_response.strip())
+        try:
+            questions = json.loads(cleaned_text)
+            print(f"DEBUG: Parsed JSON type: {type(questions)}")
+        except json.JSONDecodeError:
+            print(f"JSON Parse Error. Raw response: {text_response}")
+            return jsonify({'error': 'AI returned invalid format. Please try again.'}), 500
         
         # Handle cases where AI wraps the list in an object
-        if isinstance(questions, dict) and 'questions' in questions:
-            questions = questions['questions']
-        elif isinstance(questions, dict):
-            if 'prompt' in questions:
-                questions = [questions]
+        print(f"DEBUG: Checking questions type: {type(questions)}")
+        
+        if isinstance(questions, dict):
+            # Try to find the list of questions
+            if 'questions' in questions:
+                questions = questions['questions']
+            elif 'quiz' in questions:
+                questions = questions['quiz']
             else:
-                for val in questions.values():
-                    if isinstance(val, list) and len(val) > 0 and 'prompt' in val[0]:
+                # Search for any list value
+                found = False
+                for key, val in questions.items():
+                    if isinstance(val, list):
                         questions = val
+                        found = True
                         break
+                
+                if not found:
+                    print(f"DEBUG: Dict returned but no list found. Keys: {list(questions.keys())}")
+                    # If it's a single question object, wrap it
+                    if 'prompt' in questions and 'choices' in questions:
+                        questions = [questions]
 
         if not isinstance(questions, list):
-            return jsonify({'error': 'AI returned invalid quiz format'}), 500
+            print(f"DEBUG: Final type check failed. Got: {type(questions)}")
+            return jsonify({'error': 'AI returned invalid quiz format (not a list)'}), 500
 
         return jsonify({
             'questions': questions,
@@ -1468,6 +1162,10 @@ def generate_file_quiz():
         })
     
     except Exception as e:
+        with open('debug_error.log', 'w') as f:
+            f.write(f"ERROR in generate_file_quiz: {e}\n")
+            f.write(traceback.format_exc())
+        print(f"ERROR: Written to debug_error.log")
         return jsonify({'error': f'Quiz generation failed: {str(e)}'}), 500
 
 @app.route('/manifest.json')
@@ -1480,7 +1178,24 @@ def serve_sw():
 
 @app.route('/favicon.ico')
 def favicon():
-    return '', 204
+    return send_from_directory('static', 'icon-192.png'), 200, {'Content-Type': 'image/png'} if os.path.exists('static/icon-192.png') else ('', 204)
+
+@app.route('/static/icon-192.png')
+@app.route('/static/icon-512.png')
+@app.route('/static/logo.png')
+def serve_icons():
+    # If the icon exists, serve it
+    path = request.path.lstrip('/')
+    if os.path.exists(path):
+        return send_from_directory('.', path)
+    
+    # Otherwise serve a generated SVG as a fallback
+    color = "#667eea" if "192" in path else "#764ba2"
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+        <rect width="512" height="512" rx="100" fill="{color}"/>
+        <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="Poppins, sans-serif" font-size="300" font-weight="bold" fill="white">S</text>
+    </svg>'''
+    return svg, 200, {'Content-Type': 'image/svg+xml'}
 
 @app.route('/teacher_help', methods=['POST'])
 def teacher_help():
@@ -1502,9 +1217,24 @@ def teacher_help():
     prompt = prompts.get(task, prompts['lesson'])
     
     try:
-        response = model.generate_content(prompt)
-        return jsonify({'response': response.text})
+        if model is None:
+            raise Exception("AI Model is not initialized")
+            
+        response = generate_with_fallback(prompt)
+        text = response.text
+        # Ensure bold formatting is converted to HTML for better display if needed, 
+        # but for now we rely on the frontend pre-wrap.
+        # Check for empty response
+        if not text:
+            return jsonify({'error': 'AI returned empty response'}), 500
+            
+        return jsonify({'response': text})
     except Exception as e:
+        with open('debug_error.log', 'w') as f:
+            f.write(f"ERROR in teacher_help: {e}\n")
+            f.write(traceback.format_exc())
+            
+        print(f"ERROR in teacher_help: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/ai_help', methods=['POST'])
@@ -1526,9 +1256,17 @@ def ai_help():
     prompt = style_prompts.get(style, style_prompts['simple']) + question
     
     try:
-        response = model.generate_content(prompt)
+        if model is None:
+            raise Exception("AI Model is not initialized")
+            
+        response = generate_with_fallback(prompt)
         return jsonify({'response': response.text})
     except Exception as e:
+        with open('debug_error.log', 'w') as f:
+            f.write(f"ERROR in ai_help: {e}\n")
+            f.write(traceback.format_exc())
+            
+        print(f"ERROR in ai_help: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
@@ -1556,4 +1294,4 @@ if __name__ == '__main__':
     threading.Thread(target=open_browser, daemon=True).start()
     
     port = int(os.environ.get('PORT', 5002))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)

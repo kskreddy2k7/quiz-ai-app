@@ -1,8 +1,8 @@
-# 🎓 S Quiz by Sai - Premium AI Learning Platform
+# 🎓 S Quiz by Sai - Premium AI Learning Platform (Web Edition)
 
 ## 🌟 Overview
 
-**S Quiz** is a comprehensive, premium AI-powered learning platform designed for both teachers and students. Created by **Sai**, it leverages Google Gemini AI to generate quizzes, provide deep explanations, and assist with complex educational tasks.
+**S Quiz** is a comprehensive, premium AI-powered learning platform designed for both teachers and students. Created by **Sai**, it leverages Google Gemini AI to generate quizzes, provide deep explanations, and assist with complex educational tasks. This version is optimized as a high-performance **Web Application** and **PWA**.
 
 ---
 
@@ -28,28 +28,20 @@
 
 ---
 
-## 🚀 Quick Start (Windows)
+## 🚀 How to Use
 
-### Option 1: Premium Desktop App (Recommended)
-Double-click: `START_S_QUIZ.bat`
+### 🌐 Website Access
+- The website is designed to be hosted on platforms like **Render**, **Railway**, or **Heroku**.
+- Once deployed, simply visit the URL in any browser.
 
-### Option 2: Mobile Browser (PWA)
-- Open `https://sai.onrender.com` on your phone.
-- Tap **"Add to Home Screen"** in your browser menu.
-- The website will now run like a native app without the browser bar!
-
----
-
-### Option 3: Android APK (Native)
-- Download the APK from the GitHub Actions artifacts (see below for details).
-This repository is configured with **GitHub Actions** to automatically build an Android APK using **Buildozer**.
-1. Push your code to the `main` branch.
-2. Go to the **Actions** tab in GitHub.
-3. Download the generated APK from the successful "Build Android APK" workflow.
+### 📱 Install as App (PWA)
+1. Open the website on your phone (Chrome for Android / Safari for iOS).
+2. Tap **"Add to Home Screen"** or the Install icon.
+3. The website will now run like a native app without the browser bar!
 
 ---
 
-## 📦 Installation & Setup
+## 📦 Installation & Setup (Local)
 
 ### 1. Requirements
 - Python 3.10+
@@ -69,27 +61,31 @@ Create or edit `secrets.json` in the root directory:
 ```
 *Note: Your `secrets.json` is automatically ignored by git to keep your key safe.*
 
+### 4. Run Locally
+```bash
+python app.py
+```
+Open `http://localhost:5002` in your browser.
+
 ---
 
-## 📂 File Structure (Keep for GitHub)
+## 📂 Project Structure
 ```
 S-Quiz/
-├── premium_app.py             # Main Premium Web Logic
-├── premium_desktop_app.py     # Desktop Wrapper (PyWebView)
-├── main.py                    # Mobile App Logic (Kivy)
-├── buildozer.spec             # Android Build Configuration
-├── requirements.txt           # Project Dependencies
-├── START_S_QUIZ.bat           # Easy Windows Launcher
-├── BRANDED_VERSION.md         # Branding Documentation
-├── .github/workflows/         # Auto-APK Build Workflow
-└── secrets.json               # (Local only) Your API key
+├── app.py             # Main Flask Application
+├── static/            # Static assets (CSS/JS)
+├── uploads/           # Temporary folder for processed files
+├── requirements.txt   # Web Server Dependencies
+├── manifest.json      # PWA Configuration
+├── sw.js              # Service Worker for Offline/PWA
+├── Procfile           # Render/Railway Deployment Config
+└── secrets.json       # (Local only) Your API key
 ```
 
 ---
 
 ## 🔐 Privacy & Security
-- **No Data Collection**: Your files and questions are processed in real-time and not stored.
-- **Secure API**: Uses standard Google Generative AI integration.
+- **Secure Processing**: Your files are processed securely and not stored permanently.
 - **Safety First**: Your API keys are excluded from version control via `.gitignore`.
 
 ---
@@ -102,8 +98,9 @@ This version of the app features the **"S Quiz"** branding by **Sai**, including
 ## 🎉 Credits
 - Created by: **Sai**
 - Powered by: **Google Gemini AI**
-- Frameworks: **Flask, Kivy, PyWebView**
+- Framework: **Flask (Python)**
 
 ---
 
 **Enjoy your premium AI learning experience with S Quiz!** 🚀🎓
+
