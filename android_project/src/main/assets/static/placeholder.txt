@@ -1,8 +1,0 @@
-@app.route('/static/icon-192.png')
-def icon192():
-    # Fallback to a generated SVG or just a blank response if icons are missing
-    return "Missing", 404
-
-@app.route('/static/icon-512.png')
-def icon512():
-    return "Missing", 404
