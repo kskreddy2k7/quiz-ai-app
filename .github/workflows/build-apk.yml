@@ -52,10 +52,14 @@ jobs:
         echo "$HOME/android-sdk/tools/bin" >> $GITHUB_PATH
 
         # Create 'tools' symlink for Buildozer compatibility (it looks for tools/bin/sdkmanager)
+        # Remove existing file/dir to prevent nesting or errors
+        rm -rf $HOME/android-sdk/tools
         ln -sf $HOME/android-sdk/cmdline-tools/latest $HOME/android-sdk/tools
 
         # Symlink to Buildozer's expected path to prevent it from ignoring ANDROID_HOME
         mkdir -p $HOME/.buildozer/android/platform
+        # Remove existing file/dir to prevent nesting or errors
+        rm -rf $HOME/.buildozer/android/platform/android-sdk
         ln -sf $HOME/android-sdk $HOME/.buildozer/android/platform/android-sdk
         
     - name: Accept Android SDK licenses
