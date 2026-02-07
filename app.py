@@ -927,7 +927,6 @@ HTML_TEMPLATE = """
 def home():
     quote = get_random_quote()
     # Pass detailed status for debugging if offline
-    print(f"DEBUG HOME: GEMINI_API_KEY='{GEMINI_API_KEY}' HAS_GEMINI={HAS_GEMINI}")
     status_text = AI_STATUS
     if not HAS_GEMINI and GEMINI_API_KEY:
         # Key exists but something else failed
