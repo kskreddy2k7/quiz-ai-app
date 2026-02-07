@@ -53,10 +53,29 @@ jobs:
         # Install required components (including 36.1.0 which Buildozer demands)
         $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.0" "build-tools;36.1.0"
 
-        # Force Buildozer to use the system SDK by symlinking it to where Buildozer looks
-        mkdir -p $HOME/.buildozer/android/platform
-        rm -rf $HOME/.buildozer/android/platform/android-sdk
-        ln -sf $ANDROID_SDK_ROOT $HOME/.buildozer/android/platform/android-sdk
+        # Construct Hybrid SDK for Buildozer
+        # Buildozer looks for 'tools/bin/sdkmanager', but modern SDK has 'cmdline-tools/latest/bin/sdkmanager'
+        
+        # 1. Prepare target directory
+        mkdir -p $HOME/.buildozer/android/platform/android-sdk
+        rm -rf $HOME/.buildozer/android/platform/android-sdk/* # Clean if exists
+        
+        # 2. Symlink standard components from System SDK
+        ln -sf $ANDROID_SDK_ROOT/build-tools $HOME/.buildozer/android/platform/android-sdk/build-tools
+        ln -sf $ANDROID_SDK_ROOT/platforms $HOME/.buildozer/android/platform/android-sdk/platforms
+        ln -sf $ANDROID_SDK_ROOT/platform-tools $HOME/.buildozer/android/platform/android-sdk/platform-tools
+        ln -sf $ANDROID_SDK_ROOT/licenses $HOME/.buildozer/android/platform/android-sdk/licenses
+        
+        # 3. Create the 'tools' alias (The Magic Fix)
+        # Verify cmdline-tools exists first
+        if [ -d "$ANDROID_SDK_ROOT/cmdline-tools/latest" ]; then
+          ln -sf $ANDROID_SDK_ROOT/cmdline-tools/latest $HOME/.buildozer/android/platform/android-sdk/tools
+        else
+          # Fallback if 'latest' isn't explicitly named (some installs use version numbers)
+          # Use the first directory found in cmdline-tools
+          CMDLINE_TOOLS_DIR=$(ls -d $ANDROID_SDK_ROOT/cmdline-tools/* | head -n 1)
+          ln -sf $CMDLINE_TOOLS_DIR $HOME/.buildozer/android/platform/android-sdk/tools
+        fi
 
     - name: Build with Buildozer
       run: |
