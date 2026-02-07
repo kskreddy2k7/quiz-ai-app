@@ -10,3 +10,4 @@ aiohttp==3.10.11
 python-dotenv==1.0.1
 requests
 certifi
+Jinja2>=3.1.2
