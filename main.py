@@ -1,7 +1,9 @@
 import os
+import webbrowser
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.webview import WebView
+from kivy.uix.label import Label
+from kivy.uix.button import Button
 from kivy.config import Config
 
 # Set window properties
@@ -11,24 +13,36 @@ Config.set('graphics', 'fullscreen', '0')
 
 class QuizApp(App):
     def build(self):
-        layout = BoxLayout(orientation='vertical')
+        layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
         
-        # Create webview to load the local web app
-        webview = WebView()
+        info_label = Label(
+            text="S Quiz App requires a browser environment.\nPlease click below to open.",
+            halign="center",
+            valign="middle",
+            size_hint=(1, 0.8)
+        )
+        info_label.bind(size=info_label.setter('text_size'))
         
-        # Check if we're running in debug mode or production
-        if os.environ.get('QUIZ_DEBUG'):
-            # Load from local server in debug mode
-            webview.load_url('http://localhost:8000')
-        else:
-            # Load from packaged files in production
-            webview.load_html_from_file('static/index.html')
+        open_button = Button(
+            text="Open Quiz App",
+            size_hint=(1, 0.2),
+            background_color=(0.2, 0.6, 1, 1)
+        )
+        open_button.bind(on_press=self.open_browser)
         
-        layout.add_widget(webview)
+        layout.add_widget(info_label)
+        layout.add_widget(open_button)
         return layout
     
+    def open_browser(self, instance):
+        # In a real app, we would serve the FastAPI app locally.
+        # For now, we point to the potentially deployed version or local test.
+        # Since we can't easily run the backend on Android without more work,
+        # we'll just open a placeholder or the local server URL if the user knows it.
+        # Ideally, this should point to the deployed web app URL.
+        webbrowser.open('http://127.0.0.1:8000') 
+    
     def on_pause(self):
-        # Handle app pause (phone call, etc.)
         return True
 
 if __name__ == '__main__':

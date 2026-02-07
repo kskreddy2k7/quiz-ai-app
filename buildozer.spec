@@ -20,7 +20,7 @@ version = 1.0
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,pyjnius,android,webview
+requirements = python3,kivy,pyjnius
 
 # (str) Supported orientation (landscape, sensorLandscape, portrait or all)
 orientation = portrait
@@ -32,13 +32,13 @@ fullscreen = 0
 android.permissions = INTERNET,ACCESS_NETWORK_STATE
 
 # (int) Target Android API, should be as high as possible.
-android.api = 33
+android.api = 34
 
 # (int) Minimum API your APK will support.
 android.minapi = 21
 
 # (str) Android NDK version to use
-android.ndk = 25b
+# android.ndk = 25b
 
 # (str) Android build-tools version to use
 android.build_tools_version = 33.0.0
