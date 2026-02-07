@@ -39,36 +39,19 @@ jobs:
 
     - name: Set up Android SDK
       run: |
-        # Download Android command line tools
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-        mkdir -p $HOME/android-sdk/cmdline-tools
-        unzip -q cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
-        mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-        
-        # Set environment variables
-        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-        echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-        echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
-        echo "$HOME/android-sdk/tools/bin" >> $GITHUB_PATH
+        # Use the pre-installed system Android SDK
+        echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+        echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+        echo "$ANDROID_SDK_ROOT/tools/bin" >> $GITHUB_PATH
 
-        # Create 'tools' symlink for Buildozer compatibility (it looks for tools/bin/sdkmanager)
-        # Remove existing file/dir to prevent nesting or errors
-        rm -rf $HOME/android-sdk/tools
-        ln -sf $HOME/android-sdk/cmdline-tools/latest $HOME/android-sdk/tools
-
-        # Symlink to Buildozer's expected path to prevent it from ignoring ANDROID_HOME
-        mkdir -p $HOME/.buildozer/android/platform
-        # Remove existing file/dir to prevent nesting or errors
-        rm -rf $HOME/.buildozer/android/platform/android-sdk
-        ln -sf $HOME/android-sdk $HOME/.buildozer/android/platform/android-sdk
-        
-    - name: Accept Android SDK licenses
-      run: |
-        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
-        
     - name: Install Android SDK components
       run: |
-        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.0"
+        # Accept licenses
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        
+        # Install required components
+        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.0"
 
     - name: Build with Buildozer
       run: |
