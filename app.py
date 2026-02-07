@@ -27,6 +27,15 @@ if not GEMINI_API_KEY:
     except:
         GEMINI_API_KEY = ''
 
+
+
+try:
+    with open('debug_startup.log', 'w') as f:
+        f.write(f"CWD: {os.getcwd()}\n")
+        f.write(f"API KEY: '{GEMINI_API_KEY}'\n")
+except Exception as e:
+    print(f"Failed to write log: {e}")
+
 # Initialize Gemini
 HAS_GEMINI = False
 model = None
@@ -918,6 +927,7 @@ HTML_TEMPLATE = """
 def home():
     quote = get_random_quote()
     # Pass detailed status for debugging if offline
+    print(f"DEBUG HOME: GEMINI_API_KEY='{GEMINI_API_KEY}' HAS_GEMINI={HAS_GEMINI}")
     status_text = AI_STATUS
     if not HAS_GEMINI and GEMINI_API_KEY:
         # Key exists but something else failed
