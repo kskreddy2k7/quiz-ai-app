@@ -11,6 +11,7 @@ package.domain = com.sai
 
 # (str) Source code where the main.py live
 source.dir = .
+p4a.branch = master
 
 # (list) Source files to include (let empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas,html,js,css,json
@@ -20,7 +21,7 @@ version = 1.0
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,pyjnius,openssl,sqlite3
+requirements = python3,kivy,pyjnius
 
 # (str) Supported orientation (landscape, sensorLandscape, portrait or all)
 orientation = portrait
