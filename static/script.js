@@ -1,488 +1,468 @@
+const app = {
+    state: {
+        questions: [],
+        currentQuestionIndex: 0,
+        score: 0,
+        user: { name: "Student", level: 1 },
+        uploadedFile: null,
+        chatHistory: [],
+        token: null,
+        language: "English" // Default Language
+    },
 
-// PWA logic
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    console.log("PWA Install prompt ready");
-});
+    init: async () => {
+        // 1. Load Language Preference
+        const createOption = (text, val) => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.innerText = text;
+            return opt;
+        };
+        const langSelect = document.getElementById('language-select');
+        if (langSelect) {
+            // Ensure options exist if not in HTML (HTML has them, but safety check)
+        }
 
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('SW Registered'))
-            .catch(err => console.log('SW Failed', err));
-    });
-}
+        const savedLang = localStorage.getItem('language') || "English";
+        app.state.language = savedLang;
+        if (document.getElementById('language-select')) {
+            document.getElementById('language-select').value = savedLang;
+        }
+        app.updateTranslations();
 
-console.log("S Quiz Logic Loaded");
+        // 2. Check for Token
+        const token = localStorage.getItem('token');
+        if (token) {
+            app.state.token = token;
+            app.state.user.name = localStorage.getItem('username') || "Student";
 
-// Debug Helper
-function debugLog(message) {
-    console.log(message);
-}
+            const userDisplay = document.getElementById('user-display');
+            if (userDisplay) userDisplay.innerText = app.state.user.name;
 
-// NOTE: We keep inline onclick handlers in the HTML for simplicity as requested, 
-// but we also add a listener here just in case.
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM Loaded - Verifying Elements");
-    const topicBtn = document.getElementById('topicBtn');
-    if (topicBtn) console.log("Topic Button Found");
-
-    // Initial status check
-    checkAIStatus();
-});
-
-async function checkAIStatus() {
-    try {
-        const response = await fetch('/health');
-        const data = await response.json();
-
-        const statusBanner = document.querySelector('.status');
-        if (statusBanner) {
-            statusBanner.className = 'status ' + (data.ai_status.toLowerCase().includes('online') ? 'online' : 'offline');
-            if (data.ai_status.toLowerCase().includes('online')) {
-                statusBanner.innerHTML = `✅ AI Online (${data.provider}) - Unlimited Learning Power!`;
-            } else {
-                statusBanner.innerHTML = `❌ AI Offline - Please check API keys`;
+            // Load Chat History
+            const savedChat = localStorage.getItem('chatHistory');
+            if (savedChat) {
+                try {
+                    app.state.chatHistory = JSON.parse(savedChat);
+                    const historyContainer = document.getElementById('tutor-history');
+                    if (historyContainer) {
+                        // Clear non-system messages first to avoid duplicates if re-init
+                        // Actually, just append new ones if we were robust, but simple redraw is safer
+                        // For now, let's just keep the welcome message and append.
+                        app.state.chatHistory.forEach(msg => {
+                            if (msg.role !== 'system') {
+                                const type = msg.role === 'user' ? 'msg-user' : 'msg-bot';
+                                const div = document.createElement('div');
+                                div.className = `msg ${type}`;
+                                div.innerHTML = msg.content.replace(/\n/g, '<br>');
+                                historyContainer.appendChild(div);
+                            }
+                        });
+                        historyContainer.scrollTop = historyContainer.scrollHeight;
+                    }
+                } catch (e) { console.error("Chat load error", e); }
             }
-        }
-    } catch (e) {
-        console.error("Status check failed:", e);
-    }
-}
 
-async function generateTopicQuiz() {
-    console.log("Generate Topic Quiz called");
-
-
-    const topic = document.getElementById('topic').value;
-    const difficulty = document.getElementById('difficulty').value;
-    const language = document.getElementById('language').value;
-    const num_questions = parseInt(document.getElementById('num_questions').value);
-
-    if (!topic) {
-        alert('Please enter a topic!');
-        return;
-    }
-
-    // UI Feedback
-    const btn = document.getElementById('topicBtn');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '⏳ Generating...';
-    }
-
-    showLoading('topic');
-    const resultDiv = document.getElementById('topicResult');
-    if (resultDiv) resultDiv.innerHTML = '';
-
-    try {
-        console.log("Sending request to /generate_topic...");
-        const response = await fetch('/generate_topic', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topic, difficulty, language, num_questions })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `Server Error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        if (data.error) {
-            showError('topic', data.error);
-        } else if (!data.questions || data.questions.length === 0) {
-            showError('topic', "AI could not generate questions for this topic. Try being more specific.");
+            app.showSetup();
         } else {
-            displayQuiz('topic', data.questions);
-        }
-    } catch (error) {
-        console.error("Fetch Error:", error);
-        if (error.message.includes('Failed to fetch')) {
-            showError('topic', "Network error: AI is currently unreachable. Please check your connection.");
-        } else {
-            showError('topic', `AI Generation Failed: ${error.message}`);
-        }
-    } finally {
-        hideLoading('topic');
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '🚀 Generate Quiz';
-        }
-    }
-}
-
-async function generateFileQuiz() {
-    console.log("File Button Clicked!");
-    const fileInput = document.getElementById('fileInput');
-    const difficulty = document.getElementById('fileDifficulty').value;
-    const num_questions = parseInt(document.getElementById('fileNumQuestions').value);
-
-    if (!fileInput.files[0]) {
-        alert('Please select a file!');
-        return;
-    }
-
-    if (num_questions < 1 || num_questions > 100) {
-        alert('Please enter a number between 1 and 100!');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-    formData.append('difficulty', difficulty);
-    formData.append('num_questions', num_questions);
-
-    showLoading('file');
-
-    try {
-        const response = await fetch('/generate_file', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `Server Error: ${response.status}`);
+            app.showAuth();
         }
 
-        const data = await response.json();
-        if (data.error) {
-            showError('file', data.error);
-        } else {
-            const fileInfo = document.getElementById('fileInfo');
-            if (fileInfo) {
-                fileInfo.style.display = 'block';
-                fileInfo.textContent = `✅ Processed: ${data.filename} (${data.text_length} characters)`;
+        // 3. Mobile Promo Check
+        const isMobile = window.innerWidth <= 768;
+        const isWebView = navigator.userAgent.includes('wv');
+        if (isMobile && !isWebView && !localStorage.getItem('promoDismissed')) {
+            setTimeout(() => {
+                const promo = document.getElementById('app-promo');
+                if (promo) promo.style.display = 'block';
+            }, 3000);
+        }
+    },
+
+    /* --- I18N SYSTEM --- */
+    setLanguage: (lang) => {
+        app.state.language = lang;
+        localStorage.setItem('language', lang);
+        app.updateTranslations();
+        // Optional: Notify backend to update user profile if exists
+    },
+
+    updateTranslations: () => {
+        const lang = app.state.language;
+        if (!translations[lang]) return; // Safety
+
+        // Update all elements with id starting with "t-"
+        // We use a mapping from the HTML ID to the translation key.
+        // Convention: HTML id="t-key_name" matches translations[lang]["key_name"]
+
+        const elements = document.querySelectorAll('[id^="t-"]');
+        elements.forEach(el => {
+            const key = el.id.replace('t-', '');
+            if (translations[lang][key]) {
+                el.innerText = translations[lang][key];
             }
-            displayQuiz('file', data.questions);
-        }
-    } catch (error) {
-        showError('file', `File Processing Failed: ${error.message}`);
-    } finally {
-        hideLoading('file');
-    }
-}
-
-async function getTeacherHelp() {
-    const task = document.getElementById('teacherTask').value;
-    const topic = document.getElementById('teacherTopic').value;
-    const details = document.getElementById('teacherDetails').value;
-
-    if (!topic) {
-        alert('Please enter a topic!');
-        return;
-    }
-
-    showLoading('teacher');
-
-    try {
-        const response = await fetch('/teacher_help', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ task, topic, details })
         });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `Server Error: ${response.status}`);
+        // Update Placeholders
+        const topicInput = document.getElementById('topic-input');
+        if (topicInput) topicInput.placeholder = translations[lang]["placeholder_topic"];
+
+        const authInput = document.getElementById('username-input');
+        if (authInput) authInput.placeholder = translations[lang]["placeholder_auth"];
+
+        const askInput = document.getElementById('tutor-input');
+        if (askInput) askInput.placeholder = translations[lang]["placeholder_ask"];
+
+        // Update Dynamic Texts (like File Label)
+        if (!app.state.uploadedFile) {
+            const fileLabel = document.getElementById('file-label-text'); // Corrected ID from HTML
+            if (fileLabel) fileLabel.innerText = translations[lang]["file_label"];
         }
+    },
 
-        const data = await response.json();
-        if (data.error) {
-            showError('teacher', data.error);
-        } else {
-            displayTeacherHelp(data.response);
-        }
-    } catch (error) {
-        showError('teacher', `Teacher AI Failed: ${error.message}`);
-    } finally {
-        hideLoading('teacher');
-    }
-}
+    // Helper to update dynamic texts that aren't static IDs
+    t: (key) => {
+        const lang = app.state.language;
+        return (translations[lang] && translations[lang][key]) ? translations[lang][key] : key;
+    },
 
-async function getAIHelp() {
-    const question = document.getElementById('helpQuestion').value;
-    const style = document.getElementById('helpStyle').value;
+    /* --- API HELPERS --- */
+    getHeaders: () => {
+        const headers = { 'Content-Type': 'application/json' };
+        if (app.state.token) headers['Authorization'] = `Bearer ${app.state.token}`;
+        return headers;
+    },
+    getAuthHeaders: () => {
+        const headers = {};
+        if (app.state.token) headers['Authorization'] = `Bearer ${app.state.token}`;
+        return headers;
+    },
 
-    if (!question) {
-        alert('Please enter a question!');
-        return;
-    }
+    /* --- NAVIGATION --- */
+    showView: (viewId) => {
+        document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
+        document.getElementById(viewId).style.display = 'block';
 
-    showLoading('help');
+        // Sidebar active state
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        // We can't easily map click to ID without data attributes, 
+        // ignoring visual active state update for brevity or adding logic later if needed.
+    },
 
-    try {
-        const response = await fetch('/ai_help', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question, style })
-        });
+    showAuth: () => {
+        document.getElementById('app-container').style.display = 'none';
+        document.getElementById('auth-view').style.display = 'block';
+    },
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `Server Error: ${response.status}`);
-        }
+    showSetup: () => {
+        document.getElementById('auth-view').style.display = 'none';
+        document.getElementById('app-container').style.display = 'block';
+        app.showView('setup-view');
+        app.state.uploadedFile = null;
+    },
 
-        const data = await response.json();
-        if (data.error) {
-            showError('help', data.error);
-        } else {
-            displayAIHelp(data.response);
-        }
-    } catch (error) {
-        showError('help', `AI Help Failed: ${error.message}`);
-    } finally {
-        hideLoading('help');
-    }
-}
+    showLibrary: async () => {
+        app.showView('library-view');
+        const list = document.getElementById('library-list');
+        list.innerHTML = '<div class="spinner" style="border-color:var(--primary); border-top-color:transparent; margin: 20px auto"></div>';
 
-function showLoading(tab) {
-    const loading = document.getElementById(tab + 'Loading');
-    if (loading) loading.style.display = 'block';
-
-    const error = document.getElementById(tab + 'Error');
-    if (error) error.style.display = 'none';
-
-    const result = document.getElementById(tab + 'Result');
-    if (result) result.innerHTML = '';
-
-    const btn = document.getElementById(tab + 'Btn');
-    if (btn) btn.disabled = true;
-}
-
-function hideLoading(tab) {
-    const loading = document.getElementById(tab + 'Loading');
-    if (loading) loading.style.display = 'none';
-
-    const btn = document.getElementById(tab + 'Btn');
-    if (btn) btn.disabled = false;
-}
-
-function showError(tab, message) {
-    const error = document.getElementById(tab + 'Error');
-    if (error) {
-        error.textContent = '❌ ' + message;
-        error.style.display = 'block';
-    }
-}
-
-let currentQuestions = [];
-let userAnswers = {};
-
-function displayQuiz(tab, questions) {
-    if (!questions || !Array.isArray(questions)) {
-        showError(tab, "Invalid quiz data received. Please try again.");
-        console.error("Invalid questions data:", questions);
-        return;
-    }
-
-    if (questions.length === 0) {
-        showError(tab, "AI generated 0 questions. Try a different topic.");
-        return;
-    }
-
-    console.log(`Rendering ${questions.length} questions for tab: ${tab}`);
-
-    currentQuestions = questions;
-    userAnswers = {};
-
-    const resultDiv = document.getElementById(tab + 'Result');
-    if (!resultDiv) return;
-
-    resultDiv.innerHTML = '';
-    resultDiv.style.display = 'block'; // Ensure it's visible
-
-    questions.forEach((q, index) => {
-        const card = document.createElement('div');
-        card.className = 'question-card';
-        card.id = `q-card-${index}`;
-        card.style.display = 'block';
-        card.style.opacity = '1';
-        card.style.zIndex = '100';
-        card.style.position = 'relative';
-
-        // Defensive checks to prevent crashes if AI data is incomplete
-        const prompt = q.prompt || "No question text available";
-        const choices = Array.isArray(q.choices) ? q.choices : [];
-        const explanation = q.explanation || "No explanation provided.";
-
-        let html = `
-            <div class="question-text">
-                <strong>Q${index + 1}:</strong> ${prompt}
-            </div>
-            <div class="options-container">
-        `;
-
-        choices.forEach((choice, i) => {
-            // Safe string handling for HTML attributes
-            const safeChoice = String(choice).replace(/'/g, "\\'").replace(/"/g, "&quot;");
-            html += `
-                <div class="option" onclick="selectOption(${index}, '${safeChoice}', this)">
-                    ${String.fromCharCode(65 + i)}) ${choice}
-                </div>
-            `;
-        });
-
-        html += `</div>`; // End options-container
-
-        // Add hidden result sections
-        html += `
-            <div class="explanation hidden" id="exp-${index}">
-                <div class="explanation-title">💡 Explanation:</div>
-                ${explanation}
-            </div>
-        `;
-
-        if (q.wrong_explanations && typeof q.wrong_explanations === 'object') {
-            html += `<div class="wrong-explanations-group hidden" id="wrong-exp-${index}">`;
-            for (const [option, exp] of Object.entries(q.wrong_explanations)) {
-                html += `
-                    <div class="wrong-explanation">
-                        <strong>❌ Why "${option}" is wrong:</strong><br>
-                        ${exp}
-                    </div>
-                `;
-            }
-            html += `</div>`;
-        }
-
-        card.innerHTML = html;
-        resultDiv.appendChild(card);
-    });
-
-    // Add submit button
-    const submitBtn = document.createElement('button');
-    submitBtn.id = 'submit-quiz-btn';
-    submitBtn.style.marginTop = '30px';
-    submitBtn.textContent = '✅ Submit Quiz & Get Results';
-    submitBtn.onclick = () => checkQuiz(tab);
-    resultDiv.appendChild(submitBtn);
-}
-
-function selectOption(qIndex, choice, element) {
-    // Already submitted? Don't allow changes
-    const btn = document.getElementById('submit-quiz-btn');
-    if (btn && btn.classList.contains('hidden')) return;
-
-    userAnswers[qIndex] = choice;
-
-    // UI Update
-    const container = element.parentElement;
-    container.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
-    element.classList.add('selected');
-}
-
-function checkQuiz(tab) {
-    if (Object.keys(userAnswers).length < currentQuestions.length) {
-        if (!confirm('You haven\'t answered all questions. Submit anyway?')) return;
-    }
-
-    let score = 0;
-    currentQuestions.forEach((q, index) => {
-        const isCorrect = userAnswers[index] === q.answer;
-        if (isCorrect) score++;
-
-        const card = document.getElementById(`q-card-${index}`);
-        const options = card.querySelectorAll('.option');
-
-        options.forEach(opt => {
-            const fullText = opt.textContent.trim();
-            // Robust splitting: Handles cases where ") " might be missing or different
-            const separatorIndex = fullText.indexOf(') ');
-            const optText = separatorIndex !== -1 ? fullText.substring(separatorIndex + 2).trim() : fullText;
-
-            if (optText === q.answer) {
-                opt.classList.add('correct');
-                opt.innerHTML += ' ✅ (Correct)';
-            } else if (userAnswers[index] === optText) {
-                opt.classList.add('wrong');
-                opt.innerHTML += ' ❌ (Your Choice)';
-            }
-            opt.classList.remove('selected');
-        });
-
-        // Reveal explanations
-        const exp = document.getElementById(`exp-${index}`);
-        if (exp) exp.classList.remove('hidden');
-
-        const wrongExp = document.getElementById(`wrong-exp-${index}`);
-        if (wrongExp) wrongExp.classList.remove('hidden');
-    });
-
-
-
-    // Show score summary
-    const resultDiv = document.getElementById(tab + 'Result');
-    const summary = document.createElement('div');
-    summary.className = 'score-summary';
-    const percent = Math.round((score / currentQuestions.length) * 100);
-    summary.innerHTML = `
-        <h1 style="margin:0; font-size: 3rem;">${percent}%</h1>
-        <p style="font-size: 1.5rem;">Score: ${score} / ${currentQuestions.length}</p>
-        <div class="creator-badge" style="background: rgba(255,255,255,0.2); margin-bottom: 15px;">
-            ${score === currentQuestions.length ? '🌟 PERFECT! 🌟' : score > currentQuestions.length / 2 ? '👏 GREAT JOB! 👏' : '📚 Keep Learning! 📚'}
-        </div>
-        <div class="btn-group" style="justify-content: center;">
-            <button class="share-btn" onclick="shareQuiz(${percent})">📢 Share with Friends</button>
-        </div>
-    `;
-    resultDiv.insertBefore(summary, resultDiv.firstChild);
-
-    // Hide submit button
-    const submitBtn = document.getElementById('submit-quiz-btn');
-    if (submitBtn) submitBtn.classList.add('hidden');
-
-    // Scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-async function shareQuiz(score, topic = "a Quiz") {
-    const text = "🚀 I just scored " + score + "% on " + topic + " in the S Quiz AI Academy! Can you beat me? 🎓✨";
-    const url = window.location.href;
-
-    if (navigator.share) {
         try {
-            await navigator.share({
-                title: 'S Quiz Result',
-                text: text,
-                url: url
+            const res = await fetch('/library', { headers: app.getHeaders() });
+            const items = await res.json();
+            list.innerHTML = '';
+
+            if (items.length === 0) {
+                list.innerHTML = `<p class="text-muted" style="text-align:center">Empty Library.</p>`;
+                return;
+            }
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.padding = '20px';
+                card.innerHTML = `
+                    <div style="font-weight:600; margin-bottom:5px; font-size:1.1rem">📄 ${item.filename}</div>
+                    <div style="font-size:0.95rem; color:var(--text-muted); margin-bottom:15px; line-height:1.5">${item.summary || '...'}</div>
+                    <button class="btn btn-outline" style="width:auto; font-size:0.85rem">Chat / Quiz</button>
+                `;
+                list.appendChild(card);
             });
-        } catch (err) {
-            console.log('Share failed:', err);
+        } catch (e) {
+            list.innerHTML = '<p style="color:var(--error); text-align:center">Error loading library.</p>';
         }
-    } else {
-        const dummy = document.createElement("textarea");
-        document.body.appendChild(dummy);
-        dummy.value = text + " " + url;
-        dummy.select();
-        document.execCommand("copy");
-        document.body.removeChild(dummy);
-        alert("Score & Link copied to clipboard! Share it with your friends! 🚀");
-    }
-}
+    },
 
-function displayTeacherHelp(response) {
-    const resultDiv = document.getElementById('teacherResult');
-    if (resultDiv) {
-        resultDiv.innerHTML = `
-            <div class="card" style="margin-top: 30px; background: rgba(255,255,255,0.2);">
-                <h3 style="margin-bottom: 20px;">📋 AI Assistant Response</h3>
-                <div style="white-space: pre-wrap; line-height: 1.8;">${response}</div>
-            </div>
-        `;
-    }
-}
+    showTutor: () => {
+        app.showView('tutor-view');
+    },
 
-function displayAIHelp(response) {
-    const resultDiv = document.getElementById('helpResult');
-    if (resultDiv) {
-        resultDiv.innerHTML = `
-            <div class="card" style="margin-top: 30px; background: rgba(255,255,255,0.2);">
-                <h3 style="margin-bottom: 20px;">💬 AI Response</h3>
-                <div style="white-space: pre-wrap; line-height: 1.8;">${response}</div>
-            </div>
-        `;
+    showPresentation: () => {
+        app.showView('presentation-view');
+    },
+
+    logout: () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        app.state.token = null;
+        window.location.reload();
+    },
+
+    /* --- AUTH --- */
+    login: async () => {
+        const username = document.getElementById('username-input').value;
+        const password = document.getElementById('password-input').value;
+
+        if (!username || !password) {
+            alert("Please enter credentials");
+            return;
+        }
+
+        try {
+            // Auto Register
+            if (username.length > 3) {
+                const regBody = { username, password };
+                if (username.includes('@')) regBody.email = username;
+
+                try {
+                    await fetch('/auth/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(regBody)
+                    });
+                } catch (e) { }
+            }
+
+            // Login
+            const formData = new URLSearchParams();
+            formData.append('username', username);
+            formData.append('password', password);
+
+            const res = await fetch('/auth/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData
+            });
+
+            if (!res.ok) throw new Error("Invalid credentials");
+            const data = await res.json();
+
+            app.state.token = data.access_token;
+            localStorage.setItem('token', data.access_token);
+            localStorage.setItem('username', username);
+            app.state.user.name = username;
+
+            document.getElementById('user-display').innerText = username;
+            app.showSetup();
+
+        } catch (e) {
+            alert(e.message);
+        }
+    },
+
+    /* --- QUIZ FEATURE --- */
+    handleFileSelect: (input) => {
+        if (input.files && input.files[0]) {
+            app.state.uploadedFile = input.files[0];
+            const label = document.getElementById('file-label-text') || document.getElementById('file-label'); // Handle both ID cases if distinct
+            if (label) label.innerText = `✅ ${input.files[0].name}`;
+        }
+    },
+
+    generateQuiz: async () => {
+        const topic = document.getElementById('topic-input').value;
+        const numQ = document.getElementById('q-count').value;
+        const diff = document.getElementById('difficulty-select').value;
+        // mastery-select might not be in the new HTML, let's check
+        // We removed it in favor of simplicity? No, let's keep it if logic exists, but default if null.
+        const masteryEl = document.getElementById('mastery-select');
+        const mastery = masteryEl ? masteryEl.value : "Intermediate";
+
+        if (!topic && !app.state.uploadedFile) return alert(app.t("placeholder_topic"));
+
+        document.getElementById('loading').style.display = 'block';
+
+        try {
+            let res;
+            if (app.state.uploadedFile) {
+                const fd = new FormData();
+                fd.append('file', app.state.uploadedFile);
+                fd.append('num_questions', numQ);
+                fd.append('difficulty', diff);
+                fd.append('mastery_level', mastery);
+                fd.append('language', app.state.language); // NEW
+
+                // Upload
+                await fetch('/library/upload', { method: 'POST', headers: app.getAuthHeaders(), body: fd });
+                // Generate
+                res = await fetch('/quiz/generate-from-file', { method: 'POST', headers: app.getAuthHeaders(), body: fd });
+
+            } else {
+                res = await fetch('/quiz/generate', {
+                    method: 'POST',
+                    headers: app.getHeaders(),
+                    body: JSON.stringify({
+                        topic,
+                        num_questions: parseInt(numQ),
+                        difficulty: diff,
+                        mastery_level: mastery,
+                        language: app.state.language // NEW
+                    })
+                });
+            }
+
+            if (!res.ok) throw new Error("Failed to generate");
+            const data = await res.json();
+
+            app.state.questions = data.questions;
+            app.state.currentQuestionIndex = 0;
+            app.state.score = 0;
+            app.showQuiz();
+
+        } catch (e) {
+            alert("Error: " + e.message);
+        } finally {
+            document.getElementById('loading').style.display = 'none';
+        }
+    },
+
+    showQuiz: () => {
+        app.showView('quiz-view');
+        app.renderQuestion();
+    },
+
+    renderQuestion: () => {
+        const q = app.state.questions[app.state.currentQuestionIndex];
+        document.getElementById('quiz-topic-display').innerText = q.topic || "Quiz";
+        document.getElementById('current-q').innerText = app.state.currentQuestionIndex + 1;
+        document.getElementById('total-q').innerText = app.state.questions.length;
+        document.getElementById('question-text').innerText = q.prompt;
+
+        const con = document.getElementById('options-container');
+        con.innerHTML = '';
+        document.getElementById('explanation-box').style.display = 'none';
+
+        q.choices.forEach(opt => {
+            const div = document.createElement('div');
+            div.className = 'option-card';
+            div.innerText = opt;
+            div.onclick = () => app.checkAnswer(opt, div);
+            con.appendChild(div);
+        });
+    },
+
+    checkAnswer: (selected, el) => {
+        const q = app.state.questions[app.state.currentQuestionIndex];
+        const opts = document.querySelectorAll('.option-card');
+        opts.forEach(o => o.onclick = null);
+
+        if (selected == q.answer) {
+            el.classList.add('correct');
+            app.state.score++;
+        } else {
+            el.classList.add('wrong');
+            opts.forEach(o => { if (o.innerText == q.answer) o.classList.add('correct'); });
+        }
+
+        document.getElementById('explanation-text').innerText = q.explanation;
+        document.getElementById('explanation-box').style.display = 'block';
+    },
+
+    nextQuestion: () => {
+        if (app.state.currentQuestionIndex < app.state.questions.length - 1) {
+            app.state.currentQuestionIndex++;
+            app.renderQuestion();
+        } else {
+            app.showResult();
+        }
+    },
+
+    showResult: () => {
+        app.showView('result-view');
+        const score = Math.round((app.state.score / app.state.questions.length) * 100);
+        document.getElementById('final-score').innerText = `${score}%`;
+    },
+
+    shareQuiz: () => {
+        // Placeholder for share logic
+        alert("Link copied to clipboard! (Simulated)");
+    },
+
+    /* --- TUTOR --- */
+    sendTutorMessage: async () => {
+        const input = document.getElementById('tutor-input');
+        const msg = input.value.trim();
+        if (!msg) return;
+
+        const box = document.getElementById('tutor-history');
+        box.innerHTML += `<div class="msg msg-user">${msg}</div>`;
+        input.value = '';
+        box.scrollTop = box.scrollHeight;
+
+        try {
+            const res = await fetch('/ai/chat', {
+                method: 'POST',
+                headers: app.getHeaders(),
+                body: JSON.stringify({
+                    message: msg,
+                    history: app.state.chatHistory,
+                    language: app.state.language // NEW
+                })
+            });
+            const data = await res.json();
+            box.innerHTML += `<div class="msg msg-bot">${data.response.replace(/\n/g, '<br>')}</div>`;
+            box.scrollTop = box.scrollHeight;
+
+            app.state.chatHistory.push({ role: 'user', content: msg });
+            app.state.chatHistory.push({ role: 'assistant', content: data.response });
+            localStorage.setItem('chatHistory', JSON.stringify(app.state.chatHistory));
+
+        } catch (e) {
+            box.innerHTML += `<div class="msg msg-bot" style="color:var(--error)">Error: ${e.message}</div>`;
+        }
+    },
+
+    /* --- PRESENTATION --- */
+    generatePPT: async () => {
+        const topic = document.getElementById('ppt-topic').value;
+        const slides = document.getElementById('ppt-slides').value;
+
+        if (!topic) return alert(app.t("placeholder_topic"));
+
+        document.getElementById('ppt-loading').style.display = 'block';
+
+        try {
+            const res = await fetch('/presentation/generate', {
+                method: 'POST',
+                headers: app.getHeaders(),
+                body: JSON.stringify({
+                    topic,
+                    num_slides: parseInt(slides),
+                    language: app.state.language
+                })
+            });
+
+            if (!res.ok) throw new Error("Generation Failed");
+
+            // Handle File Download
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `${topic}_Presentation.pptx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+
+            alert(app.state.language === "Hindi" ? "प्रेजेंटेशन डाउनलोड हो गया!" : "Presentation Downloaded!");
+
+        } catch (e) {
+            alert("Error: " + e.message);
+        } finally {
+            document.getElementById('ppt-loading').style.display = 'none';
+        }
     }
-}
+};
+
+// Start
+app.init();

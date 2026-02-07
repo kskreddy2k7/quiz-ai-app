@@ -9,12 +9,21 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import router as api_router
+from api import auth
 from utils.helpers import get_random_quote
 from services.ai_service import ai_service
 from utils.limiter import limiter
 from fastapi.responses import FileResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from database import engine
+from models import user_models
+
+# Create Database Tables
+# Create Database Tables
+# Create Database Tables
+# Trigger Reload 3
+user_models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="S Quiz AI Academy - PRO")
 app.state.limiter = limiter
@@ -59,6 +68,17 @@ async def home(request: Request):
         "quote": quote
     })
 
+from api import users
+app.include_router(users.router)
+from api import quiz
+app.include_router(quiz.router)
+from api import chat
+app.include_router(chat.router)
+from api import library
+app.include_router(library.router)
+from api import presentation
+app.include_router(presentation.router)
+app.include_router(auth.router)
 app.include_router(api_router)
 
 if __name__ == "__main__":

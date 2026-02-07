@@ -23,9 +23,9 @@ class AIService:
 
     def _initialize_providers(self):
         # Refresh from environment
-        self.cloudflare_api_key = os.getenv("CLOUDFLARE_API_KEY", "")
-        self.cloudflare_account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
-        self.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
+        self.cloudflare_api_key = os.getenv("CLOUDFLARE_API_KEY", "").split('#')[0].strip().strip('"')
+        self.cloudflare_account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").split('#')[0].strip().strip('"')
+        self.gemini_api_key = os.getenv("GEMINI_API_KEY", "").split('#')[0].strip().strip('"')
 
         # Initialize Gemini if key exists
         if self.gemini_api_key:
@@ -92,8 +92,58 @@ class AIService:
 
     async def generate_quiz(self, prompt: str) -> List[Dict[str, Any]]:
         """Attempt Cloudflare first, then Gemini with error handling and retry logic."""
-        text = await self.generate_text(prompt)
-        return self._parse_json(text)
+        last_error = None
+        for attempt in range(3): # Retry up to 3 times
+            try:
+                text = await self.generate_text(prompt)
+                return self._parse_json(text)
+            except Exception as e:
+                print(f"Attempt {attempt+1} failed: {e}")
+                last_error = e
+                # Wait briefly before retrying
+                await asyncio.sleep(1)
+        
+        raise last_error or Exception("Failed to generate quiz after 3 attempts")
+
+    async def chat_with_teacher(self, history: List[Dict[str, str]], message: str) -> str:
+        """Chat with the Friendly Teacher persona."""
+        system_prompt = (
+            "You are a friendly, encouraging, and patient teacher. "
+            "Your goal is to help students understand concepts deeply. "
+            "Use simple language, analogies, and ASCII charts/diagrams where helpful. "
+            "Never give just the answer; explain the 'why'. "
+            "Keep responses concise but helpful."
+        )
+        # Construct full prompt (simple concatenation for now, can be improved)
+        full_prompt = f"System: {system_prompt}\n\n"
+        for msg in history:
+            # Ensure role is mapped correctly
+            role = "Teacher" if msg['role'] == "model" or msg['role'] == "assistant" else "Student"
+            full_prompt += f"{role}: {msg['content']}\n"
+        full_prompt += f"Student: {message}\nTeacher:"
+        
+        return await self.generate_text(full_prompt)
+
+    async def explain_concept(self, text: str, context: Optional[str] = None) -> str:
+        """Provide a deep, step-by-step explanation."""
+        prompt = (
+            f"Act as a friendly teacher. Explain the following concept/question step-by-step:\n"
+            f"'{text}'\n"
+        )
+        if context:
+            prompt += f"\nContext from file/quiz: {context}\n"
+            
+        prompt += "\nUse an analogy and if possible, a small ASCII diagram/chart to visualize it."
+        return await self.generate_text(prompt)
+
+    async def summarize_text(self, text: str) -> str:
+        """Generate a concise summary of the text."""
+        prompt = (
+            f"Summarize the following text in 3-4 bullet points, capturing the key concepts:\n"
+            f"'{text[:10000]}'\n" # Limit input to avoid overload
+            f"\nSummary:"
+        )
+        return await self.generate_text(prompt)
 
     async def generate_text(self, prompt: str) -> str:
         """Generic text generation with fallback."""
@@ -141,8 +191,10 @@ class AIService:
                             try:
                                 data = ast.literal_eval(match.group(0))
                             except:
+                                print(f"FAILED TO PARSE AI OUTPUT:\n{cleaned}\n") # Debug Log
                                 raise e
                     else:
+                        print(f"NO JSON FOUND IN:\n{cleaned}\n") # Debug Log
                         raise e
         
         # Standardize format

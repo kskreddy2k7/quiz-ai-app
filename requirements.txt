@@ -5,9 +5,15 @@ slowapi==0.1.9
 python-multipart==0.0.12
 google-generativeai==0.8.4
 pypdf>=3.17.0
-docx2txt
+pypdf>=3.17.0
+python-docx>=0.8.11
 aiohttp==3.10.11
 python-dotenv==1.0.1
 requests
 certifi
 Jinja2>=3.1.2
+
+# --- DATABASE & AUTH ---
+sqlalchemy>=2.0.0
+passlib[bcrypt]
+python-jose[cryptography]
