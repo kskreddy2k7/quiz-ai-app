@@ -1,4 +1,4 @@
-const CACHE_NAME = 's-quiz-v2';
+const CACHE_NAME = 's-quiz-v3';
 const ASSETS = [
     '/',
     '/manifest.json',
@@ -14,8 +14,9 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    // Network-First strategy for the root and API calls
     event.respondWith(
-        caches.match(event.request)
-            .then((response) => response || fetch(event.request))
+        fetch(event.request)
+            .catch(() => caches.match(event.request))
     );
 });

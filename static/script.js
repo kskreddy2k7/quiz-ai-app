@@ -28,7 +28,29 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM Loaded - Verifying Elements");
     const topicBtn = document.getElementById('topicBtn');
     if (topicBtn) console.log("Topic Button Found");
+
+    // Initial status check
+    checkAIStatus();
 });
+
+async function checkAIStatus() {
+    try {
+        const response = await fetch('/health');
+        const data = await response.json();
+
+        const statusBanner = document.querySelector('.status');
+        if (statusBanner) {
+            statusBanner.className = 'status ' + (data.ai_status.toLowerCase().includes('online') ? 'online' : 'offline');
+            if (data.ai_status.toLowerCase().includes('online')) {
+                statusBanner.innerHTML = `✅ AI Online (${data.provider}) - Unlimited Learning Power!`;
+            } else {
+                statusBanner.innerHTML = `❌ AI Offline - Please check API keys`;
+            }
+        }
+    } catch (e) {
+        console.error("Status check failed:", e);
+    }
+}
 
 async function generateTopicQuiz() {
     console.log("Generate Topic Quiz called");
