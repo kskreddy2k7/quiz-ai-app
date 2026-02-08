@@ -35,10 +35,32 @@ class AIService:
         if self.gemini_api_key:
             try:
                 genai.configure(api_key=self.gemini_api_key)
-                self.model = genai.GenerativeModel('gemini-1.5-flash')
-                self.has_ai = True
-                self.provider = "Gemini"
-                self.status = "Online (Gemini)"
+                # Try primary model first, with fallback options
+                self.fallback_models = [
+                    'models/gemini-1.5-flash-latest',
+                    'models/gemini-1.5-pro-latest',
+                    'gemini-1.5-flash-latest',
+                    'gemini-1.5-pro-latest'
+                ]
+                
+                # Use the first available model
+                for model_name in self.fallback_models:
+                    try:
+                        self.model = genai.GenerativeModel(model_name)
+                        # Test the model with a simple prompt
+                        test_response = self.model.generate_content("Hi")
+                        if test_response:
+                            self.has_ai = True
+                            self.provider = f"Gemini ({model_name})"
+                            self.status = f"Online (Gemini {model_name})"
+                            print(f"Successfully initialized Gemini with model: {model_name}")
+                            break
+                    except Exception as model_error:
+                        print(f"Model {model_name} failed: {model_error}")
+                        continue
+                
+                if not self.has_ai:
+                    print("All Gemini models failed to initialize")
             except Exception as e:
                 print(f"Gemini init error: {e}")
 
