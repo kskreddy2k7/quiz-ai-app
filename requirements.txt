@@ -17,3 +17,5 @@ Jinja2>=3.1.2
 sqlalchemy>=2.0.0
 passlib[bcrypt]
 python-jose[cryptography]
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
