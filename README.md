@@ -39,6 +39,17 @@
 2. Tap **"Add to Home Screen"** or the Install icon.
 3. The website will now run like a native app without the browser bar!
 
+### 📱 Android APK (Native App)
+S Quiz is also available as a native Android app! The APK is automatically built using GitHub Actions.
+
+**Download the APK**:
+- Go to [Releases](https://github.com/kskreddy2k7/quiz-ai-app/releases)
+- Download the latest `S-Quiz-*.apk` file
+- Install on your Android device
+
+**Build from Source**:
+See [build_notes.md](build_notes.md) for detailed instructions on building the Android APK locally or using GitHub Actions.
+
 ---
 
 ## 📦 Installation & Setup (Local)
@@ -72,14 +83,22 @@ Open `http://localhost:5002` in your browser.
 ## 📂 Project Structure
 ```
 S-Quiz/
-├── app.py             # Main Flask Application
+├── .github/workflows/ # GitHub Actions CI/CD
+│   └── build-apk.yml  # Android APK build workflow
+├── main.py            # Android app entry point (Kivy)
+├── main_web.py        # Web app entry point (FastAPI)
 ├── static/            # Static assets (CSS/JS)
+├── api/               # API endpoints
+├── services/          # Business logic
+├── models/            # Database models
 ├── uploads/           # Temporary folder for processed files
 ├── requirements.txt   # Web Server Dependencies
+├── buildozer.spec     # Android build configuration
+├── build_notes.md     # Android build instructions
 ├── manifest.json      # PWA Configuration
 ├── sw.js              # Service Worker for Offline/PWA
 ├── Procfile           # Render/Railway Deployment Config
-└── secrets.json       # (Local only) Your API key
+└── render.yaml        # Render deployment config
 ```
 
 ---
