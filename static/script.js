@@ -92,26 +92,29 @@ const app = {
             const userDisplay = document.getElementById('user-display');
             if (userDisplay) userDisplay.innerText = app.state.user.name;
 
-            // Load Chat History
+            // Load Chat History (optimized with lazy rendering)
             const savedChat = localStorage.getItem('chatHistory');
             if (savedChat) {
                 try {
                     app.state.chatHistory = JSON.parse(savedChat);
                     const historyContainer = document.getElementById('tutor-history');
                     if (historyContainer) {
-                        // Clear non-system messages first to avoid duplicates if re-init
-                        // Actually, just append new ones if we were robust, but simple redraw is safer
-                        // For now, let's just keep the welcome message and append.
+                        // Use document fragment for better performance
+                        const fragment = document.createDocumentFragment();
                         app.state.chatHistory.forEach(msg => {
                             if (msg.role !== 'system') {
                                 const type = msg.role === 'user' ? 'msg-user' : 'msg-bot';
                                 const div = document.createElement('div');
                                 div.className = `msg ${type}`;
                                 div.innerHTML = msg.content.replace(/\n/g, '<br>');
-                                historyContainer.appendChild(div);
+                                fragment.appendChild(div);
                             }
                         });
-                        historyContainer.scrollTop = historyContainer.scrollHeight;
+                        historyContainer.appendChild(fragment);
+                        // Scroll to bottom after rendering
+                        requestAnimationFrame(() => {
+                            historyContainer.scrollTop = historyContainer.scrollHeight;
+                        });
                     }
                 } catch (e) { console.error("Chat load error", e); }
             }
@@ -449,18 +452,33 @@ const app = {
         con.innerHTML = '';
         document.getElementById('explanation-box').style.display = 'none';
 
-        q.choices.forEach(opt => {
+        // Use document fragment for better performance
+        const fragment = document.createDocumentFragment();
+        q.choices.forEach((opt, index) => {
             const div = document.createElement('div');
             div.className = 'option-card';
             div.innerText = opt;
             div.onclick = () => app.checkAnswer(opt, div);
-            con.appendChild(div);
+            // Stagger animation for smooth entrance
+            div.style.opacity = '0';
+            div.style.transform = 'translateY(10px)';
+            fragment.appendChild(div);
+            
+            // Animate in after a brief delay
+            setTimeout(() => {
+                div.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                div.style.opacity = '1';
+                div.style.transform = 'translateY(0)';
+            }, 50 * index);
         });
+        con.appendChild(fragment);
     },
 
     checkAnswer: (selected, el) => {
         const q = app.state.questions[app.state.currentQuestionIndex];
         const opts = document.querySelectorAll('.option-card');
+        
+        // Disable all options to prevent multiple clicks
         opts.forEach(o => o.onclick = null);
 
         if (selected == q.answer) {
@@ -471,13 +489,17 @@ const app = {
             opts.forEach(o => { if (o.innerText == q.answer) o.classList.add('correct'); });
         }
 
-        // Show Explanation
+        // Show Explanation with fade in
+        const expBox = document.getElementById('explanation-box');
         const expText = document.getElementById('explanation-text');
         expText.innerText = q.explanation;
-        document.getElementById('explanation-box').style.display = 'block';
+        expBox.style.display = 'block';
+        utils.fadeIn(expBox, 400);
 
-        // Auto scroll to explanation
-        document.getElementById('explanation-box').scrollIntoView({ behavior: 'smooth', block: 'end' });
+        // Auto scroll to explanation smoothly
+        setTimeout(() => {
+            expBox.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 100);
     },
 
     nextQuestion: () => {
@@ -517,14 +539,20 @@ const app = {
         utils.fadeIn(userMsg, 200);
         
         input.value = '';
-        box.scrollTop = box.scrollHeight;
+        
+        // Smooth scroll using requestAnimationFrame for better performance
+        requestAnimationFrame(() => {
+            box.scrollTop = box.scrollHeight;
+        });
 
         // Add typing indicator
         const typingIndicator = document.createElement('div');
         typingIndicator.className = 'msg msg-bot typing-container';
         typingIndicator.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
         box.appendChild(typingIndicator);
-        box.scrollTop = box.scrollHeight;
+        requestAnimationFrame(() => {
+            box.scrollTop = box.scrollHeight;
+        });
 
         try {
             const res = await fetch('/ai/chat', {
@@ -552,7 +580,9 @@ const app = {
             botMsg.innerHTML = data.response.replace(/\n/g, '<br>');
             box.appendChild(botMsg);
             utils.fadeIn(botMsg, 300);
-            box.scrollTop = box.scrollHeight;
+            requestAnimationFrame(() => {
+                box.scrollTop = box.scrollHeight;
+            });
 
             app.state.chatHistory.push({ role: 'user', content: msg });
             app.state.chatHistory.push({ role: 'assistant', content: data.response });

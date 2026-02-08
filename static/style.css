@@ -830,3 +830,26 @@ select.input-field option {
         scroll-behavior: auto !important;
     }
 }
+
+/* --- Scroll Performance Optimizations --- */
+#tutor-history {
+    /* Enable GPU acceleration for smooth scrolling */
+    transform: translateZ(0);
+    -webkit-overflow-scrolling: touch;
+    /* Optimize scroll performance */
+    will-change: scroll-position;
+}
+
+/* Optimize all scrollable containers */
+.overflow-y-auto,
+[style*="overflow-y: auto"] {
+    transform: translateZ(0);
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Message animations */
+.msg {
+    /* Ensure messages render on GPU for smooth animations */
+    transform: translateZ(0);
+    will-change: transform, opacity;
+}
