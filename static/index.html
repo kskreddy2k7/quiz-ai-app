@@ -90,6 +90,20 @@
             </div>
         </div>
 
+        <!-- App Header (Logo + Quote) -->
+        <div class="app-header-section">
+            <div class="app-logo-main">
+                <div class="app-icon-large"><i class="bi bi-lightning-charge-fill"></i></div>
+                <h1 class="app-title-large">S Quiz</h1>
+                <p class="app-tagline">AI Learning Platform</p>
+            </div>
+            <div class="motivation-quote">
+                <i class="bi bi-quote"></i>
+                <p>"The beautiful thing about learning is that no one can take it away from you."</p>
+                <span class="quote-author">— B.B. King</span>
+            </div>
+        </div>
+
         <!-- Navigation Sidebar -->
         <nav class="floating-nav">
             <div class="nav-pill active"
@@ -108,17 +122,8 @@
         </nav>
 
         <div class="container">
-            <!-- Header -->
-            <header class="main-header">
-                <div class="app-logo-container">
-                    <div class="app-icon"><i class="bi bi-lightning-charge-fill"></i></div>
-                    <h1 class="app-title">S Quiz</h1>
-                </div>
-                <div class="header-badge">AI Learning Platform 2.0</div>
-                <div id="status-banner" class="status-banner" style="display: none;">
-                    <span class="status-dot online"></span> AI Online
-                </div>
-            </header>
+            <!-- OLD Header removed from here -->
+            <!-- Content starts directly -->
 
             <!-- 1. Topic Quiz View -->
             <div id="topic-view" class="screen">
@@ -137,10 +142,17 @@
                         </select>
                         <select id="language-select" class="input-field">
                             <option value="English">English</option>
-                            <option value="Spanish">Español</option>
-                            <option value="French">Français</option>
-                            <option value="German">Deutsch</option>
-                            <option value="Hindi">Hindi</option>
+                            <option value="Hindi">हिन्दी (Hindi)</option>
+                            <option value="Telugu">తెలుగు (Telugu)</option>
+                            <option value="Tamil">தமிழ் (Tamil)</option>
+                            <option value="Kannada">ಕನ್ನಡ (Kannada)</option>
+                            <option value="Malayalam">മലയാളം (Malayalam)</option>
+                            <option value="Marathi">मराठी (Marathi)</option>
+                            <option value="Gujarati">ગુજરાતી (Gujarati)</option>
+                            <option value="Punjabi">ਪੰਜਾਬੀ (Punjabi)</option>
+                            <option value="Bengali">বাংলা (Bengali)</option>
+                            <option value="Odia">ଓଡ଼ିଆ (Odia)</option>
+                            <option value="Urdu">اردو (Urdu)</option>
                         </select>
                     </div>
 
@@ -185,7 +197,17 @@
                     </div>
                     <select id="file-language-select" class="input-field">
                         <option value="English">English</option>
-                        <option value="Spanish">Spanish</option>
+                        <option value="Hindi">हिन्दी (Hindi)</option>
+                        <option value="Telugu">తెలుగు (Telugu)</option>
+                        <option value="Tamil">தமிழ் (Tamil)</option>
+                        <option value="Kannada">ಕನ್ನಡ (Kannada)</option>
+                        <option value="Malayalam">മലയാളം (Malayalam)</option>
+                        <option value="Marathi">मराठी (Marathi)</option>
+                        <option value="Gujarati">ગુજરાતી (Gujarati)</option>
+                        <option value="Punjabi">ਪੰਜਾਬੀ (Punjabi)</option>
+                        <option value="Bengali">বাংলা (Bengali)</option>
+                        <option value="Odia">ଓଡ଼ିଆ (Odia)</option>
+                        <option value="Urdu">اردو (Urdu)</option>
                     </select>
 
                     <button class="btn" onclick="app.generateFileQuiz()">Generate from File 📂</button>
@@ -323,6 +345,117 @@
             }
         }
     </style>
+
+    <!-- Onboarding Modal -->
+    <div id="onboarding-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close" onclick="app.closeOnboarding()">×</button>
+            <div class="modal-header">
+                <h2>✨ Welcome to S Quiz!</h2>
+                <p>Your Premium AI Learning Companion</p>
+            </div>
+            <div class="modal-body">
+                <h3><i class="bi bi-stars"></i> What is S Quiz?</h3>
+                <p>S Quiz is a powerful AI-driven learning platform that creates personalized quizzes, provides instant tutoring, and generates study materials in your language.</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                        <h4>AI Quiz Generator</h4>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-chat-dots-fill"></i>
+                        <h4>Smart Tutor</h4>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <h4>File Upload</h4>
+                    </div>
+                    <div class="feature-card">
+                        <i class="bi bi-translate"></i>
+                        <h4>12 Languages</h4>
+                    </div>
+                </div>
+
+                <h3><i class="bi bi-shield-check"></i> How It Works</h3>
+                <ul>
+                    <li>Enter any topic or upload your study material</li>
+                    <li>AI generates personalized quizzes with explanations</li>
+                    <li>Get instant help from our AI tutor</li>
+                    <li>Track your progress and improve your skills</li>
+                </ul>
+
+                <h3><i class="bi bi-lock-fill"></i> Permissions</h3>
+                <p style="font-size: 0.95rem; color: var(--text-muted);">S Quiz may request:</p>
+                <ul>
+                    <li><strong>File Access:</strong> To read PDFs and documents you upload</li>
+                    <li><strong>Internet:</strong> To generate quizzes using AI</li>
+                </ul>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 10px;">
+                    <i class="bi bi-info-circle"></i> Your files are processed securely and not stored permanently.
+                </p>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-primary" onclick="app.startLearning()">
+                    Get Started 🚀
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PWA Install Banner (Hidden by default, shown when applicable) -->
+    <div id="pwa-banner" class="pwa-banner" style="display: none;">
+        <div class="pwa-banner-icon">📱</div>
+        <div class="pwa-banner-content">
+            <h3>Install S Quiz</h3>
+            <p>Add to your home screen for a better experience!</p>
+        </div>
+        <div class="pwa-banner-actions">
+            <button class="pwa-btn pwa-btn-install" onclick="app.installPWA()">Install</button>
+            <button class="pwa-btn pwa-btn-dismiss" onclick="app.dismissPWA()">Not Now</button>
+        </div>
+    </div>
+
+    <!-- APK Download Modal for Android -->
+    <div id="apk-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close" onclick="app.closeAPKModal()">×</button>
+            <div class="modal-header">
+                <h2>📱 Download S Quiz for Android</h2>
+                <p>Get the native Android app</p>
+            </div>
+            <div class="modal-body">
+                <div class="apk-download-section">
+                    <i class="bi bi-android2" style="font-size: 4rem; color: #3ddc84; margin-bottom: 15px; display: block;"></i>
+                    <h3>Install S Quiz APK</h3>
+                    <p>Experience S Quiz as a native Android app with offline support!</p>
+                    <a href="/static/app/S-Quiz.apk" download class="download-btn">
+                        <i class="bi bi-download"></i>
+                        Download APK
+                    </a>
+                </div>
+
+                <h3><i class="bi bi-list-ol"></i> Installation Instructions</h3>
+                <ul style="text-align: left;">
+                    <li>Download the APK file above</li>
+                    <li>Open your device Settings</li>
+                    <li>Go to Security → Install Unknown Apps</li>
+                    <li>Enable installation for your browser</li>
+                    <li>Tap the downloaded APK to install</li>
+                    <li>Open S Quiz and start learning!</li>
+                </ul>
+
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 20px;">
+                    <i class="bi bi-shield-check"></i> The APK is safe and built from our official GitHub repository.
+                </p>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-secondary" onclick="app.closeAPKModal()">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Helper for navigation highlighting
