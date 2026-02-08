@@ -5,6 +5,31 @@ const CONFIG = {
     PROMO_DELAY: 3000            // 3 seconds
 };
 
+// Motivational Quotes Pool
+const QUOTES = [
+    { text: "The beautiful thing about learning is that no one can take it away from you.", author: "B.B. King" },
+    { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
+    { text: "The only way to learn mathematics is to do mathematics.", author: "Paul Halmos" },
+    { text: "Live as if you were to die tomorrow. Learn as if you were to live forever.", author: "Mahatma Gandhi" },
+    { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
+    { text: "The capacity to learn is a gift; the ability to learn is a skill; the willingness to learn is a choice.", author: "Brian Herbert" },
+    { text: "Learning never exhausts the mind.", author: "Leonardo da Vinci" },
+    { text: "The more that you read, the more things you will know. The more that you learn, the more places you'll go.", author: "Dr. Seuss" },
+    { text: "Education is not the filling of a pail, but the lighting of a fire.", author: "William Butler Yeats" },
+    { text: "Success is the sum of small efforts repeated day in and day out.", author: "Robert Collier" }
+];
+
+// Get a random quote that hasn't been shown recently
+const getRandomQuote = () => {
+    const lastQuote = localStorage.getItem('lastQuote') || '';
+    let quote;
+    do {
+        quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+    } while (QUOTES.length > 1 && JSON.stringify(quote) === lastQuote);
+    localStorage.setItem('lastQuote', JSON.stringify(quote));
+    return quote;
+};
+
 // Utility functions for performance optimization
 const utils = {
     // Debounce function to reduce API calls
@@ -20,7 +45,49 @@ const utils = {
         };
     },
     
-    // Show animated loading indicator
+    // Show animated loading indicator with AI steps
+    showLoadingSteps: (elementId, steps = [
+        '✓ Understanding topic',
+        '✓ Selecting difficulty',
+        '✓ Generating questions',
+        '✓ Finalizing quiz'
+    ]) => {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        
+        el.style.display = 'block';
+        el.innerHTML = `
+            <div style="text-align: center;">
+                <div class="typing-indicator" style="margin-bottom: 20px;">
+                    <span></span><span></span><span></span>
+                </div>
+                <div id="loading-steps" style="text-align: left; display: inline-block; margin: 0 auto;">
+                    ${steps.map((step, i) => `
+                        <div class="loading-step" data-step="${i}" style="opacity: 0.3; padding: 8px 0; transition: all 0.3s ease;">
+                            <span style="color: var(--text-muted); font-size: 0.95rem;">${step.replace('✓', '<span class="step-check">⏳</span>')}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        
+        // Animate steps
+        steps.forEach((step, i) => {
+            setTimeout(() => {
+                const stepEl = el.querySelector(`[data-step="${i}"]`);
+                if (stepEl) {
+                    stepEl.style.opacity = '1';
+                    const checkEl = stepEl.querySelector('.step-check');
+                    if (checkEl) {
+                        checkEl.textContent = '✓';
+                        checkEl.style.color = 'var(--success)';
+                    }
+                }
+            }, i * 400);
+        });
+    },
+    
+    // Show animated loading indicator (fallback for simple cases)
     showLoading: (elementId, message = 'Thinking...') => {
         const el = document.getElementById(elementId);
         if (el) {
@@ -208,6 +275,61 @@ const app = {
 
         // 4. Detect Android device and offer APK
         app.detectAndroidDevice();
+        
+        // 5. Initialize quotes on auth screen
+        app.updateAuthQuote();
+        
+        // 6. Show daily motivation card (if not dismissed today)
+        app.showDailyMotivation();
+    },
+
+    /* --- QUOTE MANAGEMENT --- */
+    updateAuthQuote: () => {
+        const quote = getRandomQuote();
+        const textEl = document.getElementById('auth-quote-text');
+        const authorEl = document.getElementById('auth-quote-author');
+        if (textEl) textEl.textContent = `"${quote.text}"`;
+        if (authorEl) authorEl.textContent = `— ${quote.author}`;
+    },
+    
+    updateResultQuote: () => {
+        const quote = getRandomQuote();
+        const textEl = document.getElementById('result-quote-text');
+        const authorEl = document.getElementById('result-quote-author');
+        if (textEl) textEl.textContent = `"${quote.text}"`;
+        if (authorEl) authorEl.textContent = `— ${quote.author}`;
+    },
+    
+    showDailyMotivation: () => {
+        const today = new Date().toDateString();
+        const lastShown = localStorage.getItem('motivationShownDate');
+        
+        // Show once per day
+        if (lastShown !== today) {
+            setTimeout(() => {
+                const card = document.getElementById('daily-motivation-card');
+                if (card) {
+                    const quote = getRandomQuote();
+                    const textEl = document.getElementById('motivation-text');
+                    const authorEl = document.getElementById('motivation-author');
+                    if (textEl) textEl.textContent = `"${quote.text}"`;
+                    if (authorEl) authorEl.textContent = `— ${quote.author}`;
+                    card.style.display = 'block';
+                }
+            }, 3000); // Show after 3 seconds
+        }
+    },
+    
+    dismissMotivation: () => {
+        const card = document.getElementById('daily-motivation-card');
+        if (card) {
+            card.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => {
+                card.style.display = 'none';
+                const today = new Date().toDateString();
+                localStorage.setItem('motivationShownDate', today);
+            }, 300);
+        }
     },
 
     /* --- I18N SYSTEM --- */
@@ -550,19 +672,24 @@ const app = {
         
         // Input validation
         if (!topic || topic.length < 2) {
-            utils.showNotification("Please enter a valid topic (at least 2 characters).");
+            utils.showNotification("Please enter a valid topic (at least 2 characters).", "error");
             document.getElementById('topic-input').focus();
             return;
         }
         
         if (numQ < 1 || numQ > 50) {
-            utils.showNotification("Please enter a valid number of questions (1-50).");
+            utils.showNotification("Please enter a valid number of questions (1-50).", "error");
             document.getElementById('q-count').focus();
             return;
         }
 
-        // Use enhanced loading indicator
-        utils.showLoading('loading-topic', `Generating ${numQ} questions on ${topic}...`);
+        // Use enhanced loading indicator with animated steps
+        utils.showLoadingSteps('loading-topic', [
+            '⏳ Understanding topic',
+            '⏳ Selecting difficulty',
+            '⏳ Generating questions',
+            '⏳ Finalizing quiz'
+        ]);
 
         try {
             const res = await fetch('/quiz/generate', {
@@ -589,7 +716,7 @@ const app = {
             app.startQuiz(data);
 
         } catch (e) {
-            utils.showNotification("Error: " + e.message);
+            utils.showNotification("Error: " + e.message, "error");
         } finally {
             utils.hideLoading('loading-topic');
         }
@@ -598,7 +725,7 @@ const app = {
     // --- FILE QUIZ ---
     generateFileQuiz: async () => {
         if (!app.state.uploadedFile) {
-            utils.showNotification("Please upload a file first.");
+            utils.showNotification("Please upload a file first.", "error");
             return;
         }
 
@@ -608,18 +735,23 @@ const app = {
         
         // Validate number of questions
         if (numQ < 1 || numQ > 50) {
-            utils.showNotification("Please enter a valid number of questions (1-50).");
+            utils.showNotification("Please enter a valid number of questions (1-50).", "error");
             document.getElementById('file-q-count').focus();
             return;
         }
         
         // Validate file size (max 10MB for performance)
         if (app.state.uploadedFile.size > 10 * 1024 * 1024) {
-            utils.showNotification("File is too large. Please upload a file smaller than 10MB.");
+            utils.showNotification("File is too large. Please upload a file smaller than 10MB.", "error");
             return;
         }
 
-        utils.showLoading('loading-file', `Processing ${app.state.uploadedFile.name}...`);
+        utils.showLoadingSteps('loading-file', [
+            '⏳ Reading file',
+            '⏳ Extracting content',
+            '⏳ Generating questions',
+            '⏳ Creating quiz'
+        ]);
 
         try {
             const fd = new FormData();
@@ -733,6 +865,9 @@ const app = {
         app.showView('result-view');
         const score = Math.round((app.state.score / app.state.questions.length) * 100);
         document.getElementById('final-score').innerText = `${score}%`;
+        
+        // Update result quote
+        app.updateResultQuote();
     },
 
     shareQuiz: () => {

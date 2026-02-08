@@ -332,7 +332,7 @@ body::after {
     justify-content: center;
     font-size: 2rem;
     color: white;
-    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 6px 15px rgba(99, 102, 241, 0.3);
     margin-bottom: 10px;
 }
 
@@ -496,17 +496,41 @@ body::after {
     flex-direction: column;
     gap: 25px;
     z-index: 100;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    transition: width 0.3s ease, padding 0.3s ease;
+    width: 80px;
+}
+
+/* Collapsible Sidebar - Default collapsed state */
+.floating-nav.collapsed {
+    width: 70px;
+    padding: 25px 10px;
+}
+
+.floating-nav.collapsed .nav-label {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+/* Expanded on hover */
+.floating-nav:hover {
+    width: 160px;
+    padding: 30px 15px;
+}
+
+.floating-nav:hover .nav-label {
+    opacity: 1;
+    width: auto;
 }
 
 /* Nav Pill Micro-Interaction */
 .nav-pill {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     cursor: pointer;
-    padding: 12px 10px;
+    padding: 12px 15px;
     border-radius: 18px;
     /* Optimized: only transform, opacity and background */
     transition: transform 0.3s var(--ease-out), opacity 0.3s ease, background 0.3s ease, color 0.3s ease;
@@ -514,6 +538,7 @@ body::after {
     position: relative;
     overflow: hidden;
     will-change: transform;
+    white-space: nowrap;
 }
 
 .nav-pill:active {
@@ -521,36 +546,37 @@ body::after {
 }
 
 .nav-pill i {
-    font-size: 1.6rem;
+    font-size: 1.4rem;
     transition: transform 0.3s var(--ease-squish), color 0.3s ease;
     will-change: transform;
+    flex-shrink: 0;
 }
 
 .nav-pill:hover i {
-    transform: scale(1.15) rotate(5deg);
+    transform: scale(1.1);
     color: var(--accent);
 }
 
-.nav-pill span {
-    font-size: 0.75rem;
+.nav-pill .nav-label {
+    font-size: 0.85rem;
     font-weight: 600;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+    transition: opacity 0.3s ease, width 0.3s ease;
 }
 
 .nav-pill:hover {
     color: var(--text-main);
-    transform: translateY(-3px);
+    transform: translateX(3px);
 }
 
 .nav-pill.active {
     background: var(--primary-gradient);
     color: white;
-    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4);
-    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
 }
 
 .nav-pill.active i {
-    transform: scale(1.1);
+    transform: scale(1.05);
 }
 
 
@@ -1511,4 +1537,82 @@ select.input-field option {
     .pwa-btn {
         width: 100%;
     }
+}
+
+/* --- Daily Motivation Card (Dismissible) --- */
+.daily-motivation-card {
+    position: fixed;
+    top: 140px;
+    right: 30px;
+    max-width: 350px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15));
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    z-index: 500;
+    animation: slideInRight 0.5s ease-out;
+}
+
+.close-motivation {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: var(--text-muted);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.close-motivation:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.motivation-text {
+    font-style: italic;
+    color: var(--text-body);
+    margin: 10px 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Reduce excessive glow on body pseudo-elements */
+body::before {
+    opacity: 0.4;
+}
+
+body::after {
+    opacity: 0.3;
 }
