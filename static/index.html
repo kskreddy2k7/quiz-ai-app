@@ -10,6 +10,8 @@
         rel="stylesheet">
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <!-- Google Sign-In -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- CSS -->
     <link rel="stylesheet" href="/static/style.css?v=6">
 </head>
@@ -17,8 +19,8 @@
 <body>
 
     <!-- Auth View -->
-    <div id="auth-view" class="glass-card screen"
-        style="display: none; max-width: 450px; margin: 5vh auto; padding: 60px 40px;">
+    <div id="auth-view" class="glass-card screen auth-screen"
+        style="display: none; max-width: 450px; margin: 5vh auto; padding: 60px 40px; animation: scaleIn 0.5s ease-out;">
         <div style="text-align: center; margin-bottom: 40px;">
             <div class="app-icon" style="margin: 0 auto 20px; width: 80px; height: 80px; font-size: 3rem;">
                 <i class="bi bi-stars"></i>
@@ -27,12 +29,29 @@
             <p class="text-muted">Your personal AI study companion.</p>
         </div>
 
+        <!-- Google Sign-In Button -->
+        <button id="google-signin-btn" class="btn-google" onclick="app.googleSignIn()">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19.6 10.227c0-.709-.064-1.39-.182-2.045H10v3.868h5.382a4.6 4.6 0 01-1.996 3.018v2.51h3.232c1.891-1.742 2.982-4.305 2.982-7.35z" fill="#4285F4"/>
+                <path d="M10 20c2.7 0 4.964-.895 6.618-2.423l-3.232-2.509c-.895.6-2.04.955-3.386.955-2.605 0-4.81-1.76-5.595-4.123H1.064v2.59A9.996 9.996 0 0010 20z" fill="#34A853"/>
+                <path d="M4.405 11.9c-.2-.6-.314-1.24-.314-1.9 0-.66.114-1.3.314-1.9V5.51H1.064A9.996 9.996 0 000 10c0 1.614.386 3.14 1.064 4.49L4.405 11.9z" fill="#FBBC05"/>
+                <path d="M10 3.977c1.468 0 2.786.505 3.823 1.496l2.868-2.868C14.959.99 12.695 0 10 0 6.09 0 2.71 2.24 1.064 5.51l3.34 2.59C5.19 5.736 7.395 3.977 10 3.977z" fill="#EA4335"/>
+            </svg>
+            <span>Continue with Google</span>
+        </button>
+
+        <div style="display: flex; align-items: center; margin: 30px 0;">
+            <hr style="flex:1; border:0; border-top:1px solid rgba(255,255,255,0.2);">
+            <span style="padding: 0 10px; color: var(--text-muted); font-size: 0.9rem;">OR</span>
+            <hr style="flex:1; border:0; border-top:1px solid rgba(255,255,255,0.2);">
+        </div>
+
         <input type="text" id="username-input" class="input-field" placeholder="Username or Email">
         <input type="password" id="password-input" class="input-field" placeholder="Password">
 
         <button class="btn" onclick="app.login()">Start Learning 🚀</button>
 
-        <div style="display: flex; align-items: center; margin: 30px 0;">
+        <div style="display: flex; align-items: center; margin: 30px 0 20px;">
             <hr style="flex:1; border:0; border-top:1px solid rgba(255,255,255,0.2);">
             <span style="padding: 0 10px; color: var(--text-muted); font-size: 0.9rem;">OR</span>
             <hr style="flex:1; border:0; border-top:1px solid rgba(255,255,255,0.2);">
@@ -46,16 +65,28 @@
 
         <!-- User Controls (Fixed Top Right) -->
         <div style="position: fixed; top: 25px; right: 30px; z-index: 1000;" class="user-controls">
-            <div class="glass-panel"
-                style="padding: 10px 20px; display: flex; align-items: center; gap: 12px; border-radius: 50px;">
-                <div
-                    style="width: 32px; height: 32px; background: var(--primary-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+            <div class="glass-panel user-profile-dropdown"
+                style="padding: 10px 20px; display: flex; align-items: center; gap: 12px; border-radius: 50px; cursor: pointer;"
+                onclick="app.toggleProfileMenu()">
+                <div id="user-avatar"
+                    style="width: 32px; height: 32px; background: var(--primary-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; overflow: hidden;">
                     <i class="bi bi-person-fill"></i>
                 </div>
                 <span id="user-display" style="font-weight: 600; font-size: 0.95rem; color: white;">Student</span>
-                <i class="bi bi-box-arrow-right" onclick="app.logout()"
-                    style="cursor: pointer; color: var(--text-muted); padding-left: 10px; transition: 0.3s;"
-                    title="Logout"></i>
+                <i class="bi bi-chevron-down" 
+                    style="color: var(--text-muted); font-size: 0.8rem; transition: transform 0.3s;"></i>
+            </div>
+            
+            <!-- Profile Dropdown Menu -->
+            <div id="profile-menu" class="profile-menu glass-panel" style="display: none;">
+                <div class="profile-menu-item" onclick="app.viewProfile()">
+                    <i class="bi bi-person-circle"></i>
+                    <span>Profile</span>
+                </div>
+                <div class="profile-menu-item" onclick="app.logout()">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Logout</span>
+                </div>
             </div>
         </div>
 

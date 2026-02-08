@@ -92,6 +92,26 @@ const app = {
             const userDisplay = document.getElementById('user-display');
             if (userDisplay) userDisplay.innerText = app.state.user.name;
 
+            // Restore user data (including profile photo)
+            const userData = localStorage.getItem('user_data');
+            if (userData) {
+                try {
+                    const user = JSON.parse(userData);
+                    if (user.profile_photo) {
+                        const avatar = document.getElementById('user-avatar');
+                        if (avatar) {
+                            avatar.innerHTML = `<img src="${user.profile_photo}" alt="Profile" />`;
+                        }
+                    }
+                    if (user.full_name) {
+                        app.state.user.name = user.full_name;
+                        if (userDisplay) userDisplay.innerText = user.full_name;
+                    }
+                } catch (e) {
+                    console.error('Error parsing user data:', e);
+                }
+            }
+
             // Load Chat History (optimized with lazy rendering)
             const savedChat = localStorage.getItem('chatHistory');
             if (savedChat) {
@@ -265,12 +285,116 @@ const app = {
     logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('username');
+        localStorage.removeItem('user_data');
         app.state.token = null;
         window.location.reload();
     },
 
+    toggleProfileMenu: () => {
+        const menu = document.getElementById('profile-menu');
+        if (menu) {
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+    },
+
+    viewProfile: () => {
+        alert('Profile feature coming soon!');
+        const menu = document.getElementById('profile-menu');
+        if (menu) menu.style.display = 'none';
+    },
+
     /* --- AUTH --- */
     /* --- AUTH & GUEST --- */
+    
+    // Google Sign-In
+    googleSignIn: async () => {
+        try {
+            // Get Google Client ID from backend
+            const configRes = await fetch('/auth/google/config');
+            if (!configRes.ok) {
+                throw new Error('Google Sign-In is not configured on the server');
+            }
+            const config = await configRes.json();
+            
+            // Initialize Google Sign-In
+            google.accounts.id.initialize({
+                client_id: config.client_id,
+                callback: app.handleGoogleResponse,
+                auto_select: false,
+            });
+            
+            // Show One Tap prompt
+            google.accounts.id.prompt((notification) => {
+                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                    // Fallback to button click
+                    console.log('One Tap not shown, using button click');
+                }
+            });
+            
+        } catch (error) {
+            console.error('Google Sign-In error:', error);
+            alert(error.message || 'Google Sign-In failed. Please try regular login.');
+        }
+    },
+    
+    handleGoogleResponse: async (response) => {
+        try {
+            const idToken = response.credential;
+            
+            // Show loading state
+            const btn = document.getElementById('google-signin-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+            btn.disabled = true;
+            
+            // Send token to backend for verification
+            const res = await fetch('/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_token: idToken })
+            });
+            
+            if (!res.ok) {
+                throw new Error('Google authentication failed');
+            }
+            
+            const data = await res.json();
+            
+            // Save authentication data
+            app.state.token = data.access_token;
+            localStorage.setItem('token', data.access_token);
+            localStorage.setItem('username', data.user.username);
+            localStorage.setItem('user_data', JSON.stringify(data.user));
+            
+            // Update user display
+            app.state.user = {
+                name: data.user.full_name || data.user.username,
+                photo: data.user.profile_photo
+            };
+            
+            document.getElementById('user-display').innerText = app.state.user.name;
+            
+            // Update profile photo if available
+            if (data.user.profile_photo) {
+                const avatar = document.getElementById('user-avatar');
+                avatar.innerHTML = `<img src="${data.user.profile_photo}" alt="Profile" />`;
+            }
+            
+            // Show success message and redirect
+            setTimeout(() => {
+                app.showTopic();
+            }, 300);
+            
+        } catch (error) {
+            console.error('Google authentication error:', error);
+            alert('Failed to sign in with Google. Please try again.');
+            // Restore button
+            const btn = document.getElementById('google-signin-btn');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    },
+    
     login: async () => {
         const username = document.getElementById('username-input').value;
         const password = document.getElementById('password-input').value;
@@ -313,6 +437,15 @@ const app = {
             localStorage.setItem('token', data.access_token);
             localStorage.setItem('username', username);
             app.state.user.name = username;
+
+            // Update user info if available
+            if (data.user) {
+                localStorage.setItem('user_data', JSON.stringify(data.user));
+                if (data.user.profile_photo) {
+                    const avatar = document.getElementById('user-avatar');
+                    avatar.innerHTML = `<img src="${data.user.profile_photo}" alt="Profile" />`;
+                }
+            }
 
             document.getElementById('user-display').innerText = username;
             app.showTopic();
@@ -721,3 +854,12 @@ const app = {
 
 // Start
 app.init();
+
+// Close profile menu when clicking outside
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('profile-menu');
+    const dropdown = document.querySelector('.user-profile-dropdown');
+    if (menu && dropdown && !dropdown.contains(e.target)) {
+        menu.style.display = 'none';
+    }
+});
