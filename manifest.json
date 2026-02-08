@@ -1,21 +1,38 @@
 {
-    "name": "S Quiz AI Academy",
+    "name": "S Quiz - AI Learning Platform",
     "short_name": "S Quiz",
-    "description": "Premium AI-Powered Learning Platform",
+    "description": "AI-powered quiz generator and learning platform. Learn faster with personalized quizzes in your own language.",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#764ba2",
-    "theme_color": "#667eea",
+    "background_color": "#0f172a",
+    "theme_color": "#6366f1",
+    "orientation": "portrait-primary",
     "icons": [
+        {
+            "src": "/static/icon-144.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "any"
+        },
         {
             "src": "/static/icon-192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         },
         {
             "src": "/static/icon-512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/static/icon-1024.png",
+            "sizes": "1024x1024",
+            "type": "image/png",
+            "purpose": "any"
         }
-    ]
+    ],
+    "categories": ["education", "productivity"],
+    "screenshots": []
 }

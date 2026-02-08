@@ -62,7 +62,7 @@ android.copy_libs = 1
 android.archs = arm64-v8a,armeabi-v7a
 
 # (str) Path to the icon (if not provided, default icon is used)
-icon.filename = static/app-icon.svg
+icon.filename = static/icon.svg
 
 # (str) Presplash of the application
 # presplash.filename = %(source.dir)s/data/presplash.png
