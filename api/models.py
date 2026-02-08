@@ -1,6 +1,16 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 
+class PresentationRequest(BaseModel):
+    topic: str
+    num_slides: int = Field(8, ge=5, le=20)
+    language: str = "English"
+    theme: str = "Modern" # Minimal, Professional, Creative, Dark, Gradient
+    font_style: str = "Modern" # Poppins, Inter, Roboto, Open Sans, Montserrat, Playfair
+    color_palette: str = "Vibrant" # Pastel, Vibrant, Corporate
+    tone: str = "Professional" # Professional, Fun, Academic
+    format: str = "pptx" # pptx, pdf, docx
+
 class TopicQuizRequest(BaseModel):
     topic: str = Field(..., min_length=1, max_length=200)
     difficulty: str = "medium"

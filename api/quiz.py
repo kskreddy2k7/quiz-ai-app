@@ -26,7 +26,7 @@ def _build_quiz_prompt(topic, num_questions, difficulty, language, user_level, m
         focus_instruction = "Focus on complex application, edge cases, and multi-step reasoning."
 
     base_prompt = f"""
-    Act as a friendly but serious teacher. Generate {num_questions} multiple-choice questions about "{topic}" in {language}.
+    Act as a friendly, encouraging, and knowledgeable teacher. Generate {num_questions} multiple-choice questions about "{topic}" in {language}.
     Target Audience: {audience_desc}.
     Difficulty: {difficulty}.
     Instruction: {focus_instruction}

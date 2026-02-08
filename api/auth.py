@@ -47,6 +47,10 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
 
 # Dependency to get current user
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    # Guest Mode Support
+    if token == "guest_token_placeholder":
+        return User(id=9999, username="Guest", email="guest@quizai.com", level=1)
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

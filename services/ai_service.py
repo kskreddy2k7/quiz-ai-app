@@ -125,15 +125,21 @@ class AIService:
         return await self.generate_text(full_prompt)
 
     async def explain_concept(self, text: str, context: Optional[str] = None) -> str:
-        """Provide a deep, step-by-step explanation."""
+        """Provide a deep, step-by-step explanation with research-grade quality."""
         prompt = (
-            f"Act as a friendly teacher. Explain the following concept/question step-by-step:\n"
-            f"'{text}'\n"
+            f"Act as a premium Academic AI Tutor. Explain the following concept deeply:\n"
+            f"Topic: '{text}'\n\n"
+            "## Strict Output Rules:\n"
+            "1. **Summary**: Start with a precise 1-2 line summary.\n"
+            "2. **Core Logic**: Explain 'WHY' this works and 'HOW' it functions (not just 'WHAT').\n"
+            "3. **Structure**: Use clear headings and bullet points.\n"
+            "4. **Analogy**: Use a relatable real-world analogy.\n"
+            "5. **Visual**: Include a small ASCII diagram/chart to visualize the concept.\n"
+            "6. **References**: List 2-3 standard textbooks or credible fields of study for further reading.\n"
         )
         if context:
             prompt += f"\nContext from file/quiz: {context}\n"
             
-        prompt += "\nUse an analogy and if possible, a small ASCII diagram/chart to visualize it."
         return await self.generate_text(prompt)
 
     async def summarize_text(self, text: str) -> str:
@@ -144,6 +150,61 @@ class AIService:
             f"\nSummary:"
         )
         return await self.generate_text(prompt)
+
+    async def generate_presentation_content(self, topic: str, num_slides: int, language: str, theme: str = "Modern", tone: str = "Professional") -> Dict[str, Any]:
+        """Generate professional presentation content with a specific persona."""
+        
+        system_prompt = (
+            "You are a professional AI presentation designer and educator, similar to Canva's AI. "
+            "Your job is to CREATE, STYLE, and PREVIEW presentations automatically. "
+            "Work at production level quality.\n\n"
+            f"Topic: {topic}\n"
+            f"Target Audience/Tone: {tone}\n"
+            f"Language: {language}\n"
+            f"Slide Count: {num_slides} (Target 8-12 for full depth)\n\n"
+            "## Strict Design Rules:\n"
+            "1. **Flow**: Title -> Intro -> Core Concepts (3-4 slides) -> Real-world Examples -> Summary/Conclusion.\n"
+            "2. **Content**: Max 5 bullet points per slide. No walls of text. concise & punchy.\n"
+            "3. **Visuals**: Every slide MUST have a `visual_cue` field describing a relevant image.\n"
+            "4. **Layout**: Use variety (`title_bullets`, `two_column`, `quote_center`, `image_right`, `section_header`).\n\n"
+            "## JSON Structure:\n"
+            "{\n"
+            "  \"title\": \"Presentation Title\",\n"
+            "  \"theme\": \"Requested Theme\",\n"
+            "  \"font\": \"Recommended Font\",\n"
+            "  \"slides\": [\n"
+            "    {\n"
+            "      \"layout\": \"image_right\",\n"
+            "      \"title\": \"Slide Title\",\n"
+            "      \"content\": [\"Point 1\", \"Point 2\", \"Point 3\"],\n"
+            "      \"visual_cue\": \"Wide shot of a Mars colony with domes\"\n"
+            "    }\n"
+            "  ]\n"
+            "}"
+        )
+        
+        try:
+            text = await self.generate_text(system_prompt)
+            data = self._parse_json(text)
+            
+            # Validation
+            if not isinstance(data, dict) or "slides" not in data:
+                raise ValueError("Invalid AI response structure")
+                
+            return data
+            
+        except Exception as e:
+            print(f"Presentation Gen Error: {e}")
+            # Fallback
+            return {
+                "title": topic,
+                "theme": theme,
+                "slides": [
+                    {"title": "Introduction", "content": ["Overview of " + topic]},
+                    {"title": "Key Concepts", "content": ["Concept 1", "Concept 2"]},
+                    {"title": "Conclusion", "content": ["Summary", "Thank you"]}
+                ]
+            }
 
     async def generate_text(self, prompt: str) -> str:
         """Generic text generation with fallback."""
@@ -198,12 +259,20 @@ class AIService:
                         raise e
         
         # Standardize format
+        # Standardize format
         if isinstance(data, dict):
+            # Quiz Format
             for key in ['questions', 'quiz', 'items']:
                 if key in data and isinstance(data[key], list):
                     return data[key]
+            # Presentation Format
+            if 'slides' in data:
+                return data
+            # Single Question
             if 'prompt' in data and 'choices' in data:
                 return [data]
+            # Generic Dict (let caller validate)
+            return data
         
         if isinstance(data, list):
             return data

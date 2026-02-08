@@ -63,7 +63,7 @@ const app = {
                 } catch (e) { console.error("Chat load error", e); }
             }
 
-            app.showSetup();
+            app.showTopic();
         } else {
             app.showAuth();
         }
@@ -154,11 +154,17 @@ const app = {
         document.getElementById('auth-view').style.display = 'block';
     },
 
-    showSetup: () => {
+    showTopic: () => {
         document.getElementById('auth-view').style.display = 'none';
         document.getElementById('app-container').style.display = 'block';
-        app.showView('setup-view');
+        app.showView('topic-view');
         app.state.uploadedFile = null;
+    },
+
+    showUpload: () => {
+        document.getElementById('auth-view').style.display = 'none';
+        document.getElementById('app-container').style.display = 'block';
+        app.showView('upload-view');
     },
 
     showLibrary: async () => {
@@ -208,6 +214,7 @@ const app = {
     },
 
     /* --- AUTH --- */
+    /* --- AUTH & GUEST --- */
     login: async () => {
         const username = document.getElementById('username-input').value;
         const password = document.getElementById('password-input').value;
@@ -218,7 +225,7 @@ const app = {
         }
 
         try {
-            // Auto Register
+            // Auto Register Logic
             if (username.length > 3) {
                 const regBody = { username, password };
                 if (username.includes('@')) regBody.email = username;
@@ -252,77 +259,124 @@ const app = {
             app.state.user.name = username;
 
             document.getElementById('user-display').innerText = username;
-            app.showSetup();
+            app.showTopic();
 
         } catch (e) {
             alert(e.message);
         }
     },
 
+    guestLogin: () => {
+        app.state.token = "guest_token_placeholder";
+        localStorage.setItem('token', "guest_token_placeholder");
+        app.state.user.name = "Guest User";
+        document.getElementById('user-display').innerText = "Guest User";
+        app.showTopic();
+        alert("Welcome, Guest! Progress will not be saved permanently.");
+    },
+
     /* --- QUIZ FEATURE --- */
     handleFileSelect: (input) => {
         if (input.files && input.files[0]) {
             app.state.uploadedFile = input.files[0];
-            const label = document.getElementById('file-label-text') || document.getElementById('file-label'); // Handle both ID cases if distinct
-            if (label) label.innerText = `✅ ${input.files[0].name}`;
+            const label = document.getElementById('file-label-text');
+            if (label) {
+                label.innerText = `✅ ${input.files[0].name}`;
+                label.style.color = 'var(--success)';
+            }
         }
     },
 
-    generateQuiz: async () => {
+    // --- TOPIC QUIZ ---
+    generateTopicQuiz: async () => {
         const topic = document.getElementById('topic-input').value;
         const numQ = document.getElementById('q-count').value;
         const diff = document.getElementById('difficulty-select').value;
-        // mastery-select might not be in the new HTML, let's check
-        // We removed it in favor of simplicity? No, let's keep it if logic exists, but default if null.
-        const masteryEl = document.getElementById('mastery-select');
-        const mastery = masteryEl ? masteryEl.value : "Intermediate";
+        const lang = document.getElementById('language-select').value;
 
-        if (!topic && !app.state.uploadedFile) return alert(app.t("placeholder_topic"));
+        if (lang !== app.state.language) app.setLanguage(lang);
+        if (!topic) return alert("Please enter a topic.");
 
-        document.getElementById('loading').style.display = 'block';
+        document.getElementById('loading-topic').style.display = 'block';
 
         try {
-            let res;
-            if (app.state.uploadedFile) {
-                const fd = new FormData();
-                fd.append('file', app.state.uploadedFile);
-                fd.append('num_questions', numQ);
-                fd.append('difficulty', diff);
-                fd.append('mastery_level', mastery);
-                fd.append('language', app.state.language); // NEW
+            const res = await fetch('/quiz/generate', {
+                method: 'POST',
+                headers: app.getHeaders(),
+                body: JSON.stringify({
+                    topic,
+                    num_questions: parseInt(numQ),
+                    difficulty: diff,
+                    mastery_level: "Intermediate",
+                    language: app.state.language
+                })
+            });
 
-                // Upload
-                await fetch('/library/upload', { method: 'POST', headers: app.getAuthHeaders(), body: fd });
-                // Generate
-                res = await fetch('/quiz/generate-from-file', { method: 'POST', headers: app.getAuthHeaders(), body: fd });
-
-            } else {
-                res = await fetch('/quiz/generate', {
-                    method: 'POST',
-                    headers: app.getHeaders(),
-                    body: JSON.stringify({
-                        topic,
-                        num_questions: parseInt(numQ),
-                        difficulty: diff,
-                        mastery_level: mastery,
-                        language: app.state.language // NEW
-                    })
-                });
+            if (res.status === 401) {
+                app.logout();
+                throw new Error("Session expired. Please login again.");
             }
-
-            if (!res.ok) throw new Error("Failed to generate");
+            if (!res.ok) throw new Error("Failed to generate quiz. Try a broader topic.");
             const data = await res.json();
-
-            app.state.questions = data.questions;
-            app.state.currentQuestionIndex = 0;
-            app.state.score = 0;
-            app.showQuiz();
+            app.startQuiz(data);
 
         } catch (e) {
             alert("Error: " + e.message);
         } finally {
-            document.getElementById('loading').style.display = 'none';
+            document.getElementById('loading-topic').style.display = 'none';
         }
+    },
+
+    // --- FILE QUIZ ---
+    generateFileQuiz: async () => {
+        if (!app.state.uploadedFile) return alert("Please upload a file first.");
+
+        const numQ = document.getElementById('file-q-count').value;
+        const diff = document.getElementById('file-difficulty-select').value;
+        const lang = document.getElementById('file-language-select').value;
+
+        document.getElementById('loading-file').style.display = 'block';
+
+        try {
+            const fd = new FormData();
+            fd.append('file', app.state.uploadedFile);
+            fd.append('num_questions', numQ);
+            fd.append('difficulty', diff);
+            // Defaulting mastery/language if not passed, but passing them is better
+            fd.append('mastery_level', "Intermediate");
+            fd.append('language', lang);
+
+            const headers = app.getAuthHeaders();
+            // Fetch doesn't set Content-Type for FormData automatically if we set it manually, 
+            // so we shouldn't set Content-Type header ourselves for FormData.
+            // app.getAuthHeaders() returns {} or {Authorization:...} which is correct.
+
+            const res = await fetch('/quiz/generate-from-file', {
+                method: 'POST',
+                headers: headers,
+                body: fd
+            });
+
+            if (res.status === 401) {
+                app.logout();
+                throw new Error("Session expired. Please login again.");
+            }
+            if (!res.ok) throw new Error("Failed to process file.");
+            const data = await res.json();
+            app.startQuiz(data);
+
+        } catch (e) {
+            alert("Error: " + e.message);
+        } finally {
+            document.getElementById('loading-file').style.display = 'none';
+        }
+    },
+
+    startQuiz: (data) => {
+        app.state.questions = data.questions;
+        app.state.currentQuestionIndex = 0;
+        app.state.score = 0;
+        app.showQuiz();
     },
 
     showQuiz: () => {
@@ -363,8 +417,13 @@ const app = {
             opts.forEach(o => { if (o.innerText == q.answer) o.classList.add('correct'); });
         }
 
-        document.getElementById('explanation-text').innerText = q.explanation;
+        // Show Explanation
+        const expText = document.getElementById('explanation-text');
+        expText.innerText = q.explanation;
         document.getElementById('explanation-box').style.display = 'block';
+
+        // Auto scroll to explanation
+        document.getElementById('explanation-box').scrollIntoView({ behavior: 'smooth', block: 'end' });
     },
 
     nextQuestion: () => {
@@ -383,8 +442,9 @@ const app = {
     },
 
     shareQuiz: () => {
-        // Placeholder for share logic
-        alert("Link copied to clipboard! (Simulated)");
+        // Simple clipboard share
+        const text = `I just scored ${Math.round((app.state.score / app.state.questions.length) * 100)}% on a QuizAI lesson! 🚀`;
+        navigator.clipboard.writeText(text).then(() => alert("Result copied to clipboard!"));
     },
 
     /* --- TUTOR --- */
@@ -405,9 +465,13 @@ const app = {
                 body: JSON.stringify({
                     message: msg,
                     history: app.state.chatHistory,
-                    language: app.state.language // NEW
+                    language: app.state.language
                 })
             });
+            if (res.status === 401) {
+                app.logout();
+                throw new Error("Session expired.");
+            }
             const data = await res.json();
             box.innerHTML += `<div class="msg msg-bot">${data.response.replace(/\n/g, '<br>')}</div>`;
             box.scrollTop = box.scrollHeight;
@@ -421,12 +485,22 @@ const app = {
         }
     },
 
-    /* --- PRESENTATION --- */
-    generatePPT: async () => {
-        const topic = document.getElementById('ppt-topic').value;
-        const slides = document.getElementById('ppt-slides').value;
+    /* --- SMART NOTES --- */
+    showNotes: () => {
+        app.showView('presentation-view'); // View ID kept same in HTML update for simplicity, or we should have updated it.
+        // In previous step I kept ID as presentation-view in HTML for the container div? 
+        // Let me check my previous HTML update.
+        // Yes: <div id="presentation-view" class="screen" style="display: none;">
+        // So keeping view ID same is fine.
+    },
 
-        if (!topic) return alert(app.t("placeholder_topic"));
+    generateNotes: async () => {
+        const topic = document.getElementById('ppt-topic').value;
+        const slides = document.getElementById('ppt-slides').value; // Hidden input
+        const font = document.getElementById('ppt-font').value;
+        const format = document.getElementById('ppt-format').value;
+
+        if (!topic) return alert("Please enter a topic.");
 
         document.getElementById('ppt-loading').style.display = 'block';
 
@@ -437,24 +511,33 @@ const app = {
                 body: JSON.stringify({
                     topic,
                     num_slides: parseInt(slides),
-                    language: app.state.language
+                    language: app.state.language,
+                    font_style: font,
+                    format: format,
+                    tone: "Professional"
                 })
             });
 
-            if (!res.ok) throw new Error("Generation Failed");
+            if (!res.ok) throw new Error("Generation Failed. Check API status.");
 
             // Handle File Download
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);
+
+            // Determine extension
+            let ext = "pptx";
+            if (format === "pdf") ext = "pdf";
+            if (format === "docx") ext = "docx";
+
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            a.download = `${topic}_Presentation.pptx`;
+            a.download = `${topic.replace(/\s/g, '_')}_Notes.${ext}`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
 
-            alert(app.state.language === "Hindi" ? "प्रेजेंटेशन डाउनलोड हो गया!" : "Presentation Downloaded!");
+            alert("Notes Downloaded! 📝");
 
         } catch (e) {
             alert("Error: " + e.message);
