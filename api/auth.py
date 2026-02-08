@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
 import logging
+import os
 
 from database import get_db
 from models.user_models import User
@@ -35,7 +36,25 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 @router.post("/token", response_model=Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not user.hashed_password or not auth_service.verify_password(form_data.password, user.hashed_password):
+    
+    # Check if user exists
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Check if user has a password (OAuth users don't have passwords)
+    if not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This account uses Google Sign-In. Please use the Google button to login.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Verify password
+    if not auth_service.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -85,14 +104,28 @@ def google_login(request: GoogleAuthRequest, db: Session = Depends(get_db)):
             user.full_name = user_info.get("name")
         else:
             # Create new user from Google account
-            username = user_info["email"].split("@")[0]
+            # Use email prefix + random suffix for better uniqueness
+            import secrets
+            base_username = user_info["email"].split("@")[0]
+            # Clean username (alphanumeric only)
+            base_username = ''.join(c for c in base_username if c.isalnum())[:20]
+            username = base_username
             
-            # Ensure unique username
-            base_username = username
+            # Ensure unique username with random suffix if needed
             counter = 1
             while db.query(User).filter(User.username == username).first():
-                username = f"{base_username}{counter}"
+                if counter == 1:
+                    # First collision: try with random suffix
+                    random_suffix = secrets.token_hex(2)  # 4 char hex
+                    username = f"{base_username}_{random_suffix}"
+                else:
+                    # Multiple collisions: use counter
+                    username = f"{base_username}{counter}"
                 counter += 1
+                # Safety limit
+                if counter > 100:
+                    username = f"user_{secrets.token_hex(4)}"
+                    break
             
             user = User(
                 username=username,
@@ -132,7 +165,6 @@ def get_google_config():
     Get Google OAuth configuration for frontend
     Returns the client ID needed for Google Sign-In button
     """
-    import os
     client_id = os.getenv("GOOGLE_CLIENT_ID")
     if not client_id:
         raise HTTPException(

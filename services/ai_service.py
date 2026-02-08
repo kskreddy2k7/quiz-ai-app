@@ -135,8 +135,12 @@ class AIService:
         
         # Add personalization if user context is provided
         if user_context:
+            # Sanitize user name to prevent prompt injection
             name = user_context.get('name', 'Student')
+            # Remove any newlines, special characters that could inject prompts
+            name = ''.join(c for c in name if c.isalnum() or c.isspace())[:50]
             level = user_context.get('level', 1)
+            
             system_prompt += f"\n\nYou are currently helping {name} (Level {level}). "
             if level >= 5:
                 system_prompt += "They are an advanced learner, so feel free to use more sophisticated language and dive deeper into topics."

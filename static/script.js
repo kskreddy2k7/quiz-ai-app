@@ -100,7 +100,12 @@ const app = {
                     if (user.profile_photo) {
                         const avatar = document.getElementById('user-avatar');
                         if (avatar) {
-                            avatar.innerHTML = `<img src="${user.profile_photo}" alt="Profile" />`;
+                            // Secure: Create img element to avoid XSS
+                            const img = document.createElement('img');
+                            img.src = user.profile_photo;
+                            img.alt = 'Profile';
+                            avatar.innerHTML = '';
+                            avatar.appendChild(img);
                         }
                     }
                     if (user.full_name) {
@@ -338,12 +343,13 @@ const app = {
     },
     
     handleGoogleResponse: async (response) => {
+        const btn = document.getElementById('google-signin-btn');
+        const originalText = btn.innerHTML; // Store original content
+        
         try {
             const idToken = response.credential;
             
             // Show loading state
-            const btn = document.getElementById('google-signin-btn');
-            const originalText = btn.innerHTML;
             btn.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
             btn.disabled = true;
             
@@ -374,10 +380,14 @@ const app = {
             
             document.getElementById('user-display').innerText = app.state.user.name;
             
-            // Update profile photo if available
+            // Update profile photo if available (secure way)
             if (data.user.profile_photo) {
                 const avatar = document.getElementById('user-avatar');
-                avatar.innerHTML = `<img src="${data.user.profile_photo}" alt="Profile" />`;
+                const img = document.createElement('img');
+                img.src = data.user.profile_photo;
+                img.alt = 'Profile';
+                avatar.innerHTML = '';
+                avatar.appendChild(img);
             }
             
             // Show success message and redirect
@@ -389,7 +399,6 @@ const app = {
             console.error('Google authentication error:', error);
             alert('Failed to sign in with Google. Please try again.');
             // Restore button
-            const btn = document.getElementById('google-signin-btn');
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
@@ -443,7 +452,11 @@ const app = {
                 localStorage.setItem('user_data', JSON.stringify(data.user));
                 if (data.user.profile_photo) {
                     const avatar = document.getElementById('user-avatar');
-                    avatar.innerHTML = `<img src="${data.user.profile_photo}" alt="Profile" />`;
+                    const img = document.createElement('img');
+                    img.src = data.user.profile_photo;
+                    img.alt = 'Profile';
+                    avatar.innerHTML = '';
+                    avatar.appendChild(img);
                 }
             }
 
