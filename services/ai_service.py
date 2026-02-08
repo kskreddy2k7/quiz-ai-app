@@ -290,8 +290,16 @@ class AIService:
         
         # Try with the current model first
         loop = asyncio.get_event_loop()
+ copilot/improve-ui-layout-and-performance
         
         # If current model fails, try fallback models
+
+        try:
+            response = await loop.run_in_executor(None, lambda: self.model.generate_content(prompt))
+            return response.text
+        except Exception as e:
+            print(f"Primary Gemini model failed, trying fallbacks: {e}")
+main
         for model_name in self.fallback_models:
             try:
                 # Update model if needed

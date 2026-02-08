@@ -9,13 +9,16 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
-    hashed_password = Column(String, nullable=True)  # Nullable for Google OAuth users
-    is_active = Column(Boolean, default=True)
-    
-    # Google OAuth fields
-    google_id = Column(String, unique=True, nullable=True, index=True)
-    profile_photo = Column(String, nullable=True)
+    hashed_password = Column(String, nullable=False) # No longer nullable
     full_name = Column(String, nullable=True)
+    profile_photo = Column(String, nullable=True) # Keep for future profile customization
+    
+    # Simple Role System
+    role = Column(String, default="user") # 'user', 'guest'
+    
+    # Profile Extensions
+    current_class = Column(String, nullable=True)
+    preferred_language = Column(String, default="English")
     
     # Gamification Stats
     xp = Column(Integer, default=0)

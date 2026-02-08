@@ -1,38 +1,26 @@
 // Configuration Constants
 const CONFIG = {
-    PWA_BANNER_DELAY: 5000,      // 5 seconds
-    APK_MODAL_DELAY: 10000,      // 10 seconds
-    PROMO_DELAY: 3000            // 3 seconds
+    PWA_BANNER_DELAY: 5000,
+    APK_MODAL_DELAY: 10000,
+    PROMO_DELAY: 3000
 };
 
 // Motivational Quotes Pool
 const QUOTES = [
     { text: "The beautiful thing about learning is that no one can take it away from you.", author: "B.B. King" },
     { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
-    { text: "The only way to learn mathematics is to do mathematics.", author: "Paul Halmos" },
     { text: "Live as if you were to die tomorrow. Learn as if you were to live forever.", author: "Mahatma Gandhi" },
     { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
-    { text: "The capacity to learn is a gift; the ability to learn is a skill; the willingness to learn is a choice.", author: "Brian Herbert" },
-    { text: "Learning never exhausts the mind.", author: "Leonardo da Vinci" },
-    { text: "The more that you read, the more things you will know. The more that you learn, the more places you'll go.", author: "Dr. Seuss" },
-    { text: "Education is not the filling of a pail, but the lighting of a fire.", author: "William Butler Yeats" },
-    { text: "Success is the sum of small efforts repeated day in and day out.", author: "Robert Collier" }
+    { text: "Learning never exhausts the mind.", author: "Leonardo da Vinci" }
 ];
 
-// Get a random quote that hasn't been shown recently
 const getRandomQuote = () => {
-    const lastQuote = localStorage.getItem('lastQuote') || '';
-    let quote;
-    do {
-        quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-    } while (QUOTES.length > 1 && JSON.stringify(quote) === lastQuote);
-    localStorage.setItem('lastQuote', JSON.stringify(quote));
+    const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
     return quote;
 };
 
-// Utility functions for performance optimization
+// Utility functions
 const utils = {
-    // Debounce function to reduce API calls
     debounce: (func, wait) => {
         let timeout;
         return function executedFunction(...args) {
@@ -44,115 +32,93 @@ const utils = {
             timeout = setTimeout(later, wait);
         };
     },
-    
-    // Show animated loading indicator with AI steps
-    showLoadingSteps: (elementId, steps = [
-        '✓ Understanding topic',
-        '✓ Selecting difficulty',
-        '✓ Generating questions',
-        '✓ Finalizing quiz'
-    ]) => {
+
+    showLoadingSteps: (elementId, steps) => {
         const el = document.getElementById(elementId);
         if (!el) return;
-        
-        el.style.display = 'block';
-        el.innerHTML = `
-            <div style="text-align: center;">
-                <div class="typing-indicator" style="margin-bottom: 20px;">
-                    <span></span><span></span><span></span>
+
+        // Remove existing overlay if any
+        const existing = el.querySelector('.loading-overlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = `
+            <div style="text-align: center; width: 100%;">
+                <div class="typing-indicator"><span></span><span></span><span></span></div>
+                <div class="loading-steps">
+                    ${steps.map((step, i) => `<div class="loading-step" data-step="${i}">○ ${step}</div>`).join('')}
                 </div>
-                <div id="loading-steps" style="text-align: left; display: inline-block; margin: 0 auto;">
-                    ${steps.map((step, i) => `
-                        <div class="loading-step" data-step="${i}" style="opacity: 0.3; padding: 8px 0; transition: all 0.3s ease;">
-                            <span style="color: var(--text-muted); font-size: 0.95rem;">${step.replace('✓', '<span class="step-check">⏳</span>')}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-        
-        // Animate steps
-        steps.forEach((step, i) => {
+            </div>`;
+
+        el.style.position = 'relative';
+        el.appendChild(overlay);
+
+        steps.forEach((_, i) => {
             setTimeout(() => {
-                const stepEl = el.querySelector(`[data-step="${i}"]`);
+                const stepEl = overlay.querySelector(`[data-step="${i}"]`);
                 if (stepEl) {
-                    stepEl.style.opacity = '1';
-                    const checkEl = stepEl.querySelector('.step-check');
-                    if (checkEl) {
-                        checkEl.textContent = '✓';
-                        checkEl.style.color = 'var(--success)';
-                    }
+                    stepEl.innerHTML = `● ${steps[i]}`;
+                    stepEl.classList.add('active');
                 }
-            }, i * 400);
+            }, i * 800);
         });
     },
-    
-    // Show animated loading indicator (fallback for simple cases)
+
     showLoading: (elementId, message = 'Thinking...') => {
         const el = document.getElementById(elementId);
-        if (el) {
-            el.style.display = 'flex';
-            el.innerHTML = `
-                <div style="text-align: center;">
-                    <div class="typing-indicator">
-                        <span></span><span></span><span></span>
-                    </div>
-                    <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.95rem;">${message}</p>
-                </div>
-            `;
-        }
+        if (!el) return;
+
+        const existing = el.querySelector('.loading-overlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = `
+            <div style="text-align: center;">
+                <div class="typing-indicator"><span></span><span></span><span></span></div>
+                <p style="margin-top: 15px; color: var(--primary); font-weight: 600;">${message}</p>
+            </div>`;
+
+        el.style.position = 'relative';
+        el.appendChild(overlay);
     },
-    
-    // Hide loading indicator
+
     hideLoading: (elementId) => {
         const el = document.getElementById(elementId);
         if (el) {
-            el.style.display = 'none';
+            const overlay = el.querySelector('.loading-overlay');
+            if (overlay) overlay.remove();
         }
     },
-    
-    // Animate element in with fade
+
+    showNotification: (message, type = 'info') => {
+        const toast = document.createElement('div');
+        toast.className = `notification-toast toast-${type}`;
+
+        let icon = 'info-circle';
+        if (type === 'success') icon = 'check-circle';
+        if (type === 'error') icon = 'exclamation-circle';
+
+        toast.innerHTML = `<i class="bi bi-${icon}"></i> <span>${message}</span>`;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    },
+
     fadeIn: (element, duration = 300) => {
         if (!element) return;
         element.style.opacity = '0';
-        element.style.transform = 'translateY(10px)';
-        element.style.transition = `opacity ${duration}ms ease-out, transform ${duration}ms ease-out`;
-        
-        requestAnimationFrame(() => {
-            element.style.opacity = '1';
-            element.style.transform = 'translateY(0)';
-        });
-    },
-
-    // Show notification modal (replaces alert)
-    showNotification: (message, type = 'info') => {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = 'notification-toast';
-        notification.style.cssText = `
-            position: fixed;
-            top: 100px;
-            right: 30px;
-            background: ${type === 'error' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 
-                        type === 'success' ? 'linear-gradient(135deg, #10b981, #059669)' : 
-                        'linear-gradient(135deg, #6366f1, #a855f7)'};
-            color: white;
-            padding: 20px 30px;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-            z-index: 10001;
-            max-width: 400px;
-            animation: slideInRight 0.3s ease-out;
-            font-weight: 500;
-        `;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-
-        // Auto-remove after 3 seconds
+        element.style.display = 'block';
         setTimeout(() => {
-            notification.style.animation = 'slideOutRight 0.3s ease-out';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
+            element.style.transition = `opacity ${duration}ms ease`;
+            element.style.opacity = '1';
+        }, 10);
     }
 };
 
@@ -161,319 +127,189 @@ const app = {
         questions: [],
         currentQuestionIndex: 0,
         score: 0,
-        user: { name: "Student", level: 1 },
+        user: { name: "Student", email: "", class: "", language: "English" },
+        token: localStorage.getItem('token'),
+        role: localStorage.getItem('role') || 'guest',
+        language: localStorage.getItem('language') || 'English',
+        onboardingStep: 1,
         uploadedFile: null,
-        chatHistory: [],
-        token: null,
-        language: "English" // Default Language
+        chatHistory: JSON.parse(localStorage.getItem('chatHistory') || '[]')
     },
 
     init: async () => {
-        // 0. Check if first time user and show onboarding
         const hasSeenOnboarding = localStorage.getItem('onboarding_completed');
-        if (!hasSeenOnboarding) {
-            app.showOnboarding();
-        }
+        const hasSeenPermissions = localStorage.getItem('permissions_accepted');
 
-        // Initialize PWA support
-        app.initPWA();
+        if (!hasSeenOnboarding) app.showOnboarding();
+        else if (!hasSeenPermissions) app.showPermissions();
 
-        // 1. Load Language Preference
-        const createOption = (text, val) => {
-            const opt = document.createElement('option');
-            opt.value = val;
-            opt.innerText = text;
-            return opt;
-        };
-        const langSelect = document.getElementById('language-select');
-        if (langSelect) {
-            // Ensure options exist if not in HTML (HTML has them, but safety check)
-        }
+        // Load saved user data
+        const savedUser = JSON.parse(localStorage.getItem('userData') || '{}');
+        app.state.user = { ...app.state.user, ...savedUser };
 
-        const savedLang = localStorage.getItem('language') || "English";
-        app.state.language = savedLang;
-        if (document.getElementById('language-select')) {
-            document.getElementById('language-select').value = savedLang;
-        }
+        app.updateUIForRole();
         app.updateTranslations();
-
-        // 2. Check for Token
-        const token = localStorage.getItem('token');
-        if (token) {
-            app.state.token = token;
-            app.state.user.name = localStorage.getItem('username') || "Student";
-
-            const userDisplay = document.getElementById('user-display');
-            if (userDisplay) userDisplay.innerText = app.state.user.name;
-
-            // Restore user data (including profile photo)
-            const userData = localStorage.getItem('user_data');
-            if (userData) {
-                try {
-                    const user = JSON.parse(userData);
-                    if (user.profile_photo) {
-                        const avatar = document.getElementById('user-avatar');
-                        if (avatar) {
-                            // Secure: Create img element to avoid XSS
-                            const img = document.createElement('img');
-                            img.src = user.profile_photo;
-                            img.alt = 'Profile';
-                            avatar.innerHTML = '';
-                            avatar.appendChild(img);
-                        }
-                    }
-                    if (user.full_name) {
-                        app.state.user.name = user.full_name;
-                        if (userDisplay) userDisplay.innerText = user.full_name;
-                    }
-                } catch (e) {
-                    console.error('Error parsing user data:', e);
-                }
-            }
-
-            // Load Chat History (optimized with lazy rendering)
-            const savedChat = localStorage.getItem('chatHistory');
-            if (savedChat) {
-                try {
-                    app.state.chatHistory = JSON.parse(savedChat);
-                    const historyContainer = document.getElementById('tutor-history');
-                    if (historyContainer) {
-                        // Use document fragment for better performance
-                        const fragment = document.createDocumentFragment();
-                        app.state.chatHistory.forEach(msg => {
-                            if (msg.role !== 'system') {
-                                const type = msg.role === 'user' ? 'msg-user' : 'msg-bot';
-                                const div = document.createElement('div');
-                                div.className = `msg ${type}`;
-                                div.innerHTML = msg.content.replace(/\n/g, '<br>');
-                                fragment.appendChild(div);
-                            }
-                        });
-                        historyContainer.appendChild(fragment);
-                        // Scroll to bottom after rendering
-                        requestAnimationFrame(() => {
-                            historyContainer.scrollTop = historyContainer.scrollHeight;
-                        });
-                    }
-                } catch (e) { console.error("Chat load error", e); }
-            }
-
-            app.showTopic();
-        } else {
-            app.showAuth();
-        }
-
-        // 3. Mobile Promo Check
-        const isMobile = window.innerWidth <= 768;
-        const isWebView = navigator.userAgent.includes('wv');
-        if (isMobile && !isWebView && !localStorage.getItem('promoDismissed')) {
-            setTimeout(() => {
-                const promo = document.getElementById('app-promo');
-                if (promo) promo.style.display = 'block';
-            }, CONFIG.PROMO_DELAY);
-        }
-
-        // 4. Detect Android device and offer APK
-        app.detectAndroidDevice();
-        
-        // 5. Initialize quotes on auth screen
         app.updateAuthQuote();
-        
-        // 6. Show daily motivation card (if not dismissed today)
-        app.showDailyMotivation();
-    },
 
-    /* --- QUOTE MANAGEMENT --- */
-    updateAuthQuote: () => {
-        const quote = getRandomQuote();
-        const textEl = document.getElementById('auth-quote-text');
-        const authorEl = document.getElementById('auth-quote-author');
-        if (textEl) textEl.textContent = `"${quote.text}"`;
-        if (authorEl) authorEl.textContent = `— ${quote.author}`;
-    },
-    
-    updateResultQuote: () => {
-        const quote = getRandomQuote();
-        const textEl = document.getElementById('result-quote-text');
-        const authorEl = document.getElementById('result-quote-author');
-        if (textEl) textEl.textContent = `"${quote.text}"`;
-        if (authorEl) authorEl.textContent = `— ${quote.author}`;
-    },
-    
-    showDailyMotivation: () => {
-        const today = new Date().toDateString();
-        const lastShown = localStorage.getItem('motivationShownDate');
-        
-        // Show once per day
-        if (lastShown !== today) {
-            setTimeout(() => {
-                const card = document.getElementById('daily-motivation-card');
-                if (card) {
-                    const quote = getRandomQuote();
-                    const textEl = document.getElementById('motivation-text');
-                    const authorEl = document.getElementById('motivation-author');
-                    if (textEl) textEl.textContent = `"${quote.text}"`;
-                    if (authorEl) authorEl.textContent = `— ${quote.author}`;
-                    card.style.display = 'block';
-                }
-            }, 3000); // Show after 3 seconds
+        if (app.state.token) {
+            app.showTopic();
+        } else if (hasSeenOnboarding && hasSeenPermissions) {
+            app.showView('auth-view');
         }
-    },
-    
-    dismissMotivation: () => {
-        const card = document.getElementById('daily-motivation-card');
-        if (card) {
-            card.style.animation = 'slideOutRight 0.3s ease-out';
-            setTimeout(() => {
-                card.style.display = 'none';
-                const today = new Date().toDateString();
-                localStorage.setItem('motivationShownDate', today);
-            }, 300);
-        }
+
+        app.initPWA();
+        app.detectAndroidDevice();
     },
 
-    /* --- I18N SYSTEM --- */
-    setLanguage: (lang) => {
-        app.state.language = lang;
-        localStorage.setItem('language', lang);
-        app.updateTranslations();
-        // Optional: Notify backend to update user profile if exists
+    /* --- AUTH --- */
+    switchAuthTab: (type) => {
+        document.getElementById('login-container').style.display = type === 'login' ? 'block' : 'none';
+        document.getElementById('signup-container').style.display = type === 'signup' ? 'block' : 'none';
+        document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i === 0 && type === 'login') || (i === 1 && type === 'signup')));
     },
 
-    updateTranslations: () => {
-        const lang = app.state.language;
-        if (!translations[lang]) return; // Safety
-
-        // Update all elements with id starting with "t-"
-        // We use a mapping from the HTML ID to the translation key.
-        // Convention: HTML id="t-key_name" matches translations[lang]["key_name"]
-
-        const elements = document.querySelectorAll('[id^="t-"]');
-        elements.forEach(el => {
-            const key = el.id.replace('t-', '');
-            if (translations[lang][key]) {
-                el.innerText = translations[lang][key];
-            }
-        });
-
-        // Update Placeholders
-        const topicInput = document.getElementById('topic-input');
-        if (topicInput) topicInput.placeholder = translations[lang]["placeholder_topic"];
-
-        const authInput = document.getElementById('username-input');
-        if (authInput) authInput.placeholder = translations[lang]["placeholder_auth"];
-
-        const askInput = document.getElementById('tutor-input');
-        if (askInput) askInput.placeholder = translations[lang]["placeholder_ask"];
-
-        // Update Dynamic Texts (like File Label)
-        if (!app.state.uploadedFile) {
-            const fileLabel = document.getElementById('file-label-text'); // Corrected ID from HTML
-            if (fileLabel) fileLabel.innerText = translations[lang]["file_label"];
-        }
+    togglePassword: (id, btn) => {
+        const input = document.getElementById(id);
+        const icon = btn.querySelector('i');
+        const isSecret = input.type === 'password';
+        input.type = isSecret ? 'text' : 'password';
+        icon.className = isSecret ? 'bi bi-eye-slash' : 'bi bi-eye';
     },
 
-    // Helper to update dynamic texts that aren't static IDs
-    t: (key) => {
-        const lang = app.state.language;
-        return (translations[lang] && translations[lang][key]) ? translations[lang][key] : key;
-    },
-
-    /* --- API HELPERS --- */
-    getHeaders: () => {
-        const headers = { 'Content-Type': 'application/json' };
-        if (app.state.token) headers['Authorization'] = `Bearer ${app.state.token}`;
-        return headers;
-    },
-    getAuthHeaders: () => {
-        const headers = {};
-        if (app.state.token) headers['Authorization'] = `Bearer ${app.state.token}`;
-        return headers;
-    },
-
-    /* --- NAVIGATION --- */
-    showView: (viewId) => {
-        document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
-        document.getElementById(viewId).style.display = 'block';
-
-        // Sidebar active state
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        // We can't easily map click to ID without data attributes, 
-        // ignoring visual active state update for brevity or adding logic later if needed.
-    },
-
-    showAuth: () => {
-        document.getElementById('app-container').style.display = 'none';
-        document.getElementById('auth-view').style.display = 'block';
-    },
-
-    showTopic: () => {
-        document.getElementById('auth-view').style.display = 'none';
-        document.getElementById('app-container').style.display = 'block';
-        app.showView('topic-view');
-        app.state.uploadedFile = null;
-    },
-
-    showUpload: () => {
-        document.getElementById('auth-view').style.display = 'none';
-        document.getElementById('app-container').style.display = 'block';
-        app.showView('upload-view');
-    },
-
-    showLibrary: async () => {
-        app.showView('library-view');
-        const list = document.getElementById('library-list');
-        list.innerHTML = '<div class="spinner" style="border-color:var(--primary); border-top-color:transparent; margin: 20px auto"></div>';
+    handleLogin: async () => {
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value.trim();
+        if (!email || !password) return utils.showNotification("Fields required", "error");
 
         try {
-            const res = await fetch('/library', { headers: app.getHeaders() });
-            const items = await res.json();
-            list.innerHTML = '';
+            utils.showLoading('auth-view', 'Authenticating...');
+            const params = new URLSearchParams();
+            params.append('username', email); // backend uses email as username
+            params.append('password', password);
 
-            if (items.length === 0) {
-                list.innerHTML = `<p class="text-muted" style="text-align:center">Empty Library.</p>`;
-                return;
-            }
-
-            items.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.style.padding = '20px';
-                card.innerHTML = `
-                    <div style="font-weight:600; margin-bottom:5px; font-size:1.1rem">📄 ${item.filename}</div>
-                    <div style="font-size:0.95rem; color:var(--text-muted); margin-bottom:15px; line-height:1.5">${item.summary || '...'}</div>
-                    <button class="btn btn-outline" style="width:auto; font-size:0.85rem">Chat / Quiz</button>
-                `;
-                list.appendChild(card);
+            const res = await fetch('/auth/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
             });
+            if (!res.ok) throw new Error("Invalid credentials");
+
+            const data = await res.json();
+            app.onAuthSuccess(data);
+            utils.showNotification("Welcome back!", "success");
         } catch (e) {
-            list.innerHTML = '<p style="color:var(--error); text-align:center">Error loading library.</p>';
+            utils.showNotification(e.message, "error");
+            app.showView('auth-view');
         }
     },
 
-    showTutor: () => {
-        app.showView('tutor-view');
+    handleSignup: async () => {
+        const name = document.getElementById('signup-name').value.trim();
+        const email = document.getElementById('signup-email').value.trim();
+        const password = document.getElementById('signup-password').value.trim();
+        if (!name || !email || !password) return utils.showNotification("All fields required", "error");
+
+        try {
+            utils.showLoading('auth-view', 'Creating account...');
+            const res = await fetch('/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, full_name: name, username: email.split('@')[0] })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Registration failed");
+            }
+
+            utils.showNotification("Account created! Logging in...", "success");
+            const params = new URLSearchParams();
+            params.append('username', email);
+            params.append('password', password);
+            const loginRes = await fetch('/auth/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            });
+            if (loginRes.ok) app.onAuthSuccess(await loginRes.json());
+        } catch (e) {
+            utils.showNotification(e.message, "error");
+            app.showView('auth-view');
+        }
     },
 
-    showPresentation: () => {
-        app.showView('presentation-view');
+    guestLogin: () => {
+        app.onAuthSuccess({ access_token: "guest_token_placeholder", role: "guest", username: "Guest" });
+        utils.showNotification("Guest mode active", "info");
+    },
+
+    googleLogin: () => {
+        utils.showNotification("Google Sign-In coming soon!", "info");
+    },
+
+    onAuthSuccess: (data) => {
+        app.state.token = data.access_token;
+        app.state.role = data.role || (data.user ? data.user.role : 'user');
+        app.state.user.name = data.username || (data.user ? data.user.full_name : "Student");
+
+        localStorage.setItem('token', app.state.token);
+        localStorage.setItem('role', app.state.role);
+        localStorage.setItem('username', app.state.user.name);
+
+        app.updateUIForRole();
+        app.showTopic();
     },
 
     logout: () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('username');
-        localStorage.removeItem('user_data');
-        app.state.token = null;
+        localStorage.clear();
         window.location.reload();
     },
 
-    toggleProfileMenu: () => {
-        const menu = document.getElementById('profile-menu');
-        if (menu) {
-            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-        }
+    /* --- NAVIGATION --- */
+    showView: (id) => {
+        document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+        const view = document.getElementById(id);
+        if (view) view.style.display = 'block';
     },
 
+    showTopic: () => {
+        app.showView('topic-view');
+        app.setActiveFeature('btn-topic');
+    },
+
+    showUpload: () => {
+        if (app.state.role === 'guest') return utils.showNotification("Members only", "error");
+        app.showView('upload-view');
+        app.setActiveFeature('btn-upload');
+    },
+
+    showTutor: () => {
+        if (app.state.role === 'guest') return utils.showNotification("Members only", "error");
+        app.showView('tutor-view');
+        app.setActiveFeature('btn-tutor');
+    },
+
+    showNotes: () => {
+        if (app.state.role === 'guest') return utils.showNotification("Members only", "error");
+        app.showView('presentation-view');
+        app.setActiveFeature('btn-notes');
+    },
+
+    setActiveFeature: (id) => {
+        document.querySelectorAll('.feature-button').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.add('active');
+    },
+
+    /* --- PROFILE --- */
+    showProfile: () => {
+        app.showView('profile-view');
+        document.getElementById('profile-name-display').innerText = app.state.user.name;
+        document.getElementById('profile-name-input').value = app.state.user.name;
+        document.getElementById('profile-class-input').value = app.state.user.class || "";
+        document.getElementById('profile-lang-select').value = app.state.language;
+    },
+
+ copilot/improve-ui-layout-and-performance
     viewProfile: () => {
         // Load current profile data
         const userData = localStorage.getItem('user_data');
@@ -575,175 +411,86 @@ const app = {
         }, 1000);
     },
 
-    /* --- AUTH --- */
-    /* --- AUTH & GUEST --- */
-    
-    // Google Sign-In
-    googleSignIn: async () => {
-        try {
-            // Get Google Client ID from backend
-            const configRes = await fetch('/auth/google/config');
-            if (!configRes.ok) {
-                throw new Error('Google Sign-In is not configured on the server');
-            }
-            const config = await configRes.json();
-            
-            // Initialize Google Sign-In
-            google.accounts.id.initialize({
-                client_id: config.client_id,
-                callback: app.handleGoogleResponse,
-                auto_select: false,
-            });
-            
-            // Show One Tap prompt
-            google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    // Fallback to button click
-                    console.log('One Tap not shown, using button click');
-                }
-            });
-            
-        } catch (error) {
-            console.error('Google Sign-In error:', error);
-            utils.showNotification(error.message || 'Google Sign-In failed. Please try regular login.');
-        }
-    },
-    
-    handleGoogleResponse: async (response) => {
-        const btn = document.getElementById('google-signin-btn');
-        const originalText = btn.innerHTML; // Store original content
-        
-        try {
-            const idToken = response.credential;
-            
-            // Show loading state
-            btn.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
-            btn.disabled = true;
-            
-            // Send token to backend for verification
-            const res = await fetch('/auth/google', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_token: idToken })
-            });
-            
-            if (!res.ok) {
-                throw new Error('Google authentication failed');
-            }
-            
-            const data = await res.json();
-            
-            // Save authentication data
-            app.state.token = data.access_token;
-            localStorage.setItem('token', data.access_token);
-            localStorage.setItem('username', data.user.username);
-            localStorage.setItem('user_data', JSON.stringify(data.user));
-            
-            // Update user display
-            app.state.user = {
-                name: data.user.full_name || data.user.username,
-                photo: data.user.profile_photo
-            };
-            
-            document.getElementById('user-display').innerText = app.state.user.name;
-            
-            // Update profile photo if available (secure way)
-            if (data.user.profile_photo) {
-                const avatar = document.getElementById('user-avatar');
-                const img = document.createElement('img');
-                img.src = data.user.profile_photo;
-                img.alt = 'Profile';
-                avatar.innerHTML = '';
-                avatar.appendChild(img);
-            }
-            
-            // Show success message and redirect
-            setTimeout(() => {
-                app.showTopic();
-            }, 300);
-            
-        } catch (error) {
-            console.error('Google authentication error:', error);
-            utils.showNotification('Failed to sign in with Google. Please try again.');
-            // Restore button
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
-    },
-    
-    login: async () => {
-        const username = document.getElementById('username-input').value;
-        const password = document.getElementById('password-input').value;
+    saveProfile: () => {
+        app.state.user.name = document.getElementById('profile-name-input').value;
+        app.state.user.class = document.getElementById('profile-class-input').value;
+        app.state.language = document.getElementById('profile-lang-select').value;
+ main
 
-        if (!username || !password) {
-            utils.showNotification("Please enter credentials");
-            return;
-        }
+        localStorage.setItem('userData', JSON.stringify(app.state.user));
+        localStorage.setItem('language', app.state.language);
+        localStorage.setItem('username', app.state.user.name);
 
-        try {
-            // Auto Register Logic
-            if (username.length > 3) {
-                const regBody = { username, password };
-                if (username.includes('@')) regBody.email = username;
-
-                try {
-                    await fetch('/auth/register', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(regBody)
-                    });
-                } catch (e) { }
-            }
-
-            // Login
-            const formData = new URLSearchParams();
-            formData.append('username', username);
-            formData.append('password', password);
-
-            const res = await fetch('/auth/token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData
-            });
-
-            if (!res.ok) throw new Error("Invalid credentials");
-            const data = await res.json();
-
-            app.state.token = data.access_token;
-            localStorage.setItem('token', data.access_token);
-            localStorage.setItem('username', username);
-            app.state.user.name = username;
-
-            // Update user info if available
-            if (data.user) {
-                localStorage.setItem('user_data', JSON.stringify(data.user));
-                if (data.user.profile_photo) {
-                    const avatar = document.getElementById('user-avatar');
-                    const img = document.createElement('img');
-                    img.src = data.user.profile_photo;
-                    img.alt = 'Profile';
-                    avatar.innerHTML = '';
-                    avatar.appendChild(img);
-                }
-            }
-
-            document.getElementById('user-display').innerText = username;
-            app.showTopic();
-
-        } catch (e) {
-            utils.showNotification(e.message);
-        }
-    },
-
-    guestLogin: () => {
-        app.state.token = "guest_token_placeholder";
-        localStorage.setItem('token', "guest_token_placeholder");
-        app.state.user.name = "Guest User";
-        document.getElementById('user-display').innerText = "Guest User";
+        app.updateTranslations();
+        app.updateUIForRole();
+        utils.showNotification("Profile Saved", "success");
         app.showTopic();
-        utils.showNotification("Welcome, Guest! Progress will not be saved permanently.");
     },
 
+    /* --- ONBOARDING --- */
+    showOnboarding: () => {
+        document.getElementById('onboarding-modal').style.display = 'flex';
+    },
+
+    nextOnboarding: () => {
+        const steps = document.querySelectorAll('.onboarding-step');
+        const dots = document.querySelectorAll('.dot');
+        if (app.state.onboardingStep < steps.length) {
+            steps[app.state.onboardingStep - 1].classList.remove('active');
+            dots[app.state.onboardingStep - 1].classList.remove('active');
+            app.state.onboardingStep++;
+            steps[app.state.onboardingStep - 1].classList.add('active');
+            dots[app.state.onboardingStep - 1].classList.add('active');
+            if (app.state.onboardingStep === steps.length) {
+                document.querySelector('.onboarding-controls button').innerHTML = 'Finish <i class="bi bi-check"></i>';
+            }
+        } else {
+            app.finishOnboarding();
+        }
+    },
+
+    finishOnboarding: () => {
+        document.getElementById('onboarding-modal').style.display = 'none';
+        localStorage.setItem('onboarding_completed', 'true');
+        app.showPermissions();
+    },
+
+    showPermissions: () => {
+        document.getElementById('permission-modal').style.display = 'flex';
+    },
+
+    allowPermissions: () => {
+        document.getElementById('permission-modal').style.display = 'none';
+        localStorage.setItem('permissions_accepted', 'true');
+        if (!app.state.token) app.showView('auth-view');
+    },
+
+    /* --- UI UPDATES --- */
+    updateUIForRole: () => {
+        const isGuest = app.state.role === 'guest';
+        const pill = document.getElementById('user-pill-container');
+        const logout = document.getElementById('btn-logout');
+        const name = document.getElementById('nav-user-display');
+
+        if (pill) pill.classList.toggle('hidden', isGuest);
+        if (logout) logout.classList.toggle('hidden', isGuest);
+        if (name) name.innerText = app.state.user.name;
+
+        ['btn-upload', 'btn-notes', 'btn-tutor'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) btn.classList.toggle('disabled', isGuest);
+        });
+    },
+
+    updateAuthQuote: () => {
+        const q = getRandomQuote();
+        const text = document.getElementById('auth-quote-text');
+        const auth = document.getElementById('auth-quote-author');
+        if (text) text.innerText = `"${q.text}"`;
+        if (auth) auth.innerText = `— ${q.author}`;
+    },
+
+ copilot/improve-ui-layout-and-performance
     // Toggle password visibility
     togglePasswordVisibility: () => {
         const passwordInput = document.getElementById('password-input');
@@ -773,11 +520,21 @@ const app = {
                 label.style.color = 'var(--success)';
             }
         }
+
+    updateTranslations: () => {
+        const lang = app.state.language;
+        if (typeof translations === 'undefined' || !translations[lang]) return;
+        document.querySelectorAll('[id^="t-"]').forEach(el => {
+            const key = el.id.replace('t-', '');
+            if (translations[lang][key]) el.innerText = translations[lang][key];
+        });
+ main
     },
 
-    // --- TOPIC QUIZ ---
+    /* --- CORE FEATURES --- */
     generateTopicQuiz: async () => {
         const topic = document.getElementById('topic-input').value.trim();
+ copilot/improve-ui-layout-and-performance
         const numQ = parseInt(document.getElementById('q-count').value);
         const diff = document.getElementById('difficulty-select').value;
         const lang = document.getElementById('language-select').value;
@@ -805,33 +562,27 @@ const app = {
             '⏳ Finalizing quiz'
         ]);
 
+        if (!topic) return utils.showNotification("Please enter a topic", "error");
+ main
+
+        utils.showLoadingSteps('topic-view', ['Scanning Library', 'AI Brainstorming', 'Generating Quiz']);
         try {
             const res = await fetch('/quiz/generate', {
                 method: 'POST',
-                headers: app.getHeaders(),
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.state.token}` },
                 body: JSON.stringify({
                     topic,
-                    num_questions: numQ,
-                    difficulty: diff,
-                    mastery_level: "Intermediate",
-                    language: app.state.language
+                    num_questions: parseInt(document.getElementById('q-count').value),
+                    difficulty: document.getElementById('difficulty-select').value,
+                    language: document.getElementById('language-select').value
                 })
             });
-
-            if (res.status === 401) {
-                app.logout();
-                throw new Error("Session expired. Please login again.");
-            }
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Failed to generate quiz. Try a different topic.");
-            }
-            const data = await res.json();
-            app.startQuiz(data);
-
+            if (!res.ok) throw new Error("Our AI is currently busy. Please try again.");
+            app.startQuiz(await res.json());
         } catch (e) {
-            utils.showNotification("Error: " + e.message, "error");
+            utils.showNotification(e.message, "error");
         } finally {
+copilot/improve-ui-layout-and-performance
             utils.hideLoading('loading-topic');
         }
     },
@@ -898,6 +649,9 @@ const app = {
             utils.showNotification("Error: " + e.message);
         } finally {
             utils.hideLoading('loading-file');
+
+            utils.hideLoading('topic-view');
+main
         }
     },
 
@@ -905,65 +659,61 @@ const app = {
         app.state.questions = data.questions;
         app.state.currentQuestionIndex = 0;
         app.state.score = 0;
-        app.showQuiz();
-    },
-
-    showQuiz: () => {
         app.showView('quiz-view');
         app.renderQuestion();
     },
 
     renderQuestion: () => {
         const q = app.state.questions[app.state.currentQuestionIndex];
-        document.getElementById('quiz-topic-display').innerText = q.topic || "Quiz";
-        document.getElementById('current-q').innerText = app.state.currentQuestionIndex + 1;
-        document.getElementById('total-q').innerText = app.state.questions.length;
-        document.getElementById('question-text').innerText = q.prompt;
+        const textEl = document.getElementById('question-text');
+        if (textEl) textEl.innerText = q.question;
 
-        const con = document.getElementById('options-container');
-        con.innerHTML = '';
-        document.getElementById('explanation-box').style.display = 'none';
+        const currentQEl = document.getElementById('current-q');
+        if (currentQEl) currentQEl.innerText = app.state.onboardingStep + 1; // Wrong index, use:
+        if (currentQEl) currentQEl.innerText = app.state.currentQuestionIndex + 1;
 
-        // Use document fragment for better performance
-        const fragment = document.createDocumentFragment();
-        q.choices.forEach((opt, index) => {
-            const div = document.createElement('div');
-            div.className = 'option-card';
-            div.innerText = opt;
-            div.onclick = () => app.checkAnswer(opt, div);
-            // Use CSS animation-delay for staggered entrance
-            div.style.animationDelay = `${index * 0.05}s`;
-            fragment.appendChild(div);
+        const opts = document.getElementById('options-container');
+        if (!opts) return;
+        opts.innerHTML = '';
+
+        q.options.forEach((opt, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-outline w-100 option-btn';
+            btn.innerHTML = `<span>${String.fromCharCode(65 + i)}.</span> ${opt}`;
+            btn.onclick = () => app.handleAnswer(opt, btn);
+            opts.appendChild(btn);
         });
-        con.appendChild(fragment);
-    },
 
-    checkAnswer: (selected, el) => {
-        const q = app.state.questions[app.state.currentQuestionIndex];
-        const opts = document.querySelectorAll('.option-card');
-        
-        // Disable all options to prevent multiple clicks
-        opts.forEach(o => o.onclick = null);
-
-        if (selected == q.answer) {
-            el.classList.add('correct');
-            app.state.score++;
-        } else {
-            el.classList.add('wrong');
-            opts.forEach(o => { if (o.innerText == q.answer) o.classList.add('correct'); });
+        const nextBtn = document.getElementById('btn-next-question');
+        if (nextBtn) {
+            nextBtn.classList.add('hidden');
+            nextBtn.innerHTML = (app.state.currentQuestionIndex === app.state.questions.length - 1)
+                ? 'Finish Quiz <i class="bi bi-check-circle"></i>'
+                : 'Next Question <i class="bi bi-arrow-right"></i>';
         }
 
-        // Show Explanation with fade in
         const expBox = document.getElementById('explanation-box');
-        const expText = document.getElementById('explanation-text');
-        expText.innerText = q.explanation;
-        expBox.style.display = 'block';
-        utils.fadeIn(expBox, 400);
+        if (expBox) expBox.style.display = 'none';
+    },
 
-        // Auto scroll to explanation smoothly
-        setTimeout(() => {
-            expBox.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        }, 100);
+    handleAnswer: (selected, btn) => {
+        if (btn.parentElement.classList.contains('locked')) return;
+
+        const q = app.state.questions[app.state.currentQuestionIndex];
+        const isCorrect = selected === q.answer;
+
+        btn.classList.add(isCorrect ? 'correct' : 'wrong');
+        btn.parentElement.classList.add('locked');
+
+        if (isCorrect) app.state.score++;
+
+        const expText = document.getElementById('explanation-text');
+        const expBox = document.getElementById('explanation-box');
+        if (expText) expText.innerText = q.explanation;
+        if (expBox) expBox.style.display = 'block';
+
+        const nextBtn = document.getElementById('btn-next-question');
+        if (nextBtn) nextBtn.classList.remove('hidden');
     },
 
     nextQuestion: () => {
@@ -977,212 +727,61 @@ const app = {
 
     showResult: () => {
         app.showView('result-view');
-        const score = Math.round((app.state.score / app.state.questions.length) * 100);
-        document.getElementById('final-score').innerText = `${score}%`;
-        
-        // Update result quote
-        app.updateResultQuote();
-    },
+        const pct = Math.round((app.state.score / app.state.questions.length) * 100);
+        const scoreEl = document.getElementById('final-score');
+        if (scoreEl) scoreEl.innerText = `${pct}%`;
 
-    shareQuiz: () => {
-        // Simple clipboard share
-        const text = `I just scored ${Math.round((app.state.score / app.state.questions.length) * 100)}% on a QuizAI lesson! 🚀`;
-        navigator.clipboard.writeText(text).then(() => utils.showNotification("Result copied to clipboard!"));
+        // Quote
+        const q = getRandomQuote();
+        const text = document.getElementById('result-quote-text');
+        const auth = document.getElementById('result-quote-author');
+        if (text) text.innerText = q.text;
+        if (auth) auth.innerText = q.author;
     },
 
     /* --- TUTOR --- */
     sendTutorMessage: async () => {
         const input = document.getElementById('tutor-input');
         const msg = input.value.trim();
-        
-        // Validation
         if (!msg) return;
-        if (msg.length > 2000) {
-            utils.showNotification("Message is too long. Please keep it under 2000 characters.");
-            return;
-        }
 
         const box = document.getElementById('tutor-history');
-        
-        // Add user message with animation (using textContent for XSS safety)
-        const userMsg = document.createElement('div');
-        userMsg.className = 'msg msg-user';
-        userMsg.textContent = msg; // Use textContent instead of innerHTML for safety
-        box.appendChild(userMsg);
-        utils.fadeIn(userMsg, 200);
-        
+        const userDiv = document.createElement('div');
+        userDiv.className = 'msg msg-user';
+        userDiv.textContent = msg;
+        box.appendChild(userDiv);
         input.value = '';
-        input.disabled = true; // Prevent spamming
-        
-        // Smooth scroll using requestAnimationFrame for better performance
-        requestAnimationFrame(() => {
-            box.scrollTop = box.scrollHeight;
-        });
-
-        // Add typing indicator
-        const typingIndicator = document.createElement('div');
-        typingIndicator.className = 'msg msg-bot typing-container';
-        typingIndicator.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
-        box.appendChild(typingIndicator);
-        requestAnimationFrame(() => {
-            box.scrollTop = box.scrollHeight;
-        });
 
         try {
             const res = await fetch('/ai/chat', {
                 method: 'POST',
-                headers: app.getHeaders(),
-                body: JSON.stringify({
-                    message: msg,
-                    history: app.state.chatHistory.slice(-10), // Only send last 10 messages for performance
-                    language: app.state.language
-                })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.state.token}` },
+                body: JSON.stringify({ message: msg, language: app.state.language, history: app.state.chatHistory.slice(-5) })
             });
-            
-            // Remove typing indicator
-            typingIndicator.remove();
-            
-            if (res.status === 401) {
-                app.logout();
-                throw new Error("Session expired.");
-            }
-            
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Failed to get response from AI.");
-            }
-            
             const data = await res.json();
-            
-            // Add bot response with animation
-            const botMsg = document.createElement('div');
-            botMsg.className = 'msg msg-bot';
-            botMsg.innerHTML = data.response.replace(/\n/g, '<br>');
-            box.appendChild(botMsg);
-            utils.fadeIn(botMsg, 300);
-            requestAnimationFrame(() => {
-                box.scrollTop = box.scrollHeight;
-            });
-
-            app.state.chatHistory.push({ role: 'user', content: msg });
-            app.state.chatHistory.push({ role: 'assistant', content: data.response });
-            
-            // Keep only last 50 messages for performance
-            if (app.state.chatHistory.length > 50) {
-                app.state.chatHistory = app.state.chatHistory.slice(-50);
-            }
-            localStorage.setItem('chatHistory', JSON.stringify(app.state.chatHistory));
-
+            const botDiv = document.createElement('div');
+            botDiv.className = 'msg msg-bot';
+            botDiv.innerHTML = data.response.replace(/\n/g, '<br>');
+            box.appendChild(botDiv);
+            app.state.chatHistory.push({ role: 'user', content: msg }, { role: 'assistant', content: data.response });
+            localStorage.setItem('chatHistory', JSON.stringify(app.state.chatHistory.slice(-20)));
         } catch (e) {
-            typingIndicator.remove();
-            const errorMsg = document.createElement('div');
-            errorMsg.className = 'msg msg-bot';
-            errorMsg.style.color = 'var(--error)';
-            errorMsg.innerHTML = `Error: ${e.message}`;
-            box.appendChild(errorMsg);
-        } finally {
-            input.disabled = false;
-            input.focus();
+            utils.showNotification("Chat error");
         }
     },
 
-    /* --- SMART NOTES --- */
-    showNotes: () => {
-        app.showView('presentation-view'); // View ID kept same in HTML update for simplicity, or we should have updated it.
-        // In previous step I kept ID as presentation-view in HTML for the container div? 
-        // Let me check my previous HTML update.
-        // Yes: <div id="presentation-view" class="screen" style="display: none;">
-        // So keeping view ID same is fine.
-    },
-
-    generateNotes: async () => {
-        const topic = document.getElementById('ppt-topic').value.trim();
-        const slidesValue = document.getElementById('ppt-slides').value;
-        const slides = parseInt(slidesValue, 10);
-        const font = document.getElementById('ppt-font').value;
-        const format = document.getElementById('ppt-format').value;
-
-        // Input validation
-        if (!topic || topic.length < 2) {
-            utils.showNotification("Please enter a valid topic (at least 2 characters).");
-            document.getElementById('ppt-topic').focus();
-            return;
-        }
-        
-        // Check for valid number after parsing
-        if (isNaN(slides) || slides < 3 || slides > 30) {
-            utils.showNotification("Please enter a valid number of slides (3-30).");
-            return;
-        }
-
-        utils.showLoading('ppt-loading', `Creating ${format.toUpperCase()} on ${topic}...`);
-
-        try {
-            const res = await fetch('/presentation/generate', {
-                method: 'POST',
-                headers: app.getHeaders(),
-                body: JSON.stringify({
-                    topic,
-                    num_slides: slides,
-                    language: app.state.language,
-                    font_style: font,
-                    format: format,
-                    tone: "Professional"
-                })
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Generation Failed. Check API status.");
-            }
-
-            // Handle File Download
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-
-            // Determine extension
-            let ext = "pptx";
-            if (format === "pdf") ext = "pdf";
-            if (format === "docx") ext = "docx";
-
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `${topic.replace(/\s/g, '_')}_Notes.${ext}`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
-
-            utils.showNotification("Notes Downloaded! 📝");
-
-        } catch (e) {
-            utils.showNotification("Error: " + e.message);
-        } finally {
-            utils.hideLoading('ppt-loading');
+    /* --- UTILS --- */
+    initPWA: () => { console.log("PWA initialized"); },
+    detectAndroidDevice: () => {
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        if (isAndroid && !localStorage.getItem('apk_modal_dismissed')) {
+            // Optional: app.showAPKModal();
         }
     },
+    showDailyMotivation: () => { },
+    getHeaders: () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.state.token}` }),
 
-    /* --- ONBOARDING MODAL --- */
-    showOnboarding: () => {
-        const modal = document.getElementById('onboarding-modal');
-        if (modal) modal.style.display = 'flex';
-    },
-
-    closeOnboarding: () => {
-        const modal = document.getElementById('onboarding-modal');
-        if (modal) modal.style.display = 'none';
-        localStorage.setItem('onboarding_completed', 'true');
-    },
-
-    startLearning: () => {
-        app.closeOnboarding();
-        // If not logged in, show auth
-        if (!app.state.token) {
-            app.showAuth();
-        }
-    },
-
+copilot/improve-ui-layout-and-performance
     /* --- PWA INSTALL --- */
     deferredPrompt: null,
 
@@ -1239,50 +838,29 @@ const app = {
         
         if (outcome === 'accepted') {
             console.log('User accepted PWA installation');
+
+    shareQuiz: () => {
+        const score = document.getElementById('final-score').innerText;
+        const text = `I just scored ${score} on S Quiz! 🚀 Try it yourself: ${window.location.origin}`;
+        if (navigator.share) {
+            navigator.share({ title: 'S Quiz Result', text: text, url: window.location.origin });
+ main
         } else {
-            console.log('User dismissed PWA installation');
-        }
-        
-        app.deferredPrompt = null;
-        app.dismissPWA();
-    },
-
-    dismissPWA: () => {
-        const banner = document.getElementById('pwa-banner');
-        if (banner) banner.style.display = 'none';
-        localStorage.setItem('pwa_dismissed', 'true');
-    },
-
-    /* --- APK DOWNLOAD --- */
-    showAPKModal: () => {
-        const modal = document.getElementById('apk-modal');
-        if (modal) modal.style.display = 'flex';
-    },
-
-    closeAPKModal: () => {
-        const modal = document.getElementById('apk-modal');
-        if (modal) modal.style.display = 'none';
-    },
-
-    detectAndroidDevice: () => {
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        if (isAndroid && !localStorage.getItem('apk_dismissed')) {
-            // Show APK download option after configured delay
-            setTimeout(() => {
-                app.showAPKModal();
-            }, CONFIG.APK_MODAL_DELAY);
+            navigator.clipboard.writeText(text);
+            utils.showNotification("Result copied to clipboard!", "success");
         }
     }
 };
 
-// Start
-app.init();
+function getRandomQuote() {
+    const quotes = [
+        { text: "The beautiful thing about learning is that no one can take it away from you.", author: "B.B. King" },
+        { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
+        { text: "Believe in yourself and all that you are.", author: "Christian D. Larson" },
+        { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+        { text: "Your talent is God's gift to you. What you do with it is your gift back to God.", author: "Leo Buscaglia" }
+    ];
+    return quotes[Math.floor(Math.random() * quotes.length)];
+}
 
-// Close profile menu when clicking outside
-document.addEventListener('click', (e) => {
-    const menu = document.getElementById('profile-menu');
-    const dropdown = document.querySelector('.user-profile-dropdown');
-    if (menu && dropdown && !dropdown.contains(e.target)) {
-        menu.style.display = 'none';
-    }
-});
+app.init();
