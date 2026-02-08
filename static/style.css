@@ -194,9 +194,69 @@ body {
     color: var(--text-main);
     min-height: 100vh;
     overflow-x: hidden;
+ copilot/improve-ui-layout-and-performance
+    line-height: 1.7;
+    /* Premium readability */
+    letter-spacing: 0.3px;
+    position: relative;
+    padding-bottom: 50px;
+    display: flex;
+    justify-content: center;
+}
+
+/* --- Animated Gradient Wave Background (GPU-Accelerated) --- */
+body::before,
+body::after {
+    content: '';
+    position: fixed;
+    width: 200%;
+    height: 200%;
+    z-index: -1;
+    will-change: transform;
+    /* GPU acceleration */
+}
+
+/* Purple Wave */
+body::before {
+    top: -50%;
+    left: -50%;
+    background: radial-gradient(
+        ellipse at 30% 40%,
+        rgba(139, 92, 246, 0.15) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        ellipse at 70% 60%,
+        rgba(99, 102, 241, 0.12) 0%,
+        transparent 50%
+    );
+    animation: waveFloat1 25s ease-in-out infinite;
+    transform: translateZ(0);
+    /* Force GPU */
+}
+
+/* Pink/Blue Wave */
+body::after {
+    bottom: -50%;
+    right: -50%;
+    background: radial-gradient(
+        ellipse at 60% 50%,
+        rgba(236, 72, 153, 0.12) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        ellipse at 40% 70%,
+        rgba(59, 130, 246, 0.1) 0%,
+        transparent 50%
+    );
+    animation: waveFloat2 30s ease-in-out infinite;
+    transform: translateZ(0);
+    /* Force GPU */
+
     line-height: 1.6;
     letter-spacing: 0.1px;
     padding-top: 80px;
+    main
 }
 
 /* Skeleton Loading Pulse */
@@ -214,9 +274,39 @@ body {
     }
 }
 
+  copilot/improve-ui-layout-and-performance
+/* Smooth Wave Animation 1 - Figure-8 Pattern */
+@keyframes waveFloat1 {
+    0%, 100% {
+        transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+    }
+    25% {
+        transform: translate3d(15%, -10%, 0) rotate(90deg) scale(1.05);
+    }
+    50% {
+        transform: translate3d(10%, 5%, 0) rotate(180deg) scale(1);
+    }
+    75% {
+        transform: translate3d(-15%, 10%, 0) rotate(270deg) scale(1.05);
+    }
+}
+
+/* Smooth Wave Animation 2 - Circular Pattern */
+@keyframes waveFloat2 {
+    0%, 100% {
+        transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+    }
+    33% {
+        transform: translate3d(-12%, 8%, 0) rotate(120deg) scale(1.08);
+    }
+    66% {
+        transform: translate3d(12%, -12%, 0) rotate(240deg) scale(0.95);
+    }
+
 .skeleton {
     animation: skeletonPulse 1.5s infinite ease-in-out;
     border-radius: 4px;
+   main
 }
 
 /* --- Layout (Centered SaaS) --- */
@@ -230,6 +320,37 @@ body {
     padding-bottom: 100px;
 }
 
+ copilot/improve-ui-layout-and-performance
+/* --- Premium Glass Panels & Cards --- */
+.glass-panel,
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: 
+        var(--glass-shadow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-xl);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle shine effect on top edge */
+.glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.3) 50%, 
+        transparent 100%);
+    opacity: 0.6;
+
 /* --- Cards & Panels --- */
 .glass-panel,
 .glass-card,
@@ -240,6 +361,7 @@ body {
     border-radius: var(--radius-xl);
     padding: 30px;
     transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+main
 }
 
 .card-premium:hover,
@@ -247,6 +369,28 @@ body {
     transform: translateY(-4px);
     box-shadow: var(--shadow-premium);
 }
+
+ copilot/improve-ui-layout-and-performance
+/* Glass Card Float - optimized for performance */
+.glass-card {
+    padding: 50px;
+    transition: 
+        transform 0.4s var(--ease-out), 
+        box-shadow 0.4s var(--ease-out), 
+        border-color 0.4s ease, 
+        opacity 0.4s ease,
+        background 0.3s ease;
+    will-change: transform;
+}
+
+.glass-card:hover {
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.4),
+        0 10px 40px rgba(139, 92, 246, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(30, 41, 59, 0.75);
 
 /* --- Premium Buttons --- */
 .btn {
@@ -279,6 +423,7 @@ body {
     background: var(--primary);
     color: white;
     box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+ main
 }
 
 .btn-primary-glow:hover {
@@ -1030,6 +1175,41 @@ select.input-field option {
     font-weight: 600;
 }
 
+ copilot/improve-ui-layout-and-performance
+/* Nav Pill Micro-Interaction with Glow */
+.nav-pill {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 14px 16px;
+    border-radius: 18px;
+    transition: 
+        transform 0.3s var(--ease-out), 
+        opacity 0.3s ease, 
+        background 0.3s ease, 
+        color 0.3s ease,
+        box-shadow 0.3s ease;
+    color: var(--text-muted);
+    position: relative;
+    overflow: hidden;
+    will-change: transform;
+    white-space: nowrap;
+}
+
+/* Hover glow effect */
+.nav-pill:hover {
+    color: var(--text-main);
+    transform: translateX(3px);
+    background: rgba(139, 92, 246, 0.15);
+    box-shadow: 
+        0 4px 12px rgba(139, 92, 246, 0.2),
+        inset 0 0 20px rgba(139, 92, 246, 0.1);
+}
+
+.nav-pill:active {
+    transform: scale(0.95) translateX(3px);
+
 .divider-text {
     display: flex;
     align-items: center;
@@ -1038,6 +1218,7 @@ select.input-field option {
     color: var(--text-muted);
     font-size: 0.8rem;
     font-weight: 700;
+main
 }
 
 .divider-text::before,
@@ -1071,6 +1252,14 @@ select.input-field option {
     font-size: 0.85rem;
 }
 
+ copilot/improve-ui-layout-and-performance
+.nav-pill.active {
+    background: var(--primary-gradient);
+    color: white;
+    box-shadow: 
+        0 8px 16px rgba(99, 102, 241, 0.3),
+        0 4px 8px rgba(139, 92, 246, 0.2);
+
 .btn-text {
     background: transparent;
     border: none;
@@ -1088,15 +1277,43 @@ select.input-field option {
     color: white;
     font-weight: 600;
     cursor: pointer;
+ main
 }
 
 .w-100 {
     width: 100%;
 }
 
+ copilot/improve-ui-layout-and-performance
+/* Back Button Style */
+.btn-back {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 12px;
+    color: var(--text-main);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 30px;
+    transition: all 0.3s ease;
+}
+
+.btn-back:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: translateX(-3px);
+}
+
+.btn-back:active {
+    transform: translateX(-1px) scale(0.98);
+}
+
+
 .hidden {
     display: none !important;
 }
+ main
 
 /* --- Notifications --- */
 .notification-toast {
@@ -1139,6 +1356,61 @@ select.input-field option {
     }
 }
 
+ copilot/improve-ui-layout-and-performance
+/* --- Password Toggle Button --- */
+.password-toggle-btn {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.password-toggle-btn:hover {
+    color: var(--accent);
+    background: rgba(139, 92, 246, 0.1);
+}
+
+.password-toggle-btn i {
+    font-size: 1.2rem;
+    transition: transform 0.2s ease;
+}
+
+.password-toggle-btn:active i {
+    transform: scale(0.9);
+}
+
+/* --- Buttons --- */
+/* Button Pro Interaction */
+.btn {
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 16px 40px;
+    font-family: var(--font-main);
+    font-weight: 600;
+    font-size: 1.1rem;
+    cursor: pointer;
+    /* Optimized: only transform and opacity for smooth 60fps animations */
+    transition: transform 0.3s var(--ease-squish), opacity 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    background-size: 200% auto;
+    will-change: transform; /* GPU acceleration hint */
+
 /* --- Loading States --- */
 .loading-overlay {
     position: absolute;
@@ -1153,6 +1425,7 @@ select.input-field option {
     z-index: 100;
     border-radius: inherit;
     backdrop-filter: blur(4px);
+ main
 }
 
 .typing-indicator {
@@ -1925,6 +2198,68 @@ select.input-field option {
     margin: 0;
 }
 
+/* Onboarding Cards - Premium 3-Card Layout */
+.onboarding-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 30px 20px;
+    text-align: center;
+    transition: all 0.4s var(--ease-out);
+    position: relative;
+    overflow: hidden;
+}
+
+.onboarding-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-gradient);
+    transform: scaleX(0);
+    transition: transform 0.4s var(--ease-out);
+}
+
+.onboarding-card:hover::before {
+    transform: scaleX(1);
+}
+
+.onboarding-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+}
+
+.onboarding-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 20px;
+    background: var(--primary-gradient);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: white;
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+}
+
+.onboarding-card h3 {
+    font-size: 1.2rem;
+    color: var(--text-main);
+    margin: 15px 0;
+    font-weight: 600;
+}
+
+.onboarding-card p {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 0;
+}
+
 /* PWA Install Banner */
 .pwa-banner {
     position: fixed;
@@ -1943,6 +2278,30 @@ select.input-field option {
     gap: 15px;
     z-index: 9999;
     animation: slideUp 0.5s var(--ease-out);
+}
+
+/* Offline Indicator */
+.offline-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(239, 68, 68, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 12px 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10001;
+    color: white;
+    font-weight: 600;
+    font-size: 0.95rem;
+    animation: slideInRight 0.4s var(--ease-out);
+}
+
+.offline-indicator i {
+    font-size: 1.2rem;
 }
 
 @keyframes slideUp {

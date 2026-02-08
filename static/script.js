@@ -309,10 +309,113 @@ const app = {
         document.getElementById('profile-lang-select').value = app.state.language;
     },
 
+ copilot/improve-ui-layout-and-performance
+    viewProfile: () => {
+        // Load current profile data
+        const userData = localStorage.getItem('user_data');
+        const username = localStorage.getItem('username') || 'Student';
+        const email = localStorage.getItem('user_email') || '';
+        
+        // Populate profile fields
+        document.getElementById('profile-name').value = username;
+        
+        if (userData) {
+            try {
+                const user = JSON.parse(userData);
+                if (user.full_name) document.getElementById('profile-name').value = user.full_name;
+                if (user.class_course) document.getElementById('profile-class').value = user.class_course;
+                if (user.bio) document.getElementById('profile-bio').value = user.bio;
+                
+                // Update profile photo if available
+                if (user.profile_photo) {
+                    const photoDisplay = document.getElementById('profile-photo-display');
+                    if (photoDisplay) {
+                        const img = document.createElement('img');
+                        img.src = user.profile_photo;
+                        img.alt = 'Profile';
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'cover';
+                        photoDisplay.innerHTML = '';
+                        photoDisplay.appendChild(img);
+                    }
+                }
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+            }
+        }
+        
+        // Set language selector
+        document.getElementById('profile-language').value = app.state.language;
+        
+        // Set email display
+        if (email) {
+            document.getElementById('profile-email-display').textContent = email;
+        }
+        
+        // Close profile menu and show profile view
+        const menu = document.getElementById('profile-menu');
+        if (menu) menu.style.display = 'none';
+        
+        document.getElementById('profile-view').style.display = 'block';
+    },
+
+    closeProfile: () => {
+        document.getElementById('profile-view').style.display = 'none';
+    },
+
+    saveProfile: () => {
+        // Get profile data
+        const name = document.getElementById('profile-name').value.trim();
+        const classCourse = document.getElementById('profile-class').value.trim();
+        const language = document.getElementById('profile-language').value;
+        const bio = document.getElementById('profile-bio').value.trim();
+        
+        // Validation
+        if (!name || name.length < 2) {
+            utils.showNotification('Name must be at least 2 characters long', 'error');
+            return;
+        }
+        
+        // Update state
+        app.state.user.name = name;
+        localStorage.setItem('username', name);
+        
+        // Update user data
+        let userData = {};
+        try {
+            const existing = localStorage.getItem('user_data');
+            if (existing) userData = JSON.parse(existing);
+        } catch (e) {}
+        
+        userData.full_name = name;
+        userData.class_course = classCourse;
+        userData.bio = bio;
+        
+        localStorage.setItem('user_data', JSON.stringify(userData));
+        
+        // Update language if changed
+        if (language !== app.state.language) {
+            app.setLanguage(language);
+        }
+        
+        // Update display name in header
+        const userDisplay = document.getElementById('user-display');
+        if (userDisplay) userDisplay.innerText = name;
+        
+        utils.showNotification('✓ Profile updated successfully!', 'success');
+        
+        // Close profile after a short delay
+        setTimeout(() => {
+            app.closeProfile();
+        }, 1000);
+    },
+
     saveProfile: () => {
         app.state.user.name = document.getElementById('profile-name-input').value;
         app.state.user.class = document.getElementById('profile-class-input').value;
         app.state.language = document.getElementById('profile-lang-select').value;
+ main
 
         localStorage.setItem('userData', JSON.stringify(app.state.user));
         localStorage.setItem('language', app.state.language);
@@ -387,6 +490,37 @@ const app = {
         if (auth) auth.innerText = `— ${q.author}`;
     },
 
+ copilot/improve-ui-layout-and-performance
+    // Toggle password visibility
+    togglePasswordVisibility: () => {
+        const passwordInput = document.getElementById('password-input');
+        const toggleIcon = document.getElementById('password-toggle-icon');
+        const toggleBtn = document.getElementById('toggle-password');
+        
+        if (passwordInput && toggleIcon && toggleBtn) {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.className = 'bi bi-eye-slash';
+                toggleBtn.setAttribute('aria-label', 'Hide password');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.className = 'bi bi-eye';
+                toggleBtn.setAttribute('aria-label', 'Show password');
+            }
+        }
+    },
+
+    /* --- QUIZ FEATURE --- */
+    handleFileSelect: (input) => {
+        if (input.files && input.files[0]) {
+            app.state.uploadedFile = input.files[0];
+            const label = document.getElementById('file-label-text');
+            if (label) {
+                label.innerText = `✅ ${input.files[0].name}`;
+                label.style.color = 'var(--success)';
+            }
+        }
+
     updateTranslations: () => {
         const lang = app.state.language;
         if (typeof translations === 'undefined' || !translations[lang]) return;
@@ -394,12 +528,42 @@ const app = {
             const key = el.id.replace('t-', '');
             if (translations[lang][key]) el.innerText = translations[lang][key];
         });
+ main
     },
 
     /* --- CORE FEATURES --- */
     generateTopicQuiz: async () => {
         const topic = document.getElementById('topic-input').value.trim();
+ copilot/improve-ui-layout-and-performance
+        const numQ = parseInt(document.getElementById('q-count').value);
+        const diff = document.getElementById('difficulty-select').value;
+        const lang = document.getElementById('language-select').value;
+
+        if (lang !== app.state.language) app.setLanguage(lang);
+        
+        // Input validation
+        if (!topic || topic.length < 2) {
+            utils.showNotification("Please enter a valid topic (at least 2 characters).", "error");
+            document.getElementById('topic-input').focus();
+            return;
+        }
+        
+        if (numQ < 1 || numQ > 50) {
+            utils.showNotification("Please enter a valid number of questions (1-50).", "error");
+            document.getElementById('q-count').focus();
+            return;
+        }
+
+        // Use enhanced loading indicator with animated steps
+        utils.showLoadingSteps('loading-topic', [
+            '⏳ Understanding topic',
+            '⏳ Selecting difficulty',
+            '⏳ Generating questions',
+            '⏳ Finalizing quiz'
+        ]);
+
         if (!topic) return utils.showNotification("Please enter a topic", "error");
+ main
 
         utils.showLoadingSteps('topic-view', ['Scanning Library', 'AI Brainstorming', 'Generating Quiz']);
         try {
@@ -418,7 +582,76 @@ const app = {
         } catch (e) {
             utils.showNotification(e.message, "error");
         } finally {
+copilot/improve-ui-layout-and-performance
+            utils.hideLoading('loading-topic');
+        }
+    },
+
+    // --- FILE QUIZ ---
+    generateFileQuiz: async () => {
+        if (!app.state.uploadedFile) {
+            utils.showNotification("Please upload a file first.", "error");
+            return;
+        }
+
+        const numQ = parseInt(document.getElementById('file-q-count').value);
+        const diff = document.getElementById('file-difficulty-select').value;
+        const lang = document.getElementById('file-language-select').value;
+        
+        // Validate number of questions
+        if (numQ < 1 || numQ > 50) {
+            utils.showNotification("Please enter a valid number of questions (1-50).", "error");
+            document.getElementById('file-q-count').focus();
+            return;
+        }
+        
+        // Validate file size (max 10MB for performance)
+        if (app.state.uploadedFile.size > 10 * 1024 * 1024) {
+            utils.showNotification("File is too large. Please upload a file smaller than 10MB.", "error");
+            return;
+        }
+
+        utils.showLoadingSteps('loading-file', [
+            '⏳ Reading file',
+            '⏳ Extracting content',
+            '⏳ Generating questions',
+            '⏳ Creating quiz'
+        ]);
+
+        try {
+            const fd = new FormData();
+            fd.append('file', app.state.uploadedFile);
+            fd.append('num_questions', numQ);
+            fd.append('difficulty', diff);
+            fd.append('mastery_level', "Intermediate");
+            fd.append('language', lang);
+
+            const headers = app.getAuthHeaders();
+
+            const res = await fetch('/quiz/generate-from-file', {
+                method: 'POST',
+                headers: headers,
+                body: fd
+            });
+
+            if (res.status === 401) {
+                app.logout();
+                throw new Error("Session expired. Please login again.");
+            }
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Failed to process file. Please try a different file.");
+            }
+            const data = await res.json();
+            app.startQuiz(data);
+
+        } catch (e) {
+            utils.showNotification("Error: " + e.message);
+        } finally {
+            utils.hideLoading('loading-file');
+
             utils.hideLoading('topic-view');
+main
         }
     },
 
@@ -548,11 +781,70 @@ const app = {
     showDailyMotivation: () => { },
     getHeaders: () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.state.token}` }),
 
+copilot/improve-ui-layout-and-performance
+    /* --- PWA INSTALL --- */
+    deferredPrompt: null,
+
+    initPWA: () => {
+        // Listen for beforeinstallprompt event
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            app.deferredPrompt = e;
+            
+            // Show PWA banner if user hasn't dismissed it
+            if (!localStorage.getItem('pwa_dismissed')) {
+                const banner = document.getElementById('pwa-banner');
+                if (banner) {
+                    setTimeout(() => {
+                        banner.style.display = 'flex';
+                    }, CONFIG.PWA_BANNER_DELAY);
+                }
+            }
+        });
+
+        // Listen for successful installation
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA installed successfully');
+            app.dismissPWA();
+        });
+        
+        // Online/Offline detection
+        const offlineIndicator = document.getElementById('offline-indicator');
+        
+        window.addEventListener('online', () => {
+            console.log('Back online');
+            if (offlineIndicator) offlineIndicator.style.display = 'none';
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('Gone offline');
+            if (offlineIndicator) offlineIndicator.style.display = 'flex';
+        });
+        
+        // Check initial status
+        if (!navigator.onLine && offlineIndicator) {
+            offlineIndicator.style.display = 'flex';
+        }
+    },
+
+    installPWA: async () => {
+        if (!app.deferredPrompt) {
+            utils.showNotification('PWA installation is not available on this device/browser.');
+            return;
+        }
+
+        app.deferredPrompt.prompt();
+        const { outcome } = await app.deferredPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+            console.log('User accepted PWA installation');
+
     shareQuiz: () => {
         const score = document.getElementById('final-score').innerText;
         const text = `I just scored ${score} on S Quiz! 🚀 Try it yourself: ${window.location.origin}`;
         if (navigator.share) {
             navigator.share({ title: 'S Quiz Result', text: text, url: window.location.origin });
+ main
         } else {
             navigator.clipboard.writeText(text);
             utils.showNotification("Result copied to clipboard!", "success");
