@@ -22,7 +22,7 @@ async def test_ai_service_initialization():
     print("="*60)
     
     assert ai_service is not None, "AI service should be initialized"
-    assert ai_service.has_ai == True, "AI should always be available (with offline mode)"
+    assert ai_service.has_ai, "AI should always be available (with offline mode)"
     
     print(f"✓ Status: {ai_service.status}")
     print(f"✓ Provider: {ai_service.provider}")
@@ -111,7 +111,7 @@ async def test_provider_health_tracking():
     ai_service._mark_provider_failure("test_provider")
     ai_service._mark_provider_failure("test_provider")
     assert ai_service._provider_failures.get("test_provider") == 3
-    assert ai_service._is_provider_on_cooldown("test_provider") == True
+    assert ai_service._is_provider_on_cooldown("test_provider"), "Provider should be on cooldown after 3 failures"
     print("✓ Cooldown activated after 3 failures")
     
     # Test success resets failures

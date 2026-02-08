@@ -84,16 +84,18 @@ async def generate_quiz(
             "provider": ai_service.current_provider
         }
     except Exception as e:
-        # Never show raw errors to users
+        # Log error but provide fallback content
         print(f"Quiz generation error: {e}")
-        raise HTTPException(
-            status_code=200,  # Return 200 to avoid breaking UI
-            detail={
-                "message": "⚡ Using backup AI for uninterrupted learning",
-                "questions": ai_service.generate_offline_quiz(req.topic, req.num_questions, difficulty),
-                "provider": "offline"
-            }
-        )
+        
+        # Return offline quiz with informative message
+        offline_quiz = ai_service.generate_offline_quiz(req.topic, req.num_questions, difficulty)
+        return {
+            "message": "⚡ Using backup AI for uninterrupted learning",
+            "questions": offline_quiz,
+            "adjusted_difficulty": difficulty,
+            "user_level": current_user.level,
+            "provider": "offline"
+        }
 
 @router.post("/generate-from-file")
 async def generate_quiz_from_file(

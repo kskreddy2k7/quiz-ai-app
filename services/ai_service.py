@@ -12,6 +12,17 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
 class AIService:
+    # Configuration constants
+    MAX_CACHE_ENTRIES = 1000
+    MAX_CACHED_PROMPT_LENGTH = 1000
+    PROVIDER_TIMEOUT = 10  # seconds
+    CONNECTION_TIMEOUT = 5  # seconds
+    FAILURE_THRESHOLD = 3
+    COOLDOWN_DURATION = 30  # seconds
+    MAX_TOKEN_LENGTH = 2048
+    MAX_CHAT_HISTORY = 8  # messages
+    MAX_FILE_CONTENT = 15000  # characters
+    
     def __init__(self):
         self.cloudflare_api_key = os.getenv("CLOUDFLARE_API_KEY", "")
         self.cloudflare_account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
@@ -27,7 +38,10 @@ class AIService:
         
         # Connection pooling for better performance
         self._session = None
-        self._client_timeout = aiohttp.ClientTimeout(total=10, connect=5)  # Reduced for faster failover
+        self._client_timeout = aiohttp.ClientTimeout(
+            total=self.PROVIDER_TIMEOUT, 
+            connect=self.CONNECTION_TIMEOUT
+        )
         
         # Response cache
         self._cache_db = "ai_cache.db"
@@ -54,8 +68,8 @@ class AIService:
                     access_count INTEGER DEFAULT 1
                 )
             ''')
-            # Create index for faster lookups
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON ai_cache(created_at)')
+            # Create index for faster lookups (by last access for LRU)
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_access_count ON ai_cache(access_count DESC, created_at DESC)')
             conn.commit()
             conn.close()
         except Exception as e:
@@ -157,7 +171,7 @@ class AIService:
             cursor = conn.cursor()
             
             # Limit prompt size in cache
-            prompt_truncated = prompt[:1000] if len(prompt) > 1000 else prompt
+            prompt_truncated = prompt[:self.MAX_CACHED_PROMPT_LENGTH] if len(prompt) > self.MAX_CACHED_PROMPT_LENGTH else prompt
             
             cursor.execute('''
                 INSERT OR REPLACE INTO ai_cache 
@@ -174,16 +188,17 @@ class AIService:
             print(f"Cache write error: {e}")
     
     def _cleanup_cache(self):
-        """Remove old cache entries to keep cache size manageable."""
+        """Remove old cache entries to keep cache size manageable using LRU strategy."""
         try:
             conn = sqlite3.connect(self._cache_db)
             cursor = conn.cursor()
             
-            # Keep only the 1000 most recently accessed entries
-            cursor.execute('''
+            # Keep the MAX_CACHE_ENTRIES most frequently/recently accessed entries (true LRU)
+            cursor.execute(f'''
                 DELETE FROM ai_cache WHERE prompt_hash NOT IN (
                     SELECT prompt_hash FROM ai_cache 
-                    ORDER BY created_at DESC LIMIT 1000
+                    ORDER BY access_count DESC, created_at DESC 
+                    LIMIT {self.MAX_CACHE_ENTRIES}
                 )
             ''')
             
@@ -210,10 +225,10 @@ class AIService:
         """Track provider failures and set cooldown if needed."""
         self._provider_failures[provider] = self._provider_failures.get(provider, 0) + 1
         
-        # After 3 failures, put on 30 second cooldown
-        if self._provider_failures[provider] >= 3:
-            self._provider_cooldown[provider] = time.time() + 30
-            print(f"⚠️ {provider} on cooldown for 30s after {self._provider_failures[provider]} failures")
+        # After FAILURE_THRESHOLD failures, put on COOLDOWN_DURATION cooldown
+        if self._provider_failures[provider] >= self.FAILURE_THRESHOLD:
+            self._provider_cooldown[provider] = time.time() + self.COOLDOWN_DURATION
+            print(f"⚠️ {provider} on cooldown for {self.COOLDOWN_DURATION}s after {self._provider_failures[provider]} failures")
     
     def _mark_provider_success(self, provider: str):
         """Reset failure count on successful call."""
@@ -274,7 +289,7 @@ class AIService:
             payload = {
                 "inputs": prompt,
                 "parameters": {
-                    "max_new_tokens": 2048,
+                    "max_new_tokens": self.MAX_TOKEN_LENGTH,
                     "temperature": 0.7,
                     "top_p": 0.95,
                     "return_full_text": False
@@ -284,12 +299,12 @@ class AIService:
             # For simpler models like T5
             payload = {
                 "inputs": prompt,
-                "parameters": {"max_length": 2048}
+                "parameters": {"max_length": self.MAX_TOKEN_LENGTH}
             }
         
         session = await self._get_session()
         try:
-            async with session.post(url, headers=headers, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as response:
+            async with session.post(url, headers=headers, json=payload, timeout=aiohttp.ClientTimeout(total=self.PROVIDER_TIMEOUT)) as response:
                 if response.status == 200:
                     result = await response.json()
                     if isinstance(result, list) and len(result) > 0:
@@ -430,8 +445,8 @@ class AIService:
             else:
                 system_prompt += "They are just starting their learning journey. Use very simple language and lots of encouragement."
         
-        # Limit history to last 5-8 messages for efficiency
-        recent_history = history[-8:] if len(history) > 8 else history
+        # Limit history to last MAX_CHAT_HISTORY messages for efficiency
+        recent_history = history[-self.MAX_CHAT_HISTORY:] if len(history) > self.MAX_CHAT_HISTORY else history
         
         # Construct full prompt
         full_prompt = f"System: {system_prompt}\n\n"
@@ -579,7 +594,7 @@ class AIService:
                 # Set timeout for each provider
                 response = await asyncio.wait_for(
                     provider_func(compressed_prompt),
-                    timeout=10.0
+                    timeout=self.PROVIDER_TIMEOUT
                 )
                 
                 # Success!
