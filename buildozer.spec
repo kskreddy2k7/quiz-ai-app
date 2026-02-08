@@ -34,8 +34,8 @@ fullscreen = 0
 android.permissions = INTERNET,ACCESS_NETWORK_STATE
 
 # (int) Target Android API, should be as high as possible.
-# Using API 33 instead of 34 for better stability with p4a
-android.api = 33
+# Using API 34 to match installed Android platform
+android.api = 34
 
 # (int) Minimum API your APK will support.
 android.minapi = 21
@@ -45,8 +45,8 @@ android.minapi = 21
 android.ndk = 25b
 
 # (str) Android build-tools version to use
-# Using stable build tools version
-android.build_tools_version = 33.0.2
+# Using build-tools 36.0.0 for compatibility with latest Android SDK
+android.build_tools_version = 36.0.0
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
 android.private_storage = True

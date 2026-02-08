@@ -38,6 +38,51 @@ jobs:
         pip install --upgrade buildozer cython==0.29.36
         pip install --upgrade python-for-android
 
+    # This step pre-configures Android SDK to avoid Buildozer license failures
+    # Without this, sdkmanager will prompt for license acceptance interactively,
+    # causing "license is not accepted" errors and missing build-tools/aidl
+    - name: Set up Android SDK and accept licenses
+      run: |
+        # Set Android SDK root directory that Buildozer will use
+        ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
+        
+        # Create SDK directory structure
+        mkdir -p "$ANDROID_SDK_ROOT"
+        
+        # Download and install Android command-line tools
+        echo "Installing Android SDK command-line tools..."
+        cd "$ANDROID_SDK_ROOT"
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+        unzip -q commandlinetools-linux-11076708_latest.zip
+        mkdir -p cmdline-tools/latest
+        mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
+        rm commandlinetools-linux-11076708_latest.zip
+        
+        # Set up PATH to include sdkmanager
+        export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+        
+        # Accept ALL Android SDK licenses non-interactively
+        # This is the critical step - prevents "Skipping following packages" errors
+        echo "Accepting all Android SDK licenses..."
+        yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses
+        
+        # Install required Android SDK components for Buildozer
+        # - platform-tools: includes adb and essential platform tools
+        # - build-tools;36.0.0: provides aidl and other build utilities
+        # - platforms;android-34: Android API 34 platform files
+        echo "Installing required Android SDK components..."
+        sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "build-tools;36.0.0" "platforms;android-34"
+        
+        # Verify aidl tool is available (critical for build success)
+        echo "Verifying aidl installation..."
+        if [ -f "$ANDROID_SDK_ROOT/build-tools/36.0.0/aidl" ]; then
+          echo "✓ aidl found at $ANDROID_SDK_ROOT/build-tools/36.0.0/aidl"
+          ls -la "$ANDROID_SDK_ROOT/build-tools/36.0.0/aidl"
+        else
+          echo "✗ ERROR: aidl not found - build will fail"
+          exit 1
+        fi
+
     - name: Build with Buildozer
       run: |
         buildozer android debug
