@@ -210,34 +210,54 @@ body {
     justify-content: center;
 }
 
-/* --- Animated Background Blobs (Lavish) --- */
+/* --- Animated Gradient Wave Background (GPU-Accelerated) --- */
 body::before,
 body::after {
     content: '';
     position: fixed;
-    border-radius: 50%;
-    filter: blur(80px);
-    /* Soft diffuse glow */
+    width: 200%;
+    height: 200%;
     z-index: -1;
-    opacity: 0.6;
+    will-change: transform;
+    /* GPU acceleration */
 }
 
+/* Purple Wave */
 body::before {
-    top: -10%;
-    left: -10%;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
-    animation: floatBlob 15s ease-in-out infinite alternate;
+    top: -50%;
+    left: -50%;
+    background: radial-gradient(
+        ellipse at 30% 40%,
+        rgba(139, 92, 246, 0.15) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        ellipse at 70% 60%,
+        rgba(99, 102, 241, 0.12) 0%,
+        transparent 50%
+    );
+    animation: waveFloat1 25s ease-in-out infinite;
+    transform: translateZ(0);
+    /* Force GPU */
 }
 
+/* Pink/Blue Wave */
 body::after {
-    bottom: -10%;
-    right: -10%;
-    width: 700px;
-    height: 700px;
-    background: radial-gradient(circle, rgba(236, 72, 153, 0.25) 0%, transparent 70%);
-    animation: floatBlob 20s ease-in-out infinite alternate-reverse;
+    bottom: -50%;
+    right: -50%;
+    background: radial-gradient(
+        ellipse at 60% 50%,
+        rgba(236, 72, 153, 0.12) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        ellipse at 40% 70%,
+        rgba(59, 130, 246, 0.1) 0%,
+        transparent 50%
+    );
+    animation: waveFloat2 30s ease-in-out infinite;
+    transform: translateZ(0);
+    /* Force GPU */
 }
 
 @keyframes gradientMove {
@@ -254,13 +274,32 @@ body::after {
     }
 }
 
-@keyframes floatBlob {
-    0% {
-        transform: translate(0, 0);
+/* Smooth Wave Animation 1 - Figure-8 Pattern */
+@keyframes waveFloat1 {
+    0%, 100% {
+        transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
     }
+    25% {
+        transform: translate3d(15%, -10%, 0) rotate(90deg) scale(1.05);
+    }
+    50% {
+        transform: translate3d(10%, 5%, 0) rotate(180deg) scale(1);
+    }
+    75% {
+        transform: translate3d(-15%, 10%, 0) rotate(270deg) scale(1.05);
+    }
+}
 
-    100% {
-        transform: translate(40px, -40px);
+/* Smooth Wave Animation 2 - Circular Pattern */
+@keyframes waveFloat2 {
+    0%, 100% {
+        transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+    }
+    33% {
+        transform: translate3d(-12%, 8%, 0) rotate(120deg) scale(1.08);
+    }
+    66% {
+        transform: translate3d(12%, -12%, 0) rotate(240deg) scale(0.95);
     }
 }
 
@@ -277,15 +316,35 @@ body::after {
     transition: margin-left 0.3s ease;
 }
 
-/* --- Glass Panels & Cards --- */
+/* --- Premium Glass Panels & Cards --- */
 .glass-panel,
 .glass-card {
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    box-shadow: 
+        var(--glass-shadow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 4px 12px rgba(0, 0, 0, 0.15);
     border-radius: var(--radius-xl);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle shine effect on top edge */
+.glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.3) 50%, 
+        transparent 100%);
+    opacity: 0.6;
 }
 
 /* --- Refined Hover States --- */
@@ -293,14 +352,23 @@ body::after {
 /* Glass Card Float - optimized for performance */
 .glass-card {
     padding: 50px;
-    transition: transform 0.4s var(--ease-out), box-shadow 0.4s var(--ease-out), border-color 0.4s ease, opacity 0.4s ease;
+    transition: 
+        transform 0.4s var(--ease-out), 
+        box-shadow 0.4s var(--ease-out), 
+        border-color 0.4s ease, 
+        opacity 0.4s ease,
+        background 0.3s ease;
     will-change: transform;
 }
 
 .glass-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.4),
+        0 10px 40px rgba(139, 92, 246, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(30, 41, 59, 0.75);
 }
 
 /* --- New App Header Section (Logo + Quote at Top) --- */
@@ -524,16 +592,20 @@ body::after {
     width: auto;
 }
 
-/* Nav Pill Micro-Interaction */
+/* Nav Pill Micro-Interaction with Glow */
 .nav-pill {
     display: flex;
     align-items: center;
     gap: 12px;
     cursor: pointer;
-    padding: 12px 15px;
+    padding: 14px 16px;
     border-radius: 18px;
-    /* Optimized: only transform, opacity and background */
-    transition: transform 0.3s var(--ease-out), opacity 0.3s ease, background 0.3s ease, color 0.3s ease;
+    transition: 
+        transform 0.3s var(--ease-out), 
+        opacity 0.3s ease, 
+        background 0.3s ease, 
+        color 0.3s ease,
+        box-shadow 0.3s ease;
     color: var(--text-muted);
     position: relative;
     overflow: hidden;
@@ -541,8 +613,18 @@ body::after {
     white-space: nowrap;
 }
 
+/* Hover glow effect */
+.nav-pill:hover {
+    color: var(--text-main);
+    transform: translateX(3px);
+    background: rgba(139, 92, 246, 0.15);
+    box-shadow: 
+        0 4px 12px rgba(139, 92, 246, 0.2),
+        inset 0 0 20px rgba(139, 92, 246, 0.1);
+}
+
 .nav-pill:active {
-    transform: scale(0.95);
+    transform: scale(0.95) translateX(3px);
 }
 
 .nav-pill i {
@@ -564,15 +646,12 @@ body::after {
     transition: opacity 0.3s ease, width 0.3s ease;
 }
 
-.nav-pill:hover {
-    color: var(--text-main);
-    transform: translateX(3px);
-}
-
 .nav-pill.active {
     background: var(--primary-gradient);
     color: white;
-    box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
+    box-shadow: 
+        0 8px 16px rgba(99, 102, 241, 0.3),
+        0 4px 8px rgba(139, 92, 246, 0.2);
 }
 
 .nav-pill.active i {
@@ -622,6 +701,39 @@ select.input-field option {
     background: #1e1b4b;
     /* Dark bg for options */
     color: white;
+}
+
+/* --- Password Toggle Button --- */
+.password-toggle-btn {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.password-toggle-btn:hover {
+    color: var(--accent);
+    background: rgba(139, 92, 246, 0.1);
+}
+
+.password-toggle-btn i {
+    font-size: 1.2rem;
+    transition: transform 0.2s ease;
+}
+
+.password-toggle-btn:active i {
+    transform: scale(0.9);
 }
 
 /* --- Buttons --- */
@@ -1312,6 +1424,68 @@ select.input-field option {
 .feature-card h4 {
     font-size: 0.95rem;
     color: var(--text-main);
+    margin: 0;
+}
+
+/* Onboarding Cards - Premium 3-Card Layout */
+.onboarding-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 30px 20px;
+    text-align: center;
+    transition: all 0.4s var(--ease-out);
+    position: relative;
+    overflow: hidden;
+}
+
+.onboarding-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary-gradient);
+    transform: scaleX(0);
+    transition: transform 0.4s var(--ease-out);
+}
+
+.onboarding-card:hover::before {
+    transform: scaleX(1);
+}
+
+.onboarding-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+}
+
+.onboarding-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 20px;
+    background: var(--primary-gradient);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: white;
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+}
+
+.onboarding-card h3 {
+    font-size: 1.2rem;
+    color: var(--text-main);
+    margin: 15px 0;
+    font-weight: 600;
+}
+
+.onboarding-card p {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.6;
     margin: 0;
 }
 

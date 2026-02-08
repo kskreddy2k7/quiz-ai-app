@@ -649,6 +649,22 @@ const app = {
         utils.showNotification("Welcome, Guest! Progress will not be saved permanently.");
     },
 
+    // Toggle password visibility
+    togglePasswordVisibility: () => {
+        const passwordInput = document.getElementById('password-input');
+        const toggleIcon = document.getElementById('password-toggle-icon');
+        
+        if (passwordInput && toggleIcon) {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.className = 'bi bi-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.className = 'bi bi-eye';
+            }
+        }
+    },
+
     /* --- QUIZ FEATURE --- */
     handleFileSelect: (input) => {
         if (input.files && input.files[0]) {
