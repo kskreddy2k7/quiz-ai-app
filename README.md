@@ -63,7 +63,11 @@ See [build_notes.md](build_notes.md) for detailed instructions on building the A
 
 ### 1. Requirements
 - Python 3.10+
-- Google Gemini API Key (for AI features)
+- **FREE AI Options** (No credit card required):
+  - Google Gemini API Key (Primary - Free tier available)
+  - HuggingFace API Token (Secondary - Free tier available)
+  - Cloudflare AI (Optional - Free tier available)
+  - **Offline Mode** (Always available as fallback)
 - Google OAuth Client ID (for Google Sign-In) - Optional but recommended
 
 ### 2. Install Dependencies
@@ -74,13 +78,24 @@ pip install -r requirements.txt
 ### 3. Configure Environment Variables
 Create a `.env` file in the root directory (copy from `.env.example`):
 ```bash
-# Required
+# AI Providers (All Free - No Credit Card Required)
+# At least ONE is recommended, but app works without any (offline mode)
 GEMINI_API_KEY=your-gemini-api-key-here
+HUGGINGFACE_API_KEY=your-huggingface-token-here
+CLOUDFLARE_API_KEY=your-cloudflare-api-key-here
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+
+# Required for security
 SECRET_KEY=your-secure-jwt-secret-key
 
 # Optional (for Google Sign-In)
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 ```
+
+#### Getting Free AI Keys:
+- **Gemini**: https://makersuite.google.com/app/apikey (No credit card)
+- **HuggingFace**: https://huggingface.co/settings/tokens (No credit card)
+- **Cloudflare**: https://dash.cloudflare.com/ (No credit card)
 
 **To enable Google Sign-In**, see [GOOGLE_AUTH_SETUP.md](GOOGLE_AUTH_SETUP.md) for detailed instructions.
 
@@ -89,6 +104,13 @@ GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 python main_web.py
 ```
 Open `http://localhost:8000` in your browser.
+
+### 🤖 AI System Features
+- **Multi-Provider Fallback**: Automatically switches between Gemini, Cloudflare, HuggingFace
+- **Smart Caching**: Reuses previous AI responses for faster performance
+- **Offline Mode**: Rule-based quiz generation when all providers are unavailable
+- **Zero Downtime**: App never stops responding, even without API keys
+- **Free Forever**: No payment required, no credit card needed
 
 ---
 
