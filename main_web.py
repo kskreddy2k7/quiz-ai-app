@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 # Load environment variables FIRST before other imports read them
 load_dotenv()
+print(f"DEBUG: GOOGLE_CLIENT_ID is {'SET' if os.getenv('GOOGLE_CLIENT_ID') else 'NOT SET'}")
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles

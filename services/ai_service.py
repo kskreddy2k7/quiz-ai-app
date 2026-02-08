@@ -99,7 +99,6 @@ class AIService:
                 model_name = self.fallback_models[0]
                 self.model = genai.GenerativeModel(model_name)
                 self.has_ai = True
-                copilot/build-free-ai-system
                 self.provider = "Gemini"
                 self.status = "Online (Gemini)"
                 self.current_provider = "gemini"
@@ -107,7 +106,7 @@ class AIService:
                 self.provider = f"Gemini ({model_name})"
                 self.status = f"Online (Gemini {model_name})"
                 print(f"Initialized Gemini with model: {model_name}")
-                main
+
             except Exception as e:
                 print(f"Gemini init error: {e}")
 
