@@ -166,6 +166,7 @@ def get_google_config():
     Returns the client ID needed for Google Sign-In button
     """
     client_id = os.getenv("GOOGLE_CLIENT_ID")
+    print(f"DEBUG auth.py: GOOGLE_CLIENT_ID is '{client_id}'")
     if not client_id:
         raise HTTPException(
             status_code=503,
