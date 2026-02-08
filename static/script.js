@@ -1,3 +1,56 @@
+// Utility functions for performance optimization
+const utils = {
+    // Debounce function to reduce API calls
+    debounce: (func, wait) => {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    },
+    
+    // Show animated loading indicator
+    showLoading: (elementId, message = 'Thinking...') => {
+        const el = document.getElementById(elementId);
+        if (el) {
+            el.style.display = 'flex';
+            el.innerHTML = `
+                <div style="text-align: center;">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.95rem;">${message}</p>
+                </div>
+            `;
+        }
+    },
+    
+    // Hide loading indicator
+    hideLoading: (elementId) => {
+        const el = document.getElementById(elementId);
+        if (el) {
+            el.style.display = 'none';
+        }
+    },
+    
+    // Animate element in with fade
+    fadeIn: (element, duration = 300) => {
+        if (!element) return;
+        element.style.opacity = '0';
+        element.style.transform = 'translateY(10px)';
+        element.style.transition = `opacity ${duration}ms ease-out, transform ${duration}ms ease-out`;
+        
+        requestAnimationFrame(() => {
+            element.style.opacity = '1';
+            element.style.transform = 'translateY(0)';
+        });
+    }
+};
+
 const app = {
     state: {
         questions: [],
@@ -39,26 +92,29 @@ const app = {
             const userDisplay = document.getElementById('user-display');
             if (userDisplay) userDisplay.innerText = app.state.user.name;
 
-            // Load Chat History
+            // Load Chat History (optimized with lazy rendering)
             const savedChat = localStorage.getItem('chatHistory');
             if (savedChat) {
                 try {
                     app.state.chatHistory = JSON.parse(savedChat);
                     const historyContainer = document.getElementById('tutor-history');
                     if (historyContainer) {
-                        // Clear non-system messages first to avoid duplicates if re-init
-                        // Actually, just append new ones if we were robust, but simple redraw is safer
-                        // For now, let's just keep the welcome message and append.
+                        // Use document fragment for better performance
+                        const fragment = document.createDocumentFragment();
                         app.state.chatHistory.forEach(msg => {
                             if (msg.role !== 'system') {
                                 const type = msg.role === 'user' ? 'msg-user' : 'msg-bot';
                                 const div = document.createElement('div');
                                 div.className = `msg ${type}`;
                                 div.innerHTML = msg.content.replace(/\n/g, '<br>');
-                                historyContainer.appendChild(div);
+                                fragment.appendChild(div);
                             }
                         });
-                        historyContainer.scrollTop = historyContainer.scrollHeight;
+                        historyContainer.appendChild(fragment);
+                        // Scroll to bottom after rendering
+                        requestAnimationFrame(() => {
+                            historyContainer.scrollTop = historyContainer.scrollHeight;
+                        });
                     }
                 } catch (e) { console.error("Chat load error", e); }
             }
@@ -289,15 +345,28 @@ const app = {
 
     // --- TOPIC QUIZ ---
     generateTopicQuiz: async () => {
-        const topic = document.getElementById('topic-input').value;
-        const numQ = document.getElementById('q-count').value;
+        const topic = document.getElementById('topic-input').value.trim();
+        const numQ = parseInt(document.getElementById('q-count').value);
         const diff = document.getElementById('difficulty-select').value;
         const lang = document.getElementById('language-select').value;
 
         if (lang !== app.state.language) app.setLanguage(lang);
-        if (!topic) return alert("Please enter a topic.");
+        
+        // Input validation
+        if (!topic || topic.length < 2) {
+            alert("Please enter a valid topic (at least 2 characters).");
+            document.getElementById('topic-input').focus();
+            return;
+        }
+        
+        if (numQ < 1 || numQ > 50) {
+            alert("Please enter a valid number of questions (1-50).");
+            document.getElementById('q-count').focus();
+            return;
+        }
 
-        document.getElementById('loading-topic').style.display = 'block';
+        // Use enhanced loading indicator
+        utils.showLoading('loading-topic', `Generating ${numQ} questions on ${topic}...`);
 
         try {
             const res = await fetch('/quiz/generate', {
@@ -305,7 +374,7 @@ const app = {
                 headers: app.getHeaders(),
                 body: JSON.stringify({
                     topic,
-                    num_questions: parseInt(numQ),
+                    num_questions: numQ,
                     difficulty: diff,
                     mastery_level: "Intermediate",
                     language: app.state.language
@@ -316,40 +385,55 @@ const app = {
                 app.logout();
                 throw new Error("Session expired. Please login again.");
             }
-            if (!res.ok) throw new Error("Failed to generate quiz. Try a broader topic.");
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Failed to generate quiz. Try a different topic.");
+            }
             const data = await res.json();
             app.startQuiz(data);
 
         } catch (e) {
             alert("Error: " + e.message);
         } finally {
-            document.getElementById('loading-topic').style.display = 'none';
+            utils.hideLoading('loading-topic');
         }
     },
 
     // --- FILE QUIZ ---
     generateFileQuiz: async () => {
-        if (!app.state.uploadedFile) return alert("Please upload a file first.");
+        if (!app.state.uploadedFile) {
+            alert("Please upload a file first.");
+            return;
+        }
 
-        const numQ = document.getElementById('file-q-count').value;
+        const numQ = parseInt(document.getElementById('file-q-count').value);
         const diff = document.getElementById('file-difficulty-select').value;
         const lang = document.getElementById('file-language-select').value;
+        
+        // Validate number of questions
+        if (numQ < 1 || numQ > 50) {
+            alert("Please enter a valid number of questions (1-50).");
+            document.getElementById('file-q-count').focus();
+            return;
+        }
+        
+        // Validate file size (max 10MB for performance)
+        if (app.state.uploadedFile.size > 10 * 1024 * 1024) {
+            alert("File is too large. Please upload a file smaller than 10MB.");
+            return;
+        }
 
-        document.getElementById('loading-file').style.display = 'block';
+        utils.showLoading('loading-file', `Processing ${app.state.uploadedFile.name}...`);
 
         try {
             const fd = new FormData();
             fd.append('file', app.state.uploadedFile);
             fd.append('num_questions', numQ);
             fd.append('difficulty', diff);
-            // Defaulting mastery/language if not passed, but passing them is better
             fd.append('mastery_level', "Intermediate");
             fd.append('language', lang);
 
             const headers = app.getAuthHeaders();
-            // Fetch doesn't set Content-Type for FormData automatically if we set it manually, 
-            // so we shouldn't set Content-Type header ourselves for FormData.
-            // app.getAuthHeaders() returns {} or {Authorization:...} which is correct.
 
             const res = await fetch('/quiz/generate-from-file', {
                 method: 'POST',
@@ -361,14 +445,17 @@ const app = {
                 app.logout();
                 throw new Error("Session expired. Please login again.");
             }
-            if (!res.ok) throw new Error("Failed to process file.");
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Failed to process file. Please try a different file.");
+            }
             const data = await res.json();
             app.startQuiz(data);
 
         } catch (e) {
             alert("Error: " + e.message);
         } finally {
-            document.getElementById('loading-file').style.display = 'none';
+            utils.hideLoading('loading-file');
         }
     },
 
@@ -395,18 +482,25 @@ const app = {
         con.innerHTML = '';
         document.getElementById('explanation-box').style.display = 'none';
 
-        q.choices.forEach(opt => {
+        // Use document fragment for better performance
+        const fragment = document.createDocumentFragment();
+        q.choices.forEach((opt, index) => {
             const div = document.createElement('div');
             div.className = 'option-card';
             div.innerText = opt;
             div.onclick = () => app.checkAnswer(opt, div);
-            con.appendChild(div);
+            // Use CSS animation-delay for staggered entrance
+            div.style.animationDelay = `${index * 0.05}s`;
+            fragment.appendChild(div);
         });
+        con.appendChild(fragment);
     },
 
     checkAnswer: (selected, el) => {
         const q = app.state.questions[app.state.currentQuestionIndex];
         const opts = document.querySelectorAll('.option-card');
+        
+        // Disable all options to prevent multiple clicks
         opts.forEach(o => o.onclick = null);
 
         if (selected == q.answer) {
@@ -417,13 +511,17 @@ const app = {
             opts.forEach(o => { if (o.innerText == q.answer) o.classList.add('correct'); });
         }
 
-        // Show Explanation
+        // Show Explanation with fade in
+        const expBox = document.getElementById('explanation-box');
         const expText = document.getElementById('explanation-text');
         expText.innerText = q.explanation;
-        document.getElementById('explanation-box').style.display = 'block';
+        expBox.style.display = 'block';
+        utils.fadeIn(expBox, 400);
 
-        // Auto scroll to explanation
-        document.getElementById('explanation-box').scrollIntoView({ behavior: 'smooth', block: 'end' });
+        // Auto scroll to explanation smoothly
+        setTimeout(() => {
+            expBox.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 100);
     },
 
     nextQuestion: () => {
@@ -451,12 +549,39 @@ const app = {
     sendTutorMessage: async () => {
         const input = document.getElementById('tutor-input');
         const msg = input.value.trim();
+        
+        // Validation
         if (!msg) return;
+        if (msg.length > 2000) {
+            alert("Message is too long. Please keep it under 2000 characters.");
+            return;
+        }
 
         const box = document.getElementById('tutor-history');
-        box.innerHTML += `<div class="msg msg-user">${msg}</div>`;
+        
+        // Add user message with animation (using textContent for XSS safety)
+        const userMsg = document.createElement('div');
+        userMsg.className = 'msg msg-user';
+        userMsg.textContent = msg; // Use textContent instead of innerHTML for safety
+        box.appendChild(userMsg);
+        utils.fadeIn(userMsg, 200);
+        
         input.value = '';
-        box.scrollTop = box.scrollHeight;
+        input.disabled = true; // Prevent spamming
+        
+        // Smooth scroll using requestAnimationFrame for better performance
+        requestAnimationFrame(() => {
+            box.scrollTop = box.scrollHeight;
+        });
+
+        // Add typing indicator
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'msg msg-bot typing-container';
+        typingIndicator.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+        box.appendChild(typingIndicator);
+        requestAnimationFrame(() => {
+            box.scrollTop = box.scrollHeight;
+        });
 
         try {
             const res = await fetch('/ai/chat', {
@@ -464,24 +589,55 @@ const app = {
                 headers: app.getHeaders(),
                 body: JSON.stringify({
                     message: msg,
-                    history: app.state.chatHistory,
+                    history: app.state.chatHistory.slice(-10), // Only send last 10 messages for performance
                     language: app.state.language
                 })
             });
+            
+            // Remove typing indicator
+            typingIndicator.remove();
+            
             if (res.status === 401) {
                 app.logout();
                 throw new Error("Session expired.");
             }
+            
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Failed to get response from AI.");
+            }
+            
             const data = await res.json();
-            box.innerHTML += `<div class="msg msg-bot">${data.response.replace(/\n/g, '<br>')}</div>`;
-            box.scrollTop = box.scrollHeight;
+            
+            // Add bot response with animation
+            const botMsg = document.createElement('div');
+            botMsg.className = 'msg msg-bot';
+            botMsg.innerHTML = data.response.replace(/\n/g, '<br>');
+            box.appendChild(botMsg);
+            utils.fadeIn(botMsg, 300);
+            requestAnimationFrame(() => {
+                box.scrollTop = box.scrollHeight;
+            });
 
             app.state.chatHistory.push({ role: 'user', content: msg });
             app.state.chatHistory.push({ role: 'assistant', content: data.response });
+            
+            // Keep only last 50 messages for performance
+            if (app.state.chatHistory.length > 50) {
+                app.state.chatHistory = app.state.chatHistory.slice(-50);
+            }
             localStorage.setItem('chatHistory', JSON.stringify(app.state.chatHistory));
 
         } catch (e) {
-            box.innerHTML += `<div class="msg msg-bot" style="color:var(--error)">Error: ${e.message}</div>`;
+            typingIndicator.remove();
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'msg msg-bot';
+            errorMsg.style.color = 'var(--error)';
+            errorMsg.innerHTML = `Error: ${e.message}`;
+            box.appendChild(errorMsg);
+        } finally {
+            input.disabled = false;
+            input.focus();
         }
     },
 
@@ -495,14 +651,26 @@ const app = {
     },
 
     generateNotes: async () => {
-        const topic = document.getElementById('ppt-topic').value;
-        const slides = document.getElementById('ppt-slides').value; // Hidden input
+        const topic = document.getElementById('ppt-topic').value.trim();
+        const slidesValue = document.getElementById('ppt-slides').value;
+        const slides = parseInt(slidesValue, 10);
         const font = document.getElementById('ppt-font').value;
         const format = document.getElementById('ppt-format').value;
 
-        if (!topic) return alert("Please enter a topic.");
+        // Input validation
+        if (!topic || topic.length < 2) {
+            alert("Please enter a valid topic (at least 2 characters).");
+            document.getElementById('ppt-topic').focus();
+            return;
+        }
+        
+        // Check for valid number after parsing
+        if (isNaN(slides) || slides < 3 || slides > 30) {
+            alert("Please enter a valid number of slides (3-30).");
+            return;
+        }
 
-        document.getElementById('ppt-loading').style.display = 'block';
+        utils.showLoading('ppt-loading', `Creating ${format.toUpperCase()} on ${topic}...`);
 
         try {
             const res = await fetch('/presentation/generate', {
@@ -510,7 +678,7 @@ const app = {
                 headers: app.getHeaders(),
                 body: JSON.stringify({
                     topic,
-                    num_slides: parseInt(slides),
+                    num_slides: slides,
                     language: app.state.language,
                     font_style: font,
                     format: format,
@@ -518,7 +686,10 @@ const app = {
                 })
             });
 
-            if (!res.ok) throw new Error("Generation Failed. Check API status.");
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Generation Failed. Check API status.");
+            }
 
             // Handle File Download
             const blob = await res.blob();
@@ -536,13 +707,14 @@ const app = {
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
+            a.remove();
 
             alert("Notes Downloaded! 📝");
 
         } catch (e) {
             alert("Error: " + e.message);
         } finally {
-            document.getElementById('ppt-loading').style.display = 'none';
+            utils.hideLoading('ppt-loading');
         }
     }
 };

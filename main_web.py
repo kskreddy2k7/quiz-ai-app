@@ -29,6 +29,11 @@ app = FastAPI(title="S Quiz AI Academy - PRO")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up resources on shutdown."""
+    await ai_service.close()
+
 @app.get("/manifest.json")
 async def manifest():
     return FileResponse("manifest.json")
