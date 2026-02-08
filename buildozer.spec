@@ -11,7 +11,8 @@ package.domain = com.sai
 
 # (str) Source code where the main.py live
 source.dir = .
-p4a.branch = master
+# Use develop branch for stable releases (master is deprecated)
+p4a.branch = develop
 
 # (list) Source files to include (let empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas,html,js,css,json
@@ -33,16 +34,19 @@ fullscreen = 0
 android.permissions = INTERNET,ACCESS_NETWORK_STATE
 
 # (int) Target Android API, should be as high as possible.
-android.api = 34
+# Using API 33 instead of 34 for better stability with p4a
+android.api = 33
 
 # (int) Minimum API your APK will support.
 android.minapi = 21
 
 # (str) Android NDK version to use
+# Using NDK 25b for better compatibility
 android.ndk = 25b
 
 # (str) Android build-tools version to use
-android.build_tools_version = 33.0.0
+# Using stable build tools version
+android.build_tools_version = 33.0.2
 
 # (bool) Use --private data storage (True) or --dir public storage (False)
 android.private_storage = True
