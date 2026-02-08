@@ -22,5 +22,9 @@ uploads/
 data/
 *.log
 
+# AI Cache
+ai_cache.db
+*.db-journal
+
 # OS
 .DS_Store

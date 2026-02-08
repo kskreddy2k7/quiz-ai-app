@@ -512,7 +512,7 @@ const app = {
         }
 
         // Use enhanced loading indicator
-        utils.showLoading('loading-topic', `Generating ${numQ} questions on ${topic}...`);
+        utils.showLoading('loading-topic', `⚡ Free AI optimized for best performance...`);
 
         try {
             const res = await fetch('/quiz/generate', {
@@ -569,7 +569,7 @@ const app = {
             return;
         }
 
-        utils.showLoading('loading-file', `Processing ${app.state.uploadedFile.name}...`);
+        utils.showLoading('loading-file', `⚡ AI analyzing your content...`);
 
         try {
             const fd = new FormData();

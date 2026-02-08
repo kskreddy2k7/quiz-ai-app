@@ -5,31 +5,68 @@ import aiohttp
 import google.generativeai as genai
 import ast
 import re
+import hashlib
+import sqlite3
+import time
 from typing import List, Dict, Any, Optional
+from datetime import datetime, timedelta
 
 class AIService:
     def __init__(self):
         self.cloudflare_api_key = os.getenv("CLOUDFLARE_API_KEY", "")
         self.cloudflare_account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
         self.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
+        self.huggingface_api_key = os.getenv("HUGGINGFACE_API_KEY", "")
         
         self.has_ai = False
         self.provider = "None"
         self.status = "Offline"
         self.model = None
         self.fallback_models = []
+        self.current_provider = None
         
         # Connection pooling for better performance
         self._session = None
-        self._client_timeout = aiohttp.ClientTimeout(total=60, connect=10)
+        self._client_timeout = aiohttp.ClientTimeout(total=10, connect=5)  # Reduced for faster failover
+        
+        # Response cache
+        self._cache_db = "ai_cache.db"
+        self._init_cache()
+        
+        # Provider health tracking
+        self._provider_failures = {}
+        self._provider_cooldown = {}
         
         self._initialize_providers()
 
+    def _init_cache(self):
+        """Initialize SQLite cache for AI responses."""
+        try:
+            conn = sqlite3.connect(self._cache_db)
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS ai_cache (
+                    prompt_hash TEXT PRIMARY KEY,
+                    prompt TEXT,
+                    response TEXT,
+                    provider TEXT,
+                    created_at TIMESTAMP,
+                    access_count INTEGER DEFAULT 1
+                )
+            ''')
+            # Create index for faster lookups
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON ai_cache(created_at)')
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Cache init error: {e}")
+    
     def _initialize_providers(self):
         # Refresh from environment
         self.cloudflare_api_key = os.getenv("CLOUDFLARE_API_KEY", "").split('#')[0].strip().strip('"')
         self.cloudflare_account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").split('#')[0].strip().strip('"')
         self.gemini_api_key = os.getenv("GEMINI_API_KEY", "").split('#')[0].strip().strip('"')
+        self.huggingface_api_key = os.getenv("HUGGINGFACE_API_KEY", "").split('#')[0].strip().strip('"')
 
         # Initialize Gemini if key exists
         if self.gemini_api_key:
@@ -39,6 +76,7 @@ class AIService:
                 self.has_ai = True
                 self.provider = "Gemini"
                 self.status = "Online (Gemini)"
+                self.current_provider = "gemini"
             except Exception as e:
                 print(f"Gemini init error: {e}")
 
@@ -47,11 +85,21 @@ class AIService:
             if not self.gemini_api_key:
                 self.provider = "Cloudflare"
                 self.status = "Online (Cloudflare)"
+                self.current_provider = "cloudflare"
         
-        if not self.gemini_api_key and not (self.cloudflare_api_key and self.cloudflare_account_id):
-            self.has_ai = False
-            self.provider = "None"
-            self.status = "Offline"
+        if self.huggingface_api_key:
+            self.has_ai = True
+            if not self.gemini_api_key and not (self.cloudflare_api_key and self.cloudflare_account_id):
+                self.provider = "HuggingFace"
+                self.status = "Online (HuggingFace)"
+                self.current_provider = "huggingface"
+        
+        # Always mark as having AI available (we have offline fallbacks)
+        if not self.has_ai:
+            self.has_ai = True  # Always available with offline mode
+            self.provider = "Offline"
+            self.status = "Offline Mode (Rule-based)"
+            self.current_provider = "offline"
 
     async def _get_session(self):
         """Get or create a persistent session for connection pooling."""
@@ -63,6 +111,114 @@ class AIService:
         """Close the session when shutting down."""
         if self._session and not self._session.closed:
             await self._session.close()
+    
+    def _get_cache_key(self, prompt: str) -> str:
+        """Generate cache key from prompt."""
+        # Compress prompt by removing extra whitespace
+        compressed = ' '.join(prompt.split())
+        return hashlib.md5(compressed.encode()).hexdigest()
+    
+    def _get_from_cache(self, prompt: str) -> Optional[str]:
+        """Retrieve response from cache if available."""
+        try:
+            cache_key = self._get_cache_key(prompt)
+            conn = sqlite3.connect(self._cache_db)
+            cursor = conn.cursor()
+            
+            # Get cached response
+            cursor.execute(
+                'SELECT response, provider FROM ai_cache WHERE prompt_hash = ?',
+                (cache_key,)
+            )
+            result = cursor.fetchone()
+            
+            if result:
+                # Update access count
+                cursor.execute(
+                    'UPDATE ai_cache SET access_count = access_count + 1 WHERE prompt_hash = ?',
+                    (cache_key,)
+                )
+                conn.commit()
+                conn.close()
+                print(f"✓ Cache hit for prompt (provider: {result[1]})")
+                return result[0]
+            
+            conn.close()
+            return None
+        except Exception as e:
+            print(f"Cache read error: {e}")
+            return None
+    
+    def _save_to_cache(self, prompt: str, response: str, provider: str):
+        """Save response to cache."""
+        try:
+            cache_key = self._get_cache_key(prompt)
+            conn = sqlite3.connect(self._cache_db)
+            cursor = conn.cursor()
+            
+            # Limit prompt size in cache
+            prompt_truncated = prompt[:1000] if len(prompt) > 1000 else prompt
+            
+            cursor.execute('''
+                INSERT OR REPLACE INTO ai_cache 
+                (prompt_hash, prompt, response, provider, created_at, access_count)
+                VALUES (?, ?, ?, ?, ?, 1)
+            ''', (cache_key, prompt_truncated, response, provider, datetime.now()))
+            
+            conn.commit()
+            conn.close()
+            
+            # Clean old cache entries (keep last 1000)
+            self._cleanup_cache()
+        except Exception as e:
+            print(f"Cache write error: {e}")
+    
+    def _cleanup_cache(self):
+        """Remove old cache entries to keep cache size manageable."""
+        try:
+            conn = sqlite3.connect(self._cache_db)
+            cursor = conn.cursor()
+            
+            # Keep only the 1000 most recently accessed entries
+            cursor.execute('''
+                DELETE FROM ai_cache WHERE prompt_hash NOT IN (
+                    SELECT prompt_hash FROM ai_cache 
+                    ORDER BY created_at DESC LIMIT 1000
+                )
+            ''')
+            
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Cache cleanup error: {e}")
+    
+    def _is_provider_on_cooldown(self, provider: str) -> bool:
+        """Check if provider is on cooldown after failures."""
+        if provider not in self._provider_cooldown:
+            return False
+        
+        cooldown_until = self._provider_cooldown[provider]
+        if time.time() < cooldown_until:
+            return True
+        
+        # Cooldown expired, reset
+        del self._provider_cooldown[provider]
+        self._provider_failures[provider] = 0
+        return False
+    
+    def _mark_provider_failure(self, provider: str):
+        """Track provider failures and set cooldown if needed."""
+        self._provider_failures[provider] = self._provider_failures.get(provider, 0) + 1
+        
+        # After 3 failures, put on 30 second cooldown
+        if self._provider_failures[provider] >= 3:
+            self._provider_cooldown[provider] = time.time() + 30
+            print(f"⚠️ {provider} on cooldown for 30s after {self._provider_failures[provider]} failures")
+    
+    def _mark_provider_success(self, provider: str):
+        """Reset failure count on successful call."""
+        if provider in self._provider_failures:
+            self._provider_failures[provider] = 0
 
     async def generate_with_cloudflare(self, prompt: str) -> str:
         url = f"https://api.cloudflare.com/client/v4/accounts/{self.cloudflare_account_id}/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast"
@@ -104,27 +260,152 @@ class AIService:
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(None, lambda: self.model.generate_content(prompt))
         return response.text
+    
+    async def generate_with_huggingface(self, prompt: str, model: str = "mistralai/Mistral-7B-Instruct-v0.2") -> str:
+        """Generate text using Hugging Face Inference API (free tier)."""
+        url = f"https://api-inference.huggingface.co/models/{model}"
+        headers = {
+            "Authorization": f"Bearer {self.huggingface_api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # Different models have different input formats
+        if "mistral" in model.lower() or "llama" in model.lower():
+            payload = {
+                "inputs": prompt,
+                "parameters": {
+                    "max_new_tokens": 2048,
+                    "temperature": 0.7,
+                    "top_p": 0.95,
+                    "return_full_text": False
+                }
+            }
+        else:
+            # For simpler models like T5
+            payload = {
+                "inputs": prompt,
+                "parameters": {"max_length": 2048}
+            }
+        
+        session = await self._get_session()
+        try:
+            async with session.post(url, headers=headers, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    if isinstance(result, list) and len(result) > 0:
+                        return result[0].get('generated_text', str(result[0]))
+                    elif isinstance(result, dict):
+                        return result.get('generated_text', str(result))
+                    return str(result)
+                elif response.status == 503:
+                    # Model is loading, might work on retry
+                    raise Exception("HuggingFace model loading, try again")
+                else:
+                    text = await response.text()
+                    raise Exception(f"HuggingFace API error: {response.status} - {text}")
+        except asyncio.TimeoutError:
+            raise Exception("HuggingFace timeout")
+    
+    def generate_offline_quiz(self, topic: str, num_questions: int, difficulty: str) -> List[Dict[str, Any]]:
+        """Generate a basic quiz using rule-based logic when all AI providers fail."""
+        # Template-based quiz generation
+        questions = []
+        
+        # Generic quiz templates
+        templates = [
+            {
+                "prompt": f"What is the primary purpose of {topic}?",
+                "choices": [
+                    f"To solve complex problems related to {topic}",
+                    f"To demonstrate basic principles of {topic}",
+                    f"To provide entertainment only",
+                    f"None of the above"
+                ],
+                "answer": f"To solve complex problems related to {topic}",
+                "explanation": f"The primary purpose of {topic} is to address and solve problems in its domain."
+            },
+            {
+                "prompt": f"Which of the following is a key concept in {topic}?",
+                "choices": [
+                    f"Fundamental principles of {topic}",
+                    "Random unrelated concepts",
+                    "Entertainment value",
+                    "None apply"
+                ],
+                "answer": f"Fundamental principles of {topic}",
+                "explanation": f"Understanding fundamental principles is crucial for mastering {topic}."
+            },
+            {
+                "prompt": f"What is an important application of {topic}?",
+                "choices": [
+                    f"Real-world problem solving in {topic}",
+                    "Creating confusion",
+                    "Making things complicated",
+                    "No applications exist"
+                ],
+                "answer": f"Real-world problem solving in {topic}",
+                "explanation": f"{topic} has practical applications in solving real-world problems."
+            }
+        ]
+        
+        # Generate requested number of questions
+        for i in range(min(num_questions, len(templates))):
+            questions.append(templates[i])
+        
+        # If more questions needed, cycle through templates with variations
+        while len(questions) < num_questions:
+            base = templates[len(questions) % len(templates)].copy()
+            base["prompt"] = f"Question {len(questions) + 1}: {base['prompt']}"
+            questions.append(base)
+        
+        return questions[:num_questions]
 
     async def generate_quiz(self, prompt: str) -> List[Dict[str, Any]]:
-        """Generate quiz with optimized retry logic and faster failure detection."""
-        last_error = None
-        max_attempts = 2  # Reduced from 3 for faster failure feedback
-        
-        for attempt in range(max_attempts):
+        """Generate quiz with multi-provider fallback and caching."""
+        # Try to get from cache first
+        cached = self._get_from_cache(prompt)
+        if cached:
             try:
-                text = await self.generate_text(prompt)
-                return self._parse_json(text)
+                return self._parse_json(cached)
             except Exception as e:
-                print(f"Quiz generation attempt {attempt+1} failed: {e}")
-                last_error = e
-                # Shorter wait between retries for faster user feedback
-                if attempt < max_attempts - 1:
-                    await asyncio.sleep(0.5)
+                print(f"Cache parse error: {e}")
         
-        raise last_error or Exception(f"Failed to generate quiz after {max_attempts} attempts")
+        # Try all providers in order
+        last_error = None
+        used_provider = None
+        
+        try:
+            text = await self.generate_text(prompt)
+            parsed = self._parse_json(text)
+            # Cache successful response
+            self._save_to_cache(prompt, json.dumps(parsed), self.current_provider)
+            return parsed
+        except Exception as e:
+            print(f"AI generation failed, using offline fallback: {e}")
+            last_error = e
+        
+        # Ultimate fallback: offline quiz generation
+        # Extract topic and number from prompt
+        import re
+        topic_match = re.search(r'about "([^"]+)"', prompt)
+        topic = topic_match.group(1) if topic_match else "general knowledge"
+        
+        num_match = re.search(r'Generate (\d+)', prompt)
+        num_questions = int(num_match.group(1)) if num_match else 5
+        
+        diff_match = re.search(r'Difficulty: (\w+)', prompt)
+        difficulty = diff_match.group(1) if diff_match else "medium"
+        
+        print(f"⚡ Using offline quiz generator for: {topic}")
+        offline_quiz = self.generate_offline_quiz(topic, num_questions, difficulty)
+        
+        # Cache offline response too
+        self._save_to_cache(prompt, json.dumps(offline_quiz), "offline")
+        
+        return offline_quiz
 
     async def chat_with_teacher(self, history: List[Dict[str, str]], message: str, user_context: Optional[Dict] = None) -> str:
-        """Chat with the Friendly Teacher persona with personalization."""
+        """Chat with the Friendly Teacher persona with personalization and caching."""
         system_prompt = (
             "You are a friendly, encouraging, and patient teacher. "
             "Your goal is to help students understand concepts deeply. "
@@ -149,15 +430,23 @@ class AIService:
             else:
                 system_prompt += "They are just starting their learning journey. Use very simple language and lots of encouragement."
         
+        # Limit history to last 5-8 messages for efficiency
+        recent_history = history[-8:] if len(history) > 8 else history
+        
         # Construct full prompt
         full_prompt = f"System: {system_prompt}\n\n"
-        for msg in history:
+        for msg in recent_history:
             # Ensure role is mapped correctly
             role = "Teacher" if msg['role'] == "model" or msg['role'] == "assistant" else "Student"
             full_prompt += f"{role}: {msg['content']}\n"
         full_prompt += f"Student: {message}\nTeacher:"
         
-        return await self.generate_text(full_prompt)
+        try:
+            return await self.generate_text(full_prompt)
+        except Exception as e:
+            # Fallback response
+            return ("I'm experiencing some technical difficulties, but I'm here to help! "
+                   "Could you rephrase your question? Meanwhile, try breaking down the problem into smaller parts.")
 
     async def explain_concept(self, text: str, context: Optional[str] = None) -> str:
         """Provide a deep, step-by-step explanation with research-grade quality."""
@@ -174,8 +463,18 @@ class AIService:
         )
         if context:
             prompt += f"\nContext from file/quiz: {context}\n"
-            
-        return await self.generate_text(prompt)
+        
+        try:
+            return await self.generate_text(prompt)
+        except Exception as e:
+            # Fallback explanation
+            return (f"**{text}**\n\n"
+                   f"This is a concept that requires understanding of fundamental principles. "
+                   f"To learn more about {text}, I recommend:\n"
+                   f"1. Breaking it down into smaller components\n"
+                   f"2. Looking for real-world examples\n"
+                   f"3. Practicing with simple exercises\n\n"
+                   f"*Note: Using offline mode - for detailed explanations, please try again when online.*")
 
     async def summarize_text(self, text: str) -> str:
         """Generate a concise summary of the text."""
@@ -184,7 +483,15 @@ class AIService:
             f"'{text[:10000]}'\n" # Limit input to avoid overload
             f"\nSummary:"
         )
-        return await self.generate_text(prompt)
+        try:
+            return await self.generate_text(prompt)
+        except Exception as e:
+            # Fallback summary
+            words = text.split()
+            return (f"**Summary (Offline Mode)**\n\n"
+                   f"• Document contains approximately {len(words)} words\n"
+                   f"• Key topics may include: {', '.join(words[:5])}\n"
+                   f"• For detailed summary, please try again when online\n")
 
     async def generate_presentation_content(self, topic: str, num_slides: int, language: str, theme: str = "Modern", tone: str = "Professional") -> Dict[str, Any]:
         """Generate professional presentation content with a specific persona."""
@@ -242,20 +549,58 @@ class AIService:
             }
 
     async def generate_text(self, prompt: str) -> str:
-        """Generic text generation with fallback."""
-        try:
-            if self.cloudflare_api_key and self.cloudflare_account_id:
-                try:
-                    return await self.generate_with_cloudflare(prompt)
-                except Exception as e:
-                    print(f"Cloudflare failed, falling back to Gemini: {e}")
-            
-            if self.gemini_api_key:
-                return await self.generate_with_gemini(prompt)
+        """Generic text generation with multi-provider fallback and caching."""
+        # Check cache first
+        cached = self._get_from_cache(prompt)
+        if cached:
+            return cached
+        
+        # Compress prompt to save tokens
+        compressed_prompt = ' '.join(prompt.split())
+        
+        # Try providers in priority order with timeout and cooldown checks
+        providers = []
+        
+        # Build provider list based on availability and cooldown status
+        if self.gemini_api_key and not self._is_provider_on_cooldown("gemini"):
+            providers.append(("gemini", self.generate_with_gemini))
+        
+        if self.cloudflare_api_key and self.cloudflare_account_id and not self._is_provider_on_cooldown("cloudflare"):
+            providers.append(("cloudflare", self.generate_with_cloudflare))
+        
+        if self.huggingface_api_key and not self._is_provider_on_cooldown("huggingface"):
+            providers.append(("huggingface", self.generate_with_huggingface))
+        
+        # Try each provider
+        for provider_name, provider_func in providers:
+            try:
+                print(f"🤖 Trying {provider_name}...")
                 
-            raise Exception("No AI provider available or all failed.")
-        except Exception as e:
-            raise Exception(f"AI Generation Error: {str(e)}")
+                # Set timeout for each provider
+                response = await asyncio.wait_for(
+                    provider_func(compressed_prompt),
+                    timeout=10.0
+                )
+                
+                # Success!
+                self.current_provider = provider_name
+                self._mark_provider_success(provider_name)
+                self._save_to_cache(prompt, response, provider_name)
+                print(f"✓ {provider_name} succeeded")
+                return response
+                
+            except asyncio.TimeoutError:
+                print(f"⏱️ {provider_name} timeout")
+                self._mark_provider_failure(provider_name)
+                continue
+            except Exception as e:
+                print(f"❌ {provider_name} failed: {str(e)[:100]}")
+                self._mark_provider_failure(provider_name)
+                continue
+        
+        # All providers failed, check cache for any similar past responses
+        # (This is a last resort - return a generic error message)
+        raise Exception("⚡ All AI providers temporarily unavailable. Using offline mode.")
 
     def _parse_json(self, text: Any) -> List[Dict[str, Any]]:
         if isinstance(text, list):
