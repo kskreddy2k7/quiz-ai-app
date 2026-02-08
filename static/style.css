@@ -106,6 +106,54 @@
     }
 }
 
+/* Typing Indicator Animation for AI Thinking */
+@keyframes typingDot {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.7;
+    }
+    30% {
+        transform: translateY(-10px);
+        opacity: 1;
+    }
+}
+
+.typing-indicator {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: inline-block;
+    animation: typingDot 1.4s infinite;
+}
+
+.typing-indicator span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+.typing-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+}
+
 /* --- Global Animation Rules --- */
 .screen {
     animation: fadeInUp 0.6s var(--ease-out) forwards;
@@ -242,14 +290,15 @@ body::after {
 
 /* --- Refined Hover States --- */
 
-/* Glass Card Float */
+/* Glass Card Float - optimized for performance */
 .glass-card {
     padding: 50px;
-    transition: transform 0.4s var(--ease-out), box-shadow 0.4s var(--ease-out), border-color 0.4s ease;
+    transition: transform 0.4s var(--ease-out), box-shadow 0.4s var(--ease-out), border-color 0.4s ease, opacity 0.4s ease;
+    will-change: transform;
 }
 
 .glass-card:hover {
-    transform: translateY(-6px) scale(1.005);
+    transform: translateY(-6px);
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     border-color: rgba(255, 255, 255, 0.3);
 }
@@ -372,10 +421,12 @@ body::after {
     cursor: pointer;
     padding: 12px 10px;
     border-radius: 18px;
-    transition: all 0.3s var(--ease-out);
+    /* Optimized: only transform, opacity and background */
+    transition: transform 0.3s var(--ease-out), opacity 0.3s ease, background 0.3s ease, color 0.3s ease;
     color: var(--text-muted);
     position: relative;
     overflow: hidden;
+    will-change: transform;
 }
 
 .nav-pill:active {
@@ -384,7 +435,8 @@ body::after {
 
 .nav-pill i {
     font-size: 1.6rem;
-    transition: transform 0.3s var(--ease-squish);
+    transition: transform 0.3s var(--ease-squish), color 0.3s ease;
+    will-change: transform;
 }
 
 .nav-pill:hover i {
@@ -407,7 +459,7 @@ body::after {
     background: var(--primary-gradient);
     color: white;
     box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4);
-    animation: pulseGlow 0.6s ease-out;
+    transform: translateY(-2px);
 }
 
 .nav-pill.active i {
@@ -471,18 +523,19 @@ select.input-field option {
     font-weight: 600;
     font-size: 1.1rem;
     cursor: pointer;
-    transition: all 0.3s var(--ease-squish);
+    /* Optimized: only transform and opacity for smooth 60fps animations */
+    transition: transform 0.3s var(--ease-squish), opacity 0.3s ease, box-shadow 0.3s ease;
     box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
     width: 100%;
     position: relative;
     overflow: hidden;
     background-size: 200% auto;
+    will-change: transform; /* GPU acceleration hint */
 }
 
 .btn:hover {
-    transform: translateY(-4px);
+    transform: translateY(-4px) scale(1.02);
     box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.5);
-    filter: brightness(1.1);
 }
 
 .btn:active {
@@ -497,18 +550,20 @@ select.input-field option {
     left: 0;
     width: 100%;
     height: 100%;
-    /* Shimmer Effect */
+    /* Shimmer Effect - optimized with transform and opacity only */
     background: linear-gradient(90deg,
             transparent,
             rgba(255, 255, 255, 0.2),
             transparent);
     opacity: 0;
-    transition: 0.3s;
-    transform: skewX(-20deg);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateX(-100%) skewX(-20deg);
+    will-change: transform, opacity;
 }
 
 .btn:hover::after {
     opacity: 1;
+    transform: translateX(100%) skewX(-20deg);
 }
 
 .btn-secondary {
@@ -519,18 +574,20 @@ select.input-field option {
 
 .btn-secondary:hover {
     background: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
+    transform: translateY(-2px) scale(1.01);
 }
 
 .btn-outline {
     background: transparent;
     border: 1px solid var(--accent);
     color: var(--accent);
+    transition: transform 0.3s ease, opacity 0.3s ease, background 0.3s ease;
 }
 
 .btn-outline:hover {
     background: var(--accent);
     color: white;
+    transform: translateY(-2px);
 }
 
 /* --- Upload Area --- */
@@ -590,30 +647,64 @@ select.input-field option {
     padding: 20px;
     border-radius: var(--radius-lg);
     cursor: pointer;
-    transition: all 0.2s var(--ease-out);
+    /* Optimized: only transform and opacity */
+    transition: transform 0.2s var(--ease-out), opacity 0.2s ease, background 0.2s ease, border-color 0.2s ease;
     font-weight: 500;
+    will-change: transform;
 }
 
 .option-card:hover {
-    transform: translateX(8px);
+    transform: translateX(8px) scale(1.01);
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
 }
 
 .option-card:active {
-    transform: translateX(4px) scale(0.99);
+    transform: translateX(4px) scale(0.98);
 }
 
 .option-card.correct {
     background: rgba(16, 185, 129, 0.2);
     border-color: var(--success);
     color: #6ee7b7;
+    transform: scale(1.02);
+    animation: successPulse 0.5s ease-out;
 }
 
 .option-card.wrong {
     background: rgba(239, 68, 68, 0.2);
     border-color: var(--error);
     color: #fca5a5;
+    animation: errorShake 0.4s ease-out;
+}
+
+/* Success animation for correct answer */
+@keyframes successPulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+    100% {
+        transform: scale(1.02);
+        opacity: 1;
+    }
+}
+
+/* Shake animation for wrong answer */
+@keyframes errorShake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-5px);
+    }
+    75% {
+        transform: translateX(5px);
+    }
 }
 
 .explanation-box {

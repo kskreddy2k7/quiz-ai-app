@@ -1,3 +1,56 @@
+// Utility functions for performance optimization
+const utils = {
+    // Debounce function to reduce API calls
+    debounce: (func, wait) => {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    },
+    
+    // Show animated loading indicator
+    showLoading: (elementId, message = 'Thinking...') => {
+        const el = document.getElementById(elementId);
+        if (el) {
+            el.style.display = 'flex';
+            el.innerHTML = `
+                <div style="text-align: center;">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.95rem;">${message}</p>
+                </div>
+            `;
+        }
+    },
+    
+    // Hide loading indicator
+    hideLoading: (elementId) => {
+        const el = document.getElementById(elementId);
+        if (el) {
+            el.style.display = 'none';
+        }
+    },
+    
+    // Animate element in with fade
+    fadeIn: (element, duration = 300) => {
+        if (!element) return;
+        element.style.opacity = '0';
+        element.style.transform = 'translateY(10px)';
+        element.style.transition = `opacity ${duration}ms ease-out, transform ${duration}ms ease-out`;
+        
+        requestAnimationFrame(() => {
+            element.style.opacity = '1';
+            element.style.transform = 'translateY(0)';
+        });
+    }
+};
+
 const app = {
     state: {
         questions: [],
@@ -297,7 +350,8 @@ const app = {
         if (lang !== app.state.language) app.setLanguage(lang);
         if (!topic) return alert("Please enter a topic.");
 
-        document.getElementById('loading-topic').style.display = 'block';
+        // Use enhanced loading indicator
+        utils.showLoading('loading-topic', `Generating ${numQ} questions on ${topic}...`);
 
         try {
             const res = await fetch('/quiz/generate', {
@@ -323,7 +377,7 @@ const app = {
         } catch (e) {
             alert("Error: " + e.message);
         } finally {
-            document.getElementById('loading-topic').style.display = 'none';
+            utils.hideLoading('loading-topic');
         }
     },
 
@@ -335,7 +389,7 @@ const app = {
         const diff = document.getElementById('file-difficulty-select').value;
         const lang = document.getElementById('file-language-select').value;
 
-        document.getElementById('loading-file').style.display = 'block';
+        utils.showLoading('loading-file', `Processing ${app.state.uploadedFile.name}...`);
 
         try {
             const fd = new FormData();
@@ -368,7 +422,7 @@ const app = {
         } catch (e) {
             alert("Error: " + e.message);
         } finally {
-            document.getElementById('loading-file').style.display = 'none';
+            utils.hideLoading('loading-file');
         }
     },
 
@@ -454,8 +508,22 @@ const app = {
         if (!msg) return;
 
         const box = document.getElementById('tutor-history');
-        box.innerHTML += `<div class="msg msg-user">${msg}</div>`;
+        
+        // Add user message with animation
+        const userMsg = document.createElement('div');
+        userMsg.className = 'msg msg-user';
+        userMsg.innerHTML = msg;
+        box.appendChild(userMsg);
+        utils.fadeIn(userMsg, 200);
+        
         input.value = '';
+        box.scrollTop = box.scrollHeight;
+
+        // Add typing indicator
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'msg msg-bot typing-container';
+        typingIndicator.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+        box.appendChild(typingIndicator);
         box.scrollTop = box.scrollHeight;
 
         try {
@@ -468,12 +536,22 @@ const app = {
                     language: app.state.language
                 })
             });
+            
+            // Remove typing indicator
+            typingIndicator.remove();
+            
             if (res.status === 401) {
                 app.logout();
                 throw new Error("Session expired.");
             }
             const data = await res.json();
-            box.innerHTML += `<div class="msg msg-bot">${data.response.replace(/\n/g, '<br>')}</div>`;
+            
+            // Add bot response with animation
+            const botMsg = document.createElement('div');
+            botMsg.className = 'msg msg-bot';
+            botMsg.innerHTML = data.response.replace(/\n/g, '<br>');
+            box.appendChild(botMsg);
+            utils.fadeIn(botMsg, 300);
             box.scrollTop = box.scrollHeight;
 
             app.state.chatHistory.push({ role: 'user', content: msg });
@@ -481,7 +559,12 @@ const app = {
             localStorage.setItem('chatHistory', JSON.stringify(app.state.chatHistory));
 
         } catch (e) {
-            box.innerHTML += `<div class="msg msg-bot" style="color:var(--error)">Error: ${e.message}</div>`;
+            typingIndicator.remove();
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'msg msg-bot';
+            errorMsg.style.color = 'var(--error)';
+            errorMsg.innerHTML = `Error: ${e.message}`;
+            box.appendChild(errorMsg);
         }
     },
 
@@ -502,7 +585,7 @@ const app = {
 
         if (!topic) return alert("Please enter a topic.");
 
-        document.getElementById('ppt-loading').style.display = 'block';
+        utils.showLoading('ppt-loading', `Creating ${format.toUpperCase()} on ${topic}...`);
 
         try {
             const res = await fetch('/presentation/generate', {
@@ -542,7 +625,7 @@ const app = {
         } catch (e) {
             alert("Error: " + e.message);
         } finally {
-            document.getElementById('ppt-loading').style.display = 'none';
+            utils.hideLoading('ppt-loading');
         }
     }
 };

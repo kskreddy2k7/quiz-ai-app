@@ -19,6 +19,10 @@ class AIService:
         self.model = None
         self.fallback_models = []
         
+        # Connection pooling for better performance
+        self._session = None
+        self._session_timeout = aiohttp.ClientTimeout(total=60, connect=10)
+        
         self._initialize_providers()
 
     def _initialize_providers(self):
@@ -49,6 +53,17 @@ class AIService:
             self.provider = "None"
             self.status = "Offline"
 
+    async def _get_session(self):
+        """Get or create a persistent session for connection pooling."""
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=self._session_timeout)
+        return self._session
+    
+    async def close(self):
+        """Close the session when shutting down."""
+        if self._session and not self._session.closed:
+            await self._session.close()
+
     async def generate_with_cloudflare(self, prompt: str) -> str:
         url = f"https://api.cloudflare.com/client/v4/accounts/{self.cloudflare_account_id}/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast"
         headers = {
@@ -60,8 +75,8 @@ class AIService:
             "max_tokens": 4096
         }
         
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=payload, timeout=60) as response:
+        session = await self._get_session()
+        async with session.post(url, headers=headers, json=payload) as response:
                 if response.status == 200:
                     result = await response.json()
                     res = result.get('result', {})
@@ -91,19 +106,22 @@ class AIService:
         return response.text
 
     async def generate_quiz(self, prompt: str) -> List[Dict[str, Any]]:
-        """Attempt Cloudflare first, then Gemini with error handling and retry logic."""
+        """Generate quiz with optimized retry logic and faster failure detection."""
         last_error = None
-        for attempt in range(3): # Retry up to 3 times
+        max_attempts = 2  # Reduced from 3 for faster failure feedback
+        
+        for attempt in range(max_attempts):
             try:
                 text = await self.generate_text(prompt)
                 return self._parse_json(text)
             except Exception as e:
-                print(f"Attempt {attempt+1} failed: {e}")
+                print(f"Quiz generation attempt {attempt+1} failed: {e}")
                 last_error = e
-                # Wait briefly before retrying
-                await asyncio.sleep(1)
+                # Shorter wait between retries for faster user feedback
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(0.5)
         
-        raise last_error or Exception("Failed to generate quiz after 3 attempts")
+        raise last_error or Exception(f"Failed to generate quiz after {max_attempts} attempts")
 
     async def chat_with_teacher(self, history: List[Dict[str, str]], message: str) -> str:
         """Chat with the Friendly Teacher persona."""
