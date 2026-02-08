@@ -658,6 +658,16 @@ body::after {
     transform: scale(1.05);
 }
 
+/* Back Button Style */
+.btn-back:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: translateX(-3px);
+}
+
+.btn-back:active {
+    transform: translateX(-1px) scale(0.98);
+}
+
 
 /* --- Inputs --- */
 .input-field,
@@ -1507,6 +1517,30 @@ select.input-field option {
     gap: 15px;
     z-index: 9999;
     animation: slideUp 0.5s var(--ease-out);
+}
+
+/* Offline Indicator */
+.offline-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(239, 68, 68, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 12px 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10001;
+    color: white;
+    font-weight: 600;
+    font-size: 0.95rem;
+    animation: slideInRight 0.4s var(--ease-out);
+}
+
+.offline-indicator i {
+    font-size: 1.2rem;
 }
 
 @keyframes slideUp {

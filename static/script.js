@@ -475,9 +475,104 @@ const app = {
     },
 
     viewProfile: () => {
-        utils.showNotification('Profile feature coming soon!');
+        // Load current profile data
+        const userData = localStorage.getItem('user_data');
+        const username = localStorage.getItem('username') || 'Student';
+        const email = localStorage.getItem('user_email') || '';
+        
+        // Populate profile fields
+        document.getElementById('profile-name').value = username;
+        
+        if (userData) {
+            try {
+                const user = JSON.parse(userData);
+                if (user.full_name) document.getElementById('profile-name').value = user.full_name;
+                if (user.class_course) document.getElementById('profile-class').value = user.class_course;
+                if (user.bio) document.getElementById('profile-bio').value = user.bio;
+                
+                // Update profile photo if available
+                if (user.profile_photo) {
+                    const photoDisplay = document.getElementById('profile-photo-display');
+                    if (photoDisplay) {
+                        const img = document.createElement('img');
+                        img.src = user.profile_photo;
+                        img.alt = 'Profile';
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'cover';
+                        photoDisplay.innerHTML = '';
+                        photoDisplay.appendChild(img);
+                    }
+                }
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+            }
+        }
+        
+        // Set language selector
+        document.getElementById('profile-language').value = app.state.language;
+        
+        // Set email display
+        if (email) {
+            document.getElementById('profile-email-display').textContent = email;
+        }
+        
+        // Close profile menu and show profile view
         const menu = document.getElementById('profile-menu');
         if (menu) menu.style.display = 'none';
+        
+        document.getElementById('profile-view').style.display = 'block';
+    },
+
+    closeProfile: () => {
+        document.getElementById('profile-view').style.display = 'none';
+    },
+
+    saveProfile: () => {
+        // Get profile data
+        const name = document.getElementById('profile-name').value.trim();
+        const classCourse = document.getElementById('profile-class').value.trim();
+        const language = document.getElementById('profile-language').value;
+        const bio = document.getElementById('profile-bio').value.trim();
+        
+        // Validation
+        if (!name || name.length < 2) {
+            utils.showNotification('Please enter a valid name', 'error');
+            return;
+        }
+        
+        // Update state
+        app.state.user.name = name;
+        localStorage.setItem('username', name);
+        
+        // Update user data
+        let userData = {};
+        try {
+            const existing = localStorage.getItem('user_data');
+            if (existing) userData = JSON.parse(existing);
+        } catch (e) {}
+        
+        userData.full_name = name;
+        userData.class_course = classCourse;
+        userData.bio = bio;
+        
+        localStorage.setItem('user_data', JSON.stringify(userData));
+        
+        // Update language if changed
+        if (language !== app.state.language) {
+            app.setLanguage(language);
+        }
+        
+        // Update display name in header
+        const userDisplay = document.getElementById('user-display');
+        if (userDisplay) userDisplay.innerText = name;
+        
+        utils.showNotification('✓ Profile updated successfully!', 'success');
+        
+        // Close profile after a short delay
+        setTimeout(() => {
+            app.closeProfile();
+        }, 1000);
     },
 
     /* --- AUTH --- */
@@ -699,17 +794,13 @@ const app = {
             return;
         }
 
-       copilot/redesign-home-screen-ux
         // Use enhanced loading indicator with animated steps
         utils.showLoadingSteps('loading-topic', [
             '⏳ Understanding topic',
             '⏳ Selecting difficulty',
             '⏳ Generating questions',
             '⏳ Finalizing quiz'
-
-        // Use enhanced loading indicator
-        utils.showLoading('loading-topic', `⚡ Free AI optimized for best performance...`);
-        main
+        ]);
 
         try {
             const res = await fetch('/quiz/generate', {
@@ -766,16 +857,12 @@ const app = {
             return;
         }
 
-        copilot/redesign-home-screen-ux
         utils.showLoadingSteps('loading-file', [
             '⏳ Reading file',
             '⏳ Extracting content',
             '⏳ Generating questions',
             '⏳ Creating quiz'
         ]);
-
-        utils.showLoading('loading-file', `⚡ AI analyzing your content...`);
-         main
 
         try {
             const fd = new FormData();
@@ -1118,6 +1205,24 @@ const app = {
             console.log('PWA installed successfully');
             app.dismissPWA();
         });
+        
+        // Online/Offline detection
+        const offlineIndicator = document.getElementById('offline-indicator');
+        
+        window.addEventListener('online', () => {
+            console.log('Back online');
+            if (offlineIndicator) offlineIndicator.style.display = 'none';
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('Gone offline');
+            if (offlineIndicator) offlineIndicator.style.display = 'flex';
+        });
+        
+        // Check initial status
+        if (!navigator.onLine && offlineIndicator) {
+            offlineIndicator.style.display = 'flex';
+        }
     },
 
     installPWA: async () => {
