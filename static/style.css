@@ -1616,3 +1616,85 @@ body::before {
 body::after {
     opacity: 0.3;
 }
+
+/* Mobile responsive styles for new components */
+@media (max-width: 768px) {
+    /* Sidebar on mobile - bottom navigation */
+    .floating-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-around;
+        padding: 15px 10px;
+        border-radius: 0;
+        border-bottom: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        gap: 10px;
+        z-index: 1000;
+    }
+    
+    .floating-nav.collapsed {
+        width: 100%;
+        padding: 15px 10px;
+    }
+    
+    .floating-nav:hover {
+        width: 100%;
+        padding: 15px 10px;
+    }
+    
+    .nav-pill {
+        flex-direction: column;
+        padding: 8px 12px;
+        gap: 4px;
+    }
+    
+    .nav-pill .nav-label {
+        opacity: 1;
+        width: auto;
+        font-size: 0.7rem;
+    }
+    
+    .nav-pill i {
+        font-size: 1.3rem;
+    }
+    
+    /* Adjust container for bottom nav */
+    .container {
+        margin-left: 0;
+        margin-top: 150px;
+        padding-bottom: 100px;
+        width: 90%;
+    }
+    
+    /* Daily motivation card on mobile */
+    .daily-motivation-card {
+        top: 130px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    /* App header on mobile */
+    .app-header-section {
+        padding: 15px 20px;
+    }
+    
+    .app-icon-large {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+    
+    .app-title-large {
+        font-size: 1.8rem;
+    }
+    
+    .app-tagline {
+        font-size: 0.8rem;
+    }
+}

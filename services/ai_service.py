@@ -120,11 +120,17 @@ class AIService:
             try:
                 # Update model if needed
                 if self.provider != f"Gemini ({model_name})":
-                    self.model = genai.GenerativeModel(model_name)
+                    current_model = genai.GenerativeModel(model_name)
                     self.provider = f"Gemini ({model_name})"
                     print(f"Trying Gemini model: {model_name}")
+                else:
+                    current_model = self.model
                 
-                response = await loop.run_in_executor(None, lambda: self.model.generate_content(prompt))
+                # Use local variable to avoid closure issues
+                response = await loop.run_in_executor(None, lambda m=current_model: m.generate_content(prompt))
+                
+                # Success - update the instance model
+                self.model = current_model
                 return response.text
             except Exception as e:
                 print(f"Gemini model {model_name} failed: {e}")
