@@ -64,6 +64,15 @@ const app = {
     },
 
     init: async () => {
+        // 0. Check if first time user and show onboarding
+        const hasSeenOnboarding = localStorage.getItem('onboarding_completed');
+        if (!hasSeenOnboarding) {
+            app.showOnboarding();
+        }
+
+        // Initialize PWA support
+        app.initPWA();
+
         // 1. Load Language Preference
         const createOption = (text, val) => {
             const opt = document.createElement('option');
@@ -158,6 +167,9 @@ const app = {
                 if (promo) promo.style.display = 'block';
             }, 3000);
         }
+
+        // 4. Detect Android device and offer APK
+        app.detectAndroidDevice();
     },
 
     /* --- I18N SYSTEM --- */
@@ -861,6 +873,99 @@ const app = {
             alert("Error: " + e.message);
         } finally {
             utils.hideLoading('ppt-loading');
+        }
+    },
+
+    /* --- ONBOARDING MODAL --- */
+    showOnboarding: () => {
+        const modal = document.getElementById('onboarding-modal');
+        if (modal) modal.style.display = 'flex';
+    },
+
+    closeOnboarding: () => {
+        const modal = document.getElementById('onboarding-modal');
+        if (modal) modal.style.display = 'none';
+        localStorage.setItem('onboarding_completed', 'true');
+    },
+
+    startLearning: () => {
+        app.closeOnboarding();
+        // If not logged in, show auth
+        if (!app.state.token) {
+            app.showAuth();
+        }
+    },
+
+    /* --- PWA INSTALL --- */
+    deferredPrompt: null,
+
+    initPWA: () => {
+        // Listen for beforeinstallprompt event
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            app.deferredPrompt = e;
+            
+            // Show PWA banner if user hasn't dismissed it
+            if (!localStorage.getItem('pwa_dismissed')) {
+                const banner = document.getElementById('pwa-banner');
+                if (banner) {
+                    setTimeout(() => {
+                        banner.style.display = 'flex';
+                    }, 5000); // Show after 5 seconds
+                }
+            }
+        });
+
+        // Listen for successful installation
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA installed successfully');
+            app.dismissPWA();
+        });
+    },
+
+    installPWA: async () => {
+        if (!app.deferredPrompt) {
+            alert('PWA installation is not available on this device/browser.');
+            return;
+        }
+
+        app.deferredPrompt.prompt();
+        const { outcome } = await app.deferredPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+            console.log('User accepted PWA installation');
+        } else {
+            console.log('User dismissed PWA installation');
+        }
+        
+        app.deferredPrompt = null;
+        app.dismissPWA();
+    },
+
+    dismissPWA: () => {
+        const banner = document.getElementById('pwa-banner');
+        if (banner) banner.style.display = 'none';
+        localStorage.setItem('pwa_dismissed', 'true');
+    },
+
+    /* --- APK DOWNLOAD --- */
+    showAPKModal: () => {
+        const modal = document.getElementById('apk-modal');
+        if (modal) modal.style.display = 'flex';
+    },
+
+    closeAPKModal: () => {
+        const modal = document.getElementById('apk-modal');
+        if (modal) modal.style.display = 'none';
+    },
+
+    detectAndroidDevice: () => {
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        if (isAndroid && !localStorage.getItem('apk_dismissed')) {
+            // Show APK download option after 10 seconds
+            setTimeout(() => {
+                app.showAPKModal();
+            }, 10000);
         }
     }
 };
