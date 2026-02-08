@@ -289,8 +289,34 @@ class AIService:
         if not self.model:
             raise Exception("Gemini model not initialized")
         
-        # genai library is synchronous in some parts, but we wrap the call
+        # Try with the current model first
         loop = asyncio.get_event_loop()
+       copilot/redesign-home-screen-ux
+        
+        # If current model fails, try fallback models
+        for model_name in self.fallback_models:
+            try:
+                # Update model if needed
+                if self.provider != f"Gemini ({model_name})":
+                    current_model = genai.GenerativeModel(model_name)
+                    self.provider = f"Gemini ({model_name})"
+                    print(f"Trying Gemini model: {model_name}")
+                else:
+                    current_model = self.model
+                
+                # Use local variable to avoid closure issues
+                response = await loop.run_in_executor(None, lambda m=current_model: m.generate_content(prompt))
+                
+                # Success - update the instance model
+                self.model = current_model
+                return response.text
+            except Exception as e:
+                print(f"Gemini model {model_name} failed: {e}")
+                # Continue to next model
+                continue
+        
+        # If all models failed
+        raise Exception("All Gemini models failed. Please try again later.")
         response = await loop.run_in_executor(None, lambda: self.model.generate_content(prompt))
         return response.text
     
@@ -392,6 +418,7 @@ class AIService:
             questions.append(base)
         
         return questions[:num_questions]
+         main
 
     async def generate_quiz(self, prompt: str) -> List[Dict[str, Any]]:
         """Generate quiz with multi-provider fallback and caching."""
