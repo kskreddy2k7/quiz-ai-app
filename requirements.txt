@@ -4,14 +4,24 @@ uvicorn==0.34.0
 slowapi==0.1.9
 python-multipart==0.0.12
 google-generativeai==0.8.4
+
+# --- FILE PROCESSING ---
+# pypdf: PDF reading and parsing
 pypdf>=3.17.0
+# python-docx: DOCX file creation and editing
 python-docx>=0.8.11
+# docx2txt: Simple DOCX text extraction (lightweight alternative)
 docx2txt
+# PyMuPDF (fitz): Advanced PDF processing with text extraction
 PyMuPDF
+
+# --- HTTP & NETWORKING ---
 aiohttp==3.10.11
-python-dotenv==1.0.1
 requests
 certifi
+
+# --- UTILITIES ---
+python-dotenv==1.0.1
 Jinja2>=3.1.2
 
 # --- DATABASE & AUTH ---

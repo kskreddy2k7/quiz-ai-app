@@ -43,24 +43,14 @@ class AIService:
                     'gemini-1.5-pro-latest'
                 ]
                 
-                # Use the first available model
-                for model_name in self.fallback_models:
-                    try:
-                        self.model = genai.GenerativeModel(model_name)
-                        # Test the model with a simple prompt
-                        test_response = self.model.generate_content("Hi")
-                        if test_response:
-                            self.has_ai = True
-                            self.provider = f"Gemini ({model_name})"
-                            self.status = f"Online (Gemini {model_name})"
-                            print(f"Successfully initialized Gemini with model: {model_name}")
-                            break
-                    except Exception as model_error:
-                        print(f"Model {model_name} failed: {model_error}")
-                        continue
-                
-                if not self.has_ai:
-                    print("All Gemini models failed to initialize")
+                # Use the first model without testing during init to avoid slow startup
+                # Model validation will happen on first actual use
+                model_name = self.fallback_models[0]
+                self.model = genai.GenerativeModel(model_name)
+                self.has_ai = True
+                self.provider = f"Gemini ({model_name})"
+                self.status = f"Online (Gemini {model_name})"
+                print(f"Initialized Gemini with model: {model_name}")
             except Exception as e:
                 print(f"Gemini init error: {e}")
 
