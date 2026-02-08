@@ -489,17 +489,9 @@ const app = {
             div.className = 'option-card';
             div.innerText = opt;
             div.onclick = () => app.checkAnswer(opt, div);
-            // Stagger animation for smooth entrance
-            div.style.opacity = '0';
-            div.style.transform = 'translateY(10px)';
+            // Use CSS animation-delay for staggered entrance
+            div.style.animationDelay = `${index * 0.05}s`;
             fragment.appendChild(div);
-            
-            // Animate in after a brief delay
-            setTimeout(() => {
-                div.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                div.style.opacity = '1';
-                div.style.transform = 'translateY(0)';
-            }, 50 * index);
         });
         con.appendChild(fragment);
     },
@@ -567,10 +559,10 @@ const app = {
 
         const box = document.getElementById('tutor-history');
         
-        // Add user message with animation
+        // Add user message with animation (using textContent for XSS safety)
         const userMsg = document.createElement('div');
         userMsg.className = 'msg msg-user';
-        userMsg.innerHTML = msg.replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Sanitize HTML
+        userMsg.textContent = msg; // Use textContent instead of innerHTML for safety
         box.appendChild(userMsg);
         utils.fadeIn(userMsg, 200);
         
@@ -660,7 +652,8 @@ const app = {
 
     generateNotes: async () => {
         const topic = document.getElementById('ppt-topic').value.trim();
-        const slides = parseInt(document.getElementById('ppt-slides').value);
+        const slidesValue = document.getElementById('ppt-slides').value;
+        const slides = parseInt(slidesValue, 10);
         const font = document.getElementById('ppt-font').value;
         const format = document.getElementById('ppt-format').value;
 
@@ -671,7 +664,8 @@ const app = {
             return;
         }
         
-        if (slides < 3 || slides > 30) {
+        // Check for valid number after parsing
+        if (isNaN(slides) || slides < 3 || slides > 30) {
             alert("Please enter a valid number of slides (3-30).");
             return;
         }

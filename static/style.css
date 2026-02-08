@@ -707,6 +707,22 @@ select.input-field option {
     }
 }
 
+/* Staggered entrance animation for option cards */
+@keyframes optionEntrance {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.option-card {
+    animation: optionEntrance 0.3s ease-out forwards;
+}
+
 .explanation-box {
     background: rgba(6, 95, 70, 0.3) !important;
     border-color: #059669 !important;

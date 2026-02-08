@@ -21,7 +21,7 @@ class AIService:
         
         # Connection pooling for better performance
         self._session = None
-        self._session_timeout = aiohttp.ClientTimeout(total=60, connect=10)
+        self._client_timeout = aiohttp.ClientTimeout(total=60, connect=10)
         
         self._initialize_providers()
 
@@ -56,7 +56,7 @@ class AIService:
     async def _get_session(self):
         """Get or create a persistent session for connection pooling."""
         if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(timeout=self._session_timeout)
+            self._session = aiohttp.ClientSession(timeout=self._client_timeout)
         return self._session
     
     async def close(self):
