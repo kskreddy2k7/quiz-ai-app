@@ -50,11 +50,14 @@ jobs:
         mkdir -p "$ANDROID_SDK_ROOT"
         
         # Download and install Android command-line tools
+        # Using version 11076708 (latest as of 2024)
+        # If this URL becomes unavailable, check: https://developer.android.com/studio#command-line-tools-only
         echo "Installing Android SDK command-line tools..."
         cd "$ANDROID_SDK_ROOT"
         wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
         unzip -q commandlinetools-linux-11076708_latest.zip
         mkdir -p cmdline-tools/latest
+        # Move tools to correct location (error suppression is safe here as directory might be partially populated)
         mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
         rm commandlinetools-linux-11076708_latest.zip
         
