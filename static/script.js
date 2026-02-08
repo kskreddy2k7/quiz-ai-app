@@ -683,13 +683,17 @@ const app = {
             return;
         }
 
+       copilot/redesign-home-screen-ux
         // Use enhanced loading indicator with animated steps
         utils.showLoadingSteps('loading-topic', [
             '⏳ Understanding topic',
             '⏳ Selecting difficulty',
             '⏳ Generating questions',
             '⏳ Finalizing quiz'
-        ]);
+
+        // Use enhanced loading indicator
+        utils.showLoading('loading-topic', `⚡ Free AI optimized for best performance...`);
+        main
 
         try {
             const res = await fetch('/quiz/generate', {
@@ -746,12 +750,16 @@ const app = {
             return;
         }
 
+        copilot/redesign-home-screen-ux
         utils.showLoadingSteps('loading-file', [
             '⏳ Reading file',
             '⏳ Extracting content',
             '⏳ Generating questions',
             '⏳ Creating quiz'
         ]);
+
+        utils.showLoading('loading-file', `⚡ AI analyzing your content...`);
+         main
 
         try {
             const fd = new FormData();
