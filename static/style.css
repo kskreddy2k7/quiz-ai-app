@@ -268,8 +268,8 @@ body::after {
 .container {
     max-width: 1200px;
     width: 95%;
-    margin-top: 80px;
-    /* Space for fixed elements if any */
+    margin-top: 200px;
+    /* Space for fixed header (logo + quote) */
     position: relative;
     z-index: 10;
     margin-left: 100px;
@@ -303,11 +303,98 @@ body::after {
     border-color: rgba(255, 255, 255, 0.3);
 }
 
-/* --- Header --- */
-.main-header {
+/* --- New App Header Section (Logo + Quote at Top) --- */
+.app-header-section {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border);
+    padding: 20px 30px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.app-logo-main {
     text-align: center;
-    margin-bottom: 50px;
-    position: relative;
+    margin-bottom: 15px;
+}
+
+.app-icon-large {
+    width: 60px;
+    height: 60px;
+    background: var(--primary-gradient);
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: white;
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+    margin-bottom: 10px;
+}
+
+.app-title-large {
+    font-weight: 800;
+    font-size: 2.2rem;
+    background: linear-gradient(to right, #fff, #a5b4fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+    margin: 0;
+    line-height: 1;
+}
+
+.app-tagline {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 5px 0 0 0;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.motivation-quote {
+    text-align: center;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    margin: 0 auto;
+    max-width: 600px;
+}
+
+.motivation-quote i {
+    font-size: 1.5rem;
+    color: var(--accent);
+    opacity: 0.6;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.motivation-quote p {
+    font-style: italic;
+    color: var(--text-body);
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.motivation-quote .quote-author {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--accent);
+    margin-top: 8px;
+    font-weight: 600;
+    font-style: normal;
+}
+
+/* --- OLD Header (Keep for backward compatibility but hidden) --- */
+.main-header {
+    display: none;
 }
 
 .app-logo-container {
@@ -398,8 +485,8 @@ body::after {
 .floating-nav {
     position: fixed;
     left: 30px;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 220px;
+    /* Position below the fixed header */
     background: var(--sidebar-bg);
     backdrop-filter: blur(20px);
     padding: 30px 15px;
@@ -731,8 +818,41 @@ select.input-field option {
 
 /* --- Mobile Responsiveness --- */
 @media (max-width: 768px) {
+    /* New Header adjustments for mobile */
+    .app-header-section {
+        padding: 15px 20px;
+    }
+
+    .app-icon-large {
+        width: 50px;
+        height: 50px;
+        font-size: 1.6rem;
+    }
+
+    .app-title-large {
+        font-size: 1.8rem;
+    }
+
+    .app-tagline {
+        font-size: 0.8rem;
+    }
+
+    .motivation-quote {
+        padding: 10px 15px;
+    }
+
+    .motivation-quote p {
+        font-size: 0.85rem;
+    }
+
+    .motivation-quote .quote-author {
+        font-size: 0.75rem;
+    }
+
     .container {
         margin-left: 0;
+        margin-top: 220px;
+        /* Adjust for smaller header on mobile */
         width: 100%;
         padding: 20px 15px;
         padding-bottom: 120px;
@@ -749,7 +869,7 @@ select.input-field option {
         animation: fadeInUp 0.4s ease-out forwards;
     }
 
-    /* Header adjustments */
+    /* OLD Header adjustments (hidden but keep for fallback) */
     .main-header {
         margin-bottom: 30px;
     }
