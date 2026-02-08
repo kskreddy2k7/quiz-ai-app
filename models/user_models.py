@@ -9,8 +9,13 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
+    hashed_password = Column(String, nullable=True)  # Nullable for Google OAuth users
     is_active = Column(Boolean, default=True)
+    
+    # Google OAuth fields
+    google_id = Column(String, unique=True, nullable=True, index=True)
+    profile_photo = Column(String, nullable=True)
+    full_name = Column(String, nullable=True)
     
     # Gamification Stats
     xp = Column(Integer, default=0)
