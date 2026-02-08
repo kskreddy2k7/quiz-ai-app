@@ -8,6 +8,13 @@
 
 ## ✨ Features
 
+### 🔐 Secure Authentication
+- **Google Sign-In**: One-click login with your Google account
+- **Traditional Login**: Username/password authentication
+- **Guest Mode**: Try the app without creating an account
+- **Profile Management**: View your progress and stats
+- **Secure Token Handling**: Industry-standard JWT authentication
+
 ### 📝 Smart Quiz Generation
 - **Topic-Based**: Generate quizzes on any topic instantly (1 to 100 questions).
 - **File Upload**: Upload PDF, DOCX, or TXT files to generate quizzes from your own study material.
@@ -39,47 +46,71 @@
 2. Tap **"Add to Home Screen"** or the Install icon.
 3. The website will now run like a native app without the browser bar!
 
+### 📱 Android APK (Native App)
+S Quiz is also available as a native Android app! The APK is automatically built using GitHub Actions.
+
+**Download the APK**:
+- Go to [Releases](https://github.com/kskreddy2k7/quiz-ai-app/releases)
+- Download the latest `S-Quiz-*.apk` file
+- Install on your Android device
+
+**Build from Source**:
+See [build_notes.md](build_notes.md) for detailed instructions on building the Android APK locally or using GitHub Actions.
+
 ---
 
 ## 📦 Installation & Setup (Local)
 
 ### 1. Requirements
 - Python 3.10+
-- Google Gemini API Key
+- Google Gemini API Key (for AI features)
+- Google OAuth Client ID (for Google Sign-In) - Optional but recommended
 
 ### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure API Key
-Create or edit `secrets.json` in the root directory:
-```json
-{
-    "GEMINI_API_KEY": "YOUR_ACTUAL_API_KEY_HERE"
-}
+### 3. Configure Environment Variables
+Create a `.env` file in the root directory (copy from `.env.example`):
+```bash
+# Required
+GEMINI_API_KEY=your-gemini-api-key-here
+SECRET_KEY=your-secure-jwt-secret-key
+
+# Optional (for Google Sign-In)
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 ```
-*Note: Your `secrets.json` is automatically ignored by git to keep your key safe.*
+
+**To enable Google Sign-In**, see [GOOGLE_AUTH_SETUP.md](GOOGLE_AUTH_SETUP.md) for detailed instructions.
 
 ### 4. Run Locally
 ```bash
-python app.py
+python main_web.py
 ```
-Open `http://localhost:5002` in your browser.
+Open `http://localhost:8000` in your browser.
 
 ---
 
 ## 📂 Project Structure
 ```
 S-Quiz/
-├── app.py             # Main Flask Application
+├── .github/workflows/ # GitHub Actions CI/CD
+│   └── build-apk.yml  # Android APK build workflow
+├── main.py            # Android app entry point (Kivy)
+├── main_web.py        # Web app entry point (FastAPI)
 ├── static/            # Static assets (CSS/JS)
+├── api/               # API endpoints
+├── services/          # Business logic
+├── models/            # Database models
 ├── uploads/           # Temporary folder for processed files
 ├── requirements.txt   # Web Server Dependencies
+├── buildozer.spec     # Android build configuration
+├── build_notes.md     # Android build instructions
 ├── manifest.json      # PWA Configuration
 ├── sw.js              # Service Worker for Offline/PWA
 ├── Procfile           # Render/Railway Deployment Config
-└── secrets.json       # (Local only) Your API key
+└── render.yaml        # Render deployment config
 ```
 
 ---

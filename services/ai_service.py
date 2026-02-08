@@ -123,8 +123,8 @@ class AIService:
         
         raise last_error or Exception(f"Failed to generate quiz after {max_attempts} attempts")
 
-    async def chat_with_teacher(self, history: List[Dict[str, str]], message: str) -> str:
-        """Chat with the Friendly Teacher persona."""
+    async def chat_with_teacher(self, history: List[Dict[str, str]], message: str, user_context: Optional[Dict] = None) -> str:
+        """Chat with the Friendly Teacher persona with personalization."""
         system_prompt = (
             "You are a friendly, encouraging, and patient teacher. "
             "Your goal is to help students understand concepts deeply. "
@@ -132,7 +132,24 @@ class AIService:
             "Never give just the answer; explain the 'why'. "
             "Keep responses concise but helpful."
         )
-        # Construct full prompt (simple concatenation for now, can be improved)
+        
+        # Add personalization if user context is provided
+        if user_context:
+            # Sanitize user name to prevent prompt injection
+            name = user_context.get('name', 'Student')
+            # Remove any newlines, special characters that could inject prompts
+            name = ''.join(c for c in name if c.isalnum() or c.isspace())[:50]
+            level = user_context.get('level', 1)
+            
+            system_prompt += f"\n\nYou are currently helping {name} (Level {level}). "
+            if level >= 5:
+                system_prompt += "They are an advanced learner, so feel free to use more sophisticated language and dive deeper into topics."
+            elif level >= 3:
+                system_prompt += "They are making good progress. Encourage them and provide intermediate-level explanations."
+            else:
+                system_prompt += "They are just starting their learning journey. Use very simple language and lots of encouragement."
+        
+        # Construct full prompt
         full_prompt = f"System: {system_prompt}\n\n"
         for msg in history:
             # Ensure role is mapped correctly

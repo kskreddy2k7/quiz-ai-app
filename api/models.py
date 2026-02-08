@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict
 
 class PresentationRequest(BaseModel):
     topic: str
@@ -39,15 +39,22 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
+class GoogleAuthRequest(BaseModel):
+    """Request model for Google Sign-In"""
+    id_token: str
+
 class Token(BaseModel):
     access_token: str
     token_type: str
+    user: Optional[Dict] = None  # Include user info in token response
 
 class UserDisplay(UserBase):
     id: int
     xp: int
     level: int
     streak_count: int
+    full_name: Optional[str] = None
+    profile_photo: Optional[str] = None
     
     class Config:
         from_attributes = True
