@@ -29,19 +29,17 @@ class AIHelpRequest(BaseModel):
     style: str = "simple"
 
 class UserBase(BaseModel):
-    username: str
-    email: Optional[str] = None
+    email: str
+    full_name: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
+    username: str # Still keep username for backend/internal indexing if needed, or mapping to name
 
 class UserLogin(BaseModel):
-    username: str
+    email: str
     password: str
 
-class GoogleAuthRequest(BaseModel):
-    """Request model for Google Sign-In"""
-    id_token: str
 
 class Token(BaseModel):
     access_token: str

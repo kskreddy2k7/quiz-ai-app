@@ -7,9 +7,8 @@ import os
 
 from database import get_db
 from models.user_models import User
-from api.models import UserCreate, Token, UserDisplay, UserLogin, GoogleAuthRequest
+from api.models import UserCreate, Token, UserDisplay, UserLogin
 from services.auth_service import auth_service, ACCESS_TOKEN_EXPIRE_MINUTES
-from services.google_auth_service import google_auth_service
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 logger = logging.getLogger(__name__)
@@ -18,15 +17,25 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 @router.post("/register", response_model=UserDisplay)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.username == user.username).first()
+    # Check if email already exists
+    db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check if username already exists (fallback for display)
+    db_username = db.query(User).filter(User.username == user.username).first()
+    if db_username:
+        # If username exists but email doesn't, we can append a random string or just error
+        # For simplicity, let's error or auto-adjust.
+        user.username = f"{user.username}_{os.urandom(2).hex()}"
     
     hashed_password = auth_service.get_password_hash(user.password)
     new_user = User(
         username=user.username,
         email=user.email,
-        hashed_password=hashed_password
+        full_name=user.full_name,
+        hashed_password=hashed_password,
+        role="user"
     )
     db.add(new_user)
     db.commit()
@@ -35,21 +44,14 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/token", response_model=Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == form_data.username).first()
+    # OAuth2PasswordRequestForm.username will contain the EMAIL provided in the login form
+    user = db.query(User).filter(User.email == form_data.username).first()
     
     # Check if user exists
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Check if user has a password (OAuth users don't have passwords)
-    if not user.hashed_password:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="This account uses Google Sign-In. Please use the Google button to login.",
+            detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -57,13 +59,13 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     if not auth_service.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth_service.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={"sub": user.email}, expires_delta=access_token_expires # Use email as sub
     )
     return {
         "access_token": access_token, 
@@ -72,107 +74,10 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             "username": user.username,
             "email": user.email,
             "full_name": user.full_name,
-            "profile_photo": user.profile_photo
+            "role": user.role
         }
     }
 
-@router.post("/google", response_model=Token)
-def google_login(request: GoogleAuthRequest, db: Session = Depends(get_db)):
-    """
-    Google Sign-In endpoint
-    Verifies Google ID token and creates/logs in user
-    """
-    # Verify Google token
-    user_info = google_auth_service.verify_token(request.id_token)
-    if not user_info:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Google token"
-        )
-    
-    # Check if user exists by Google ID
-    user = db.query(User).filter(User.google_id == user_info["google_id"]).first()
-    
-    if not user:
-        # Check if user exists by email
-        user = db.query(User).filter(User.email == user_info["email"]).first()
-        
-        if user:
-            # Link Google account to existing user
-            user.google_id = user_info["google_id"]
-            user.profile_photo = user_info.get("picture")
-            user.full_name = user_info.get("name")
-        else:
-            # Create new user from Google account
-            # Use email prefix + random suffix for better uniqueness
-            import secrets
-            base_username = user_info["email"].split("@")[0]
-            # Clean username (alphanumeric only)
-            base_username = ''.join(c for c in base_username if c.isalnum())[:20]
-            username = base_username
-            
-            # Ensure unique username with random suffix if needed
-            counter = 1
-            while db.query(User).filter(User.username == username).first():
-                if counter == 1:
-                    # First collision: try with random suffix
-                    random_suffix = secrets.token_hex(2)  # 4 char hex
-                    username = f"{base_username}_{random_suffix}"
-                else:
-                    # Multiple collisions: use counter
-                    username = f"{base_username}{counter}"
-                counter += 1
-                # Safety limit
-                if counter > 100:
-                    username = f"user_{secrets.token_hex(4)}"
-                    break
-            
-            user = User(
-                username=username,
-                email=user_info["email"],
-                google_id=user_info["google_id"],
-                full_name=user_info.get("name"),
-                profile_photo=user_info.get("picture"),
-                hashed_password=None  # No password for OAuth users
-            )
-            db.add(user)
-        
-        db.commit()
-        db.refresh(user)
-    
-    # Create access token
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = auth_service.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    
-    logger.info(f"Google login successful for user: {user.username}")
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "username": user.username,
-            "email": user.email,
-            "full_name": user.full_name,
-            "profile_photo": user.profile_photo
-        }
-    }
-
-@router.get("/google/config")
-def get_google_config():
-    """
-    Get Google OAuth configuration for frontend
-    Returns the client ID needed for Google Sign-In button
-    """
-    client_id = os.getenv("GOOGLE_CLIENT_ID")
-    print(f"DEBUG auth.py: GOOGLE_CLIENT_ID is '{client_id}'")
-    if not client_id:
-        raise HTTPException(
-            status_code=503,
-            detail="Google OAuth not configured"
-        )
-    return {"client_id": client_id}
 
 # Dependency to get current user
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
@@ -185,10 +90,10 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    username = auth_service.decode_token(token)
-    if username is None:
+    email = auth_service.decode_token(token)
+    if email is None:
         raise credentials_exception
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(User.email == email).first()
     if user is None:
         raise credentials_exception
     return user

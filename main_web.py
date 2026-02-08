@@ -1,9 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-# Load environment variables FIRST before other imports read them
 load_dotenv()
-print(f"DEBUG: GOOGLE_CLIENT_ID is {'SET' if os.getenv('GOOGLE_CLIENT_ID') else 'NOT SET'}")
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -21,9 +19,6 @@ from database import engine
 from models import user_models
 
 # Create Database Tables
-# Create Database Tables
-# Create Database Tables
-# Trigger Reload 3
 user_models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="S Quiz AI Academy - PRO")
