@@ -135,8 +135,8 @@ async def generate_quiz_from_file(
     except Exception as e:
         # Never show raw errors to users
         print(f"File quiz generation error: {e}")
-        # Extract basic topic from filename
-        topic = file.filename.rsplit('.', 1)[0]
+        # Extract basic topic from filename (with validation)
+        topic = file.filename.rsplit('.', 1)[0] if file.filename else "general knowledge"
         return {
             "message": "⚡ Using backup AI for uninterrupted learning",
             "questions": ai_service.generate_offline_quiz(topic, num_questions, difficulty),

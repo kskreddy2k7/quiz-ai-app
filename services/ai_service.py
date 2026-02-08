@@ -68,7 +68,7 @@ class AIService:
                     access_count INTEGER DEFAULT 1
                 )
             ''')
-            # Create index for faster lookups (by last access for LRU)
+            # Create index for faster lookups (hybrid frequency/recency for cache eviction)
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_access_count ON ai_cache(access_count DESC, created_at DESC)')
             conn.commit()
             conn.close()
@@ -188,12 +188,13 @@ class AIService:
             print(f"Cache write error: {e}")
     
     def _cleanup_cache(self):
-        """Remove old cache entries to keep cache size manageable using LRU strategy."""
+        """Remove old cache entries using hybrid frequency/recency eviction strategy."""
         try:
             conn = sqlite3.connect(self._cache_db)
             cursor = conn.cursor()
             
-            # Keep the MAX_CACHE_ENTRIES most frequently/recently accessed entries (true LRU)
+            # Keep the MAX_CACHE_ENTRIES most frequently/recently accessed entries
+            # Prioritizes frequently used entries (access_count), with recency as tiebreaker
             cursor.execute(f'''
                 DELETE FROM ai_cache WHERE prompt_hash NOT IN (
                     SELECT prompt_hash FROM ai_cache 
@@ -304,7 +305,7 @@ class AIService:
         
         session = await self._get_session()
         try:
-            async with session.post(url, headers=headers, json=payload, timeout=aiohttp.ClientTimeout(total=self.PROVIDER_TIMEOUT)) as response:
+            async with session.post(url, headers=headers, json=payload, timeout=self._client_timeout) as response:
                 if response.status == 200:
                     result = await response.json()
                     if isinstance(result, list) and len(result) > 0:
@@ -401,7 +402,6 @@ class AIService:
         
         # Ultimate fallback: offline quiz generation
         # Extract topic and number from prompt
-        import re
         topic_match = re.search(r'about "([^"]+)"', prompt)
         topic = topic_match.group(1) if topic_match else "general knowledge"
         
