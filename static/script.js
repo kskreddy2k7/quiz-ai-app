@@ -345,13 +345,25 @@ const app = {
 
     // --- TOPIC QUIZ ---
     generateTopicQuiz: async () => {
-        const topic = document.getElementById('topic-input').value;
-        const numQ = document.getElementById('q-count').value;
+        const topic = document.getElementById('topic-input').value.trim();
+        const numQ = parseInt(document.getElementById('q-count').value);
         const diff = document.getElementById('difficulty-select').value;
         const lang = document.getElementById('language-select').value;
 
         if (lang !== app.state.language) app.setLanguage(lang);
-        if (!topic) return alert("Please enter a topic.");
+        
+        // Input validation
+        if (!topic || topic.length < 2) {
+            alert("Please enter a valid topic (at least 2 characters).");
+            document.getElementById('topic-input').focus();
+            return;
+        }
+        
+        if (numQ < 1 || numQ > 50) {
+            alert("Please enter a valid number of questions (1-50).");
+            document.getElementById('q-count').focus();
+            return;
+        }
 
         // Use enhanced loading indicator
         utils.showLoading('loading-topic', `Generating ${numQ} questions on ${topic}...`);
@@ -362,7 +374,7 @@ const app = {
                 headers: app.getHeaders(),
                 body: JSON.stringify({
                     topic,
-                    num_questions: parseInt(numQ),
+                    num_questions: numQ,
                     difficulty: diff,
                     mastery_level: "Intermediate",
                     language: app.state.language
@@ -373,7 +385,10 @@ const app = {
                 app.logout();
                 throw new Error("Session expired. Please login again.");
             }
-            if (!res.ok) throw new Error("Failed to generate quiz. Try a broader topic.");
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Failed to generate quiz. Try a different topic.");
+            }
             const data = await res.json();
             app.startQuiz(data);
 
@@ -386,11 +401,27 @@ const app = {
 
     // --- FILE QUIZ ---
     generateFileQuiz: async () => {
-        if (!app.state.uploadedFile) return alert("Please upload a file first.");
+        if (!app.state.uploadedFile) {
+            alert("Please upload a file first.");
+            return;
+        }
 
-        const numQ = document.getElementById('file-q-count').value;
+        const numQ = parseInt(document.getElementById('file-q-count').value);
         const diff = document.getElementById('file-difficulty-select').value;
         const lang = document.getElementById('file-language-select').value;
+        
+        // Validate number of questions
+        if (numQ < 1 || numQ > 50) {
+            alert("Please enter a valid number of questions (1-50).");
+            document.getElementById('file-q-count').focus();
+            return;
+        }
+        
+        // Validate file size (max 10MB for performance)
+        if (app.state.uploadedFile.size > 10 * 1024 * 1024) {
+            alert("File is too large. Please upload a file smaller than 10MB.");
+            return;
+        }
 
         utils.showLoading('loading-file', `Processing ${app.state.uploadedFile.name}...`);
 
@@ -399,14 +430,10 @@ const app = {
             fd.append('file', app.state.uploadedFile);
             fd.append('num_questions', numQ);
             fd.append('difficulty', diff);
-            // Defaulting mastery/language if not passed, but passing them is better
             fd.append('mastery_level', "Intermediate");
             fd.append('language', lang);
 
             const headers = app.getAuthHeaders();
-            // Fetch doesn't set Content-Type for FormData automatically if we set it manually, 
-            // so we shouldn't set Content-Type header ourselves for FormData.
-            // app.getAuthHeaders() returns {} or {Authorization:...} which is correct.
 
             const res = await fetch('/quiz/generate-from-file', {
                 method: 'POST',
@@ -418,7 +445,10 @@ const app = {
                 app.logout();
                 throw new Error("Session expired. Please login again.");
             }
-            if (!res.ok) throw new Error("Failed to process file.");
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Failed to process file. Please try a different file.");
+            }
             const data = await res.json();
             app.startQuiz(data);
 
@@ -527,18 +557,25 @@ const app = {
     sendTutorMessage: async () => {
         const input = document.getElementById('tutor-input');
         const msg = input.value.trim();
+        
+        // Validation
         if (!msg) return;
+        if (msg.length > 2000) {
+            alert("Message is too long. Please keep it under 2000 characters.");
+            return;
+        }
 
         const box = document.getElementById('tutor-history');
         
         // Add user message with animation
         const userMsg = document.createElement('div');
         userMsg.className = 'msg msg-user';
-        userMsg.innerHTML = msg;
+        userMsg.innerHTML = msg.replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Sanitize HTML
         box.appendChild(userMsg);
         utils.fadeIn(userMsg, 200);
         
         input.value = '';
+        input.disabled = true; // Prevent spamming
         
         // Smooth scroll using requestAnimationFrame for better performance
         requestAnimationFrame(() => {
@@ -560,7 +597,7 @@ const app = {
                 headers: app.getHeaders(),
                 body: JSON.stringify({
                     message: msg,
-                    history: app.state.chatHistory,
+                    history: app.state.chatHistory.slice(-10), // Only send last 10 messages for performance
                     language: app.state.language
                 })
             });
@@ -572,6 +609,12 @@ const app = {
                 app.logout();
                 throw new Error("Session expired.");
             }
+            
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Failed to get response from AI.");
+            }
+            
             const data = await res.json();
             
             // Add bot response with animation
@@ -586,6 +629,11 @@ const app = {
 
             app.state.chatHistory.push({ role: 'user', content: msg });
             app.state.chatHistory.push({ role: 'assistant', content: data.response });
+            
+            // Keep only last 50 messages for performance
+            if (app.state.chatHistory.length > 50) {
+                app.state.chatHistory = app.state.chatHistory.slice(-50);
+            }
             localStorage.setItem('chatHistory', JSON.stringify(app.state.chatHistory));
 
         } catch (e) {
@@ -595,6 +643,9 @@ const app = {
             errorMsg.style.color = 'var(--error)';
             errorMsg.innerHTML = `Error: ${e.message}`;
             box.appendChild(errorMsg);
+        } finally {
+            input.disabled = false;
+            input.focus();
         }
     },
 
@@ -608,12 +659,22 @@ const app = {
     },
 
     generateNotes: async () => {
-        const topic = document.getElementById('ppt-topic').value;
-        const slides = document.getElementById('ppt-slides').value; // Hidden input
+        const topic = document.getElementById('ppt-topic').value.trim();
+        const slides = parseInt(document.getElementById('ppt-slides').value);
         const font = document.getElementById('ppt-font').value;
         const format = document.getElementById('ppt-format').value;
 
-        if (!topic) return alert("Please enter a topic.");
+        // Input validation
+        if (!topic || topic.length < 2) {
+            alert("Please enter a valid topic (at least 2 characters).");
+            document.getElementById('ppt-topic').focus();
+            return;
+        }
+        
+        if (slides < 3 || slides > 30) {
+            alert("Please enter a valid number of slides (3-30).");
+            return;
+        }
 
         utils.showLoading('ppt-loading', `Creating ${format.toUpperCase()} on ${topic}...`);
 
@@ -623,7 +684,7 @@ const app = {
                 headers: app.getHeaders(),
                 body: JSON.stringify({
                     topic,
-                    num_slides: parseInt(slides),
+                    num_slides: slides,
                     language: app.state.language,
                     font_style: font,
                     format: format,
@@ -631,7 +692,10 @@ const app = {
                 })
             });
 
-            if (!res.ok) throw new Error("Generation Failed. Check API status.");
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail || "Generation Failed. Check API status.");
+            }
 
             // Handle File Download
             const blob = await res.blob();
@@ -649,6 +713,7 @@ const app = {
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
+            a.remove();
 
             alert("Notes Downloaded! 📝");
 
