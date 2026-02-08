@@ -58,9 +58,8 @@ async def generate_quiz(
     current_user: User = Depends(get_current_user)
 ):
     """Generate a quiz with adaptive difficulty based on user level."""
-    if not ai_service.has_ai:
-        raise HTTPException(status_code=400, detail="AI not configured")
-
+    # AI is always available with offline fallback
+    
     # Adaptive Logic
     difficulty = req.difficulty
     if current_user.level > 5 and difficulty == "easy":
@@ -81,10 +80,22 @@ async def generate_quiz(
         return {
             "questions": questions, 
             "adjusted_difficulty": difficulty,
-            "user_level": current_user.level
+            "user_level": current_user.level,
+            "provider": ai_service.current_provider
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Log error but provide fallback content
+        print(f"Quiz generation error: {e}")
+        
+        # Return offline quiz with informative message
+        offline_quiz = ai_service.generate_offline_quiz(req.topic, req.num_questions, difficulty)
+        return {
+            "message": "⚡ Using backup AI for uninterrupted learning",
+            "questions": offline_quiz,
+            "adjusted_difficulty": difficulty,
+            "user_level": current_user.level,
+            "provider": "offline"
+        }
 
 @router.post("/generate-from-file")
 async def generate_quiz_from_file(
@@ -96,8 +107,7 @@ async def generate_quiz_from_file(
     current_user: User = Depends(get_current_user)
 ):
     """Generate quiz from uploaded file content."""
-    if not ai_service.has_ai:
-        raise HTTPException(status_code=400, detail="AI not configured")
+    # AI is always available with offline fallback
     
     try:
         content = await file.read()
@@ -119,10 +129,20 @@ async def generate_quiz_from_file(
         questions = await ai_service.generate_quiz(prompt)
         return {
             "questions": questions,
-            "filename": file.filename
+            "filename": file.filename,
+            "provider": ai_service.current_provider
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Never show raw errors to users
+        print(f"File quiz generation error: {e}")
+        # Extract basic topic from filename (with validation)
+        topic = file.filename.rsplit('.', 1)[0] if file.filename else "general knowledge"
+        return {
+            "message": "⚡ Using backup AI for uninterrupted learning",
+            "questions": ai_service.generate_offline_quiz(topic, num_questions, difficulty),
+            "filename": file.filename,
+            "provider": "offline"
+        }
 
 @router.post("/submit")
 async def submit_quiz(
