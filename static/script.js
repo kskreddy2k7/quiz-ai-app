@@ -537,7 +537,7 @@ const app = {
         
         // Validation
         if (!name || name.length < 2) {
-            utils.showNotification('Please enter a valid name', 'error');
+            utils.showNotification('Name must be at least 2 characters long', 'error');
             return;
         }
         
@@ -748,14 +748,17 @@ const app = {
     togglePasswordVisibility: () => {
         const passwordInput = document.getElementById('password-input');
         const toggleIcon = document.getElementById('password-toggle-icon');
+        const toggleBtn = document.getElementById('toggle-password');
         
-        if (passwordInput && toggleIcon) {
+        if (passwordInput && toggleIcon && toggleBtn) {
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
                 toggleIcon.className = 'bi bi-eye-slash';
+                toggleBtn.setAttribute('aria-label', 'Hide password');
             } else {
                 passwordInput.type = 'password';
                 toggleIcon.className = 'bi bi-eye';
+                toggleBtn.setAttribute('aria-label', 'Show password');
             }
         }
     },

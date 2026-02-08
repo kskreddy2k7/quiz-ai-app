@@ -659,6 +659,20 @@ body::after {
 }
 
 /* Back Button Style */
+.btn-back {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 12px;
+    color: var(--text-main);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 30px;
+    transition: all 0.3s ease;
+}
+
 .btn-back:hover {
     background: rgba(255, 255, 255, 0.2) !important;
     transform: translateX(-3px);
