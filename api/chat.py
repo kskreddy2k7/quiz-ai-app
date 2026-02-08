@@ -17,12 +17,23 @@ async def chat_with_teacher(
     req: ChatRequest,
     current_user: User = Depends(get_current_user)
 ):
-    """Chat with the Friendly Teacher AI."""
+    """Chat with the Friendly Teacher AI with personalized responses."""
     if not ai_service.has_ai:
         raise HTTPException(status_code=400, detail="AI not configured")
         
     try:
-        response = await ai_service.chat_with_teacher(req.history, req.message)
+        # Add user context for personalization
+        user_context = {
+            "name": current_user.full_name or current_user.username,
+            "level": current_user.level,
+            "xp": current_user.xp
+        }
+        
+        response = await ai_service.chat_with_teacher(
+            req.history, 
+            req.message,
+            user_context=user_context
+        )
         return {"response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
