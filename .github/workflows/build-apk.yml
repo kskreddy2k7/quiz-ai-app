@@ -88,7 +88,12 @@ jobs:
 
     - name: Build with Buildozer
       run: |
+        # Build debug APK
         buildozer android debug
+        
+        # Build release AAB for Play Store (if possible)
+        # Note: AAB requires signing, so we'll create unsigned AAB for now
+        buildozer android release
       env:
         ANDROID_SDK_LICENSE_ACCEPTED: "yes"
 
@@ -98,12 +103,21 @@ jobs:
         name: S-Quiz-APK
         path: bin/*.apk
 
+    - name: Upload AAB (if exists)
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: S-Quiz-AAB
+        path: bin/*.aab
+
     - name: Create Release
       if: github.ref == 'refs/heads/main'
       uses: softprops/action-gh-release@v1
       with:
         tag_name: v1.0.${{ github.run_number }}
         name: S Quiz v1.0.${{ github.run_number }}
-        files: bin/*.apk
+        files: |
+          bin/*.apk
+          bin/*.aab
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

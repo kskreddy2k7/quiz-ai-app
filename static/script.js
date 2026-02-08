@@ -1,3 +1,10 @@
+// Configuration Constants
+const CONFIG = {
+    PWA_BANNER_DELAY: 5000,      // 5 seconds
+    APK_MODAL_DELAY: 10000,      // 10 seconds
+    PROMO_DELAY: 3000            // 3 seconds
+};
+
 // Utility functions for performance optimization
 const utils = {
     // Debounce function to reduce API calls
@@ -48,6 +55,37 @@ const utils = {
             element.style.opacity = '1';
             element.style.transform = 'translateY(0)';
         });
+    },
+
+    // Show notification modal (replaces alert)
+    showNotification: (message, type = 'info') => {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'notification-toast';
+        notification.style.cssText = `
+            position: fixed;
+            top: 100px;
+            right: 30px;
+            background: ${type === 'error' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 
+                        type === 'success' ? 'linear-gradient(135deg, #10b981, #059669)' : 
+                        'linear-gradient(135deg, #6366f1, #a855f7)'};
+            color: white;
+            padding: 20px 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            z-index: 10001;
+            max-width: 400px;
+            animation: slideInRight 0.3s ease-out;
+            font-weight: 500;
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            notification.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
 };
 
@@ -64,6 +102,15 @@ const app = {
     },
 
     init: async () => {
+        // 0. Check if first time user and show onboarding
+        const hasSeenOnboarding = localStorage.getItem('onboarding_completed');
+        if (!hasSeenOnboarding) {
+            app.showOnboarding();
+        }
+
+        // Initialize PWA support
+        app.initPWA();
+
         // 1. Load Language Preference
         const createOption = (text, val) => {
             const opt = document.createElement('option');
@@ -156,8 +203,11 @@ const app = {
             setTimeout(() => {
                 const promo = document.getElementById('app-promo');
                 if (promo) promo.style.display = 'block';
-            }, 3000);
+            }, CONFIG.PROMO_DELAY);
         }
+
+        // 4. Detect Android device and offer APK
+        app.detectAndroidDevice();
     },
 
     /* --- I18N SYSTEM --- */
@@ -303,7 +353,7 @@ const app = {
     },
 
     viewProfile: () => {
-        alert('Profile feature coming soon!');
+        utils.showNotification('Profile feature coming soon!');
         const menu = document.getElementById('profile-menu');
         if (menu) menu.style.display = 'none';
     },
@@ -338,7 +388,7 @@ const app = {
             
         } catch (error) {
             console.error('Google Sign-In error:', error);
-            alert(error.message || 'Google Sign-In failed. Please try regular login.');
+            utils.showNotification(error.message || 'Google Sign-In failed. Please try regular login.');
         }
     },
     
@@ -397,7 +447,7 @@ const app = {
             
         } catch (error) {
             console.error('Google authentication error:', error);
-            alert('Failed to sign in with Google. Please try again.');
+            utils.showNotification('Failed to sign in with Google. Please try again.');
             // Restore button
             btn.innerHTML = originalText;
             btn.disabled = false;
@@ -409,7 +459,7 @@ const app = {
         const password = document.getElementById('password-input').value;
 
         if (!username || !password) {
-            alert("Please enter credentials");
+            utils.showNotification("Please enter credentials");
             return;
         }
 
@@ -464,7 +514,7 @@ const app = {
             app.showTopic();
 
         } catch (e) {
-            alert(e.message);
+            utils.showNotification(e.message);
         }
     },
 
@@ -474,7 +524,7 @@ const app = {
         app.state.user.name = "Guest User";
         document.getElementById('user-display').innerText = "Guest User";
         app.showTopic();
-        alert("Welcome, Guest! Progress will not be saved permanently.");
+        utils.showNotification("Welcome, Guest! Progress will not be saved permanently.");
     },
 
     /* --- QUIZ FEATURE --- */
@@ -500,13 +550,13 @@ const app = {
         
         // Input validation
         if (!topic || topic.length < 2) {
-            alert("Please enter a valid topic (at least 2 characters).");
+            utils.showNotification("Please enter a valid topic (at least 2 characters).");
             document.getElementById('topic-input').focus();
             return;
         }
         
         if (numQ < 1 || numQ > 50) {
-            alert("Please enter a valid number of questions (1-50).");
+            utils.showNotification("Please enter a valid number of questions (1-50).");
             document.getElementById('q-count').focus();
             return;
         }
@@ -539,7 +589,7 @@ const app = {
             app.startQuiz(data);
 
         } catch (e) {
-            alert("Error: " + e.message);
+            utils.showNotification("Error: " + e.message);
         } finally {
             utils.hideLoading('loading-topic');
         }
@@ -548,7 +598,7 @@ const app = {
     // --- FILE QUIZ ---
     generateFileQuiz: async () => {
         if (!app.state.uploadedFile) {
-            alert("Please upload a file first.");
+            utils.showNotification("Please upload a file first.");
             return;
         }
 
@@ -558,14 +608,14 @@ const app = {
         
         // Validate number of questions
         if (numQ < 1 || numQ > 50) {
-            alert("Please enter a valid number of questions (1-50).");
+            utils.showNotification("Please enter a valid number of questions (1-50).");
             document.getElementById('file-q-count').focus();
             return;
         }
         
         // Validate file size (max 10MB for performance)
         if (app.state.uploadedFile.size > 10 * 1024 * 1024) {
-            alert("File is too large. Please upload a file smaller than 10MB.");
+            utils.showNotification("File is too large. Please upload a file smaller than 10MB.");
             return;
         }
 
@@ -599,7 +649,7 @@ const app = {
             app.startQuiz(data);
 
         } catch (e) {
-            alert("Error: " + e.message);
+            utils.showNotification("Error: " + e.message);
         } finally {
             utils.hideLoading('loading-file');
         }
@@ -688,7 +738,7 @@ const app = {
     shareQuiz: () => {
         // Simple clipboard share
         const text = `I just scored ${Math.round((app.state.score / app.state.questions.length) * 100)}% on a QuizAI lesson! 🚀`;
-        navigator.clipboard.writeText(text).then(() => alert("Result copied to clipboard!"));
+        navigator.clipboard.writeText(text).then(() => utils.showNotification("Result copied to clipboard!"));
     },
 
     /* --- TUTOR --- */
@@ -699,7 +749,7 @@ const app = {
         // Validation
         if (!msg) return;
         if (msg.length > 2000) {
-            alert("Message is too long. Please keep it under 2000 characters.");
+            utils.showNotification("Message is too long. Please keep it under 2000 characters.");
             return;
         }
 
@@ -805,14 +855,14 @@ const app = {
 
         // Input validation
         if (!topic || topic.length < 2) {
-            alert("Please enter a valid topic (at least 2 characters).");
+            utils.showNotification("Please enter a valid topic (at least 2 characters).");
             document.getElementById('ppt-topic').focus();
             return;
         }
         
         // Check for valid number after parsing
         if (isNaN(slides) || slides < 3 || slides > 30) {
-            alert("Please enter a valid number of slides (3-30).");
+            utils.showNotification("Please enter a valid number of slides (3-30).");
             return;
         }
 
@@ -855,12 +905,105 @@ const app = {
             window.URL.revokeObjectURL(url);
             a.remove();
 
-            alert("Notes Downloaded! 📝");
+            utils.showNotification("Notes Downloaded! 📝");
 
         } catch (e) {
-            alert("Error: " + e.message);
+            utils.showNotification("Error: " + e.message);
         } finally {
             utils.hideLoading('ppt-loading');
+        }
+    },
+
+    /* --- ONBOARDING MODAL --- */
+    showOnboarding: () => {
+        const modal = document.getElementById('onboarding-modal');
+        if (modal) modal.style.display = 'flex';
+    },
+
+    closeOnboarding: () => {
+        const modal = document.getElementById('onboarding-modal');
+        if (modal) modal.style.display = 'none';
+        localStorage.setItem('onboarding_completed', 'true');
+    },
+
+    startLearning: () => {
+        app.closeOnboarding();
+        // If not logged in, show auth
+        if (!app.state.token) {
+            app.showAuth();
+        }
+    },
+
+    /* --- PWA INSTALL --- */
+    deferredPrompt: null,
+
+    initPWA: () => {
+        // Listen for beforeinstallprompt event
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            app.deferredPrompt = e;
+            
+            // Show PWA banner if user hasn't dismissed it
+            if (!localStorage.getItem('pwa_dismissed')) {
+                const banner = document.getElementById('pwa-banner');
+                if (banner) {
+                    setTimeout(() => {
+                        banner.style.display = 'flex';
+                    }, CONFIG.PWA_BANNER_DELAY);
+                }
+            }
+        });
+
+        // Listen for successful installation
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA installed successfully');
+            app.dismissPWA();
+        });
+    },
+
+    installPWA: async () => {
+        if (!app.deferredPrompt) {
+            utils.showNotification('PWA installation is not available on this device/browser.');
+            return;
+        }
+
+        app.deferredPrompt.prompt();
+        const { outcome } = await app.deferredPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+            console.log('User accepted PWA installation');
+        } else {
+            console.log('User dismissed PWA installation');
+        }
+        
+        app.deferredPrompt = null;
+        app.dismissPWA();
+    },
+
+    dismissPWA: () => {
+        const banner = document.getElementById('pwa-banner');
+        if (banner) banner.style.display = 'none';
+        localStorage.setItem('pwa_dismissed', 'true');
+    },
+
+    /* --- APK DOWNLOAD --- */
+    showAPKModal: () => {
+        const modal = document.getElementById('apk-modal');
+        if (modal) modal.style.display = 'flex';
+    },
+
+    closeAPKModal: () => {
+        const modal = document.getElementById('apk-modal');
+        if (modal) modal.style.display = 'none';
+    },
+
+    detectAndroidDevice: () => {
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        if (isAndroid && !localStorage.getItem('apk_dismissed')) {
+            // Show APK download option after configured delay
+            setTimeout(() => {
+                app.showAPKModal();
+            }, CONFIG.APK_MODAL_DELAY);
         }
     }
 };
