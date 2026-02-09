@@ -1,205 +1,231 @@
-// Configuration Constants
+// --- CONFIGURATION ---
+const API_BASE_URL = ""; // Use relative path since backend serves frontend
 const CONFIG = {
-    PWA_BANNER_DELAY: 5000,
-    APK_MODAL_DELAY: 10000,
-    PROMO_DELAY: 3000
+    MOCK_DELAY: 800,
+    TOAST_DURATION: 3000
 };
 
-// Motivational Quotes Pool
+// --- QUOTES POOL ---
 const QUOTES = [
     { text: "The beautiful thing about learning is that no one can take it away from you.", author: "B.B. King" },
     { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
     { text: "Live as if you were to die tomorrow. Learn as if you were to live forever.", author: "Mahatma Gandhi" },
     { text: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
-    { text: "Learning never exhausts the mind.", author: "Leonardo da Vinci" }
+    { text: "Learning never exhausts the mind.", author: "Leonardo da Vinci" },
+    { text: "I have no special talent. I am only passionately curious.", author: "Albert Einstein" }
 ];
 
-const getRandomQuote = () => {
-    const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-    return quote;
-};
-
-// Utility functions
+// --- UTILITIES ---
 const utils = {
-    debounce: (func, wait) => {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    },
-
-    showLoadingSteps: (elementId, steps) => {
-        const el = document.getElementById(elementId);
-        if (!el) return;
-
-        // Remove existing overlay if any
-        const existing = el.querySelector('.loading-overlay');
-        if (existing) existing.remove();
-
-        const overlay = document.createElement('div');
-        overlay.className = 'loading-overlay';
-        overlay.innerHTML = `
-            <div style="text-align: center; width: 100%;">
-                <div class="typing-indicator"><span></span><span></span><span></span></div>
-                <div class="loading-steps">
-                    ${steps.map((step, i) => `<div class="loading-step" data-step="${i}">○ ${step}</div>`).join('')}
-                </div>
-            </div>`;
-
-        el.style.position = 'relative';
-        el.appendChild(overlay);
-
-        steps.forEach((_, i) => {
-            setTimeout(() => {
-                const stepEl = overlay.querySelector(`[data-step="${i}"]`);
-                if (stepEl) {
-                    stepEl.innerHTML = `● ${steps[i]}`;
-                    stepEl.classList.add('active');
-                }
-            }, i * 800);
-        });
-    },
-
-    showLoading: (elementId, message = 'Thinking...') => {
-        const el = document.getElementById(elementId);
-        if (!el) return;
-
-        const existing = el.querySelector('.loading-overlay');
-        if (existing) existing.remove();
-
-        const overlay = document.createElement('div');
-        overlay.className = 'loading-overlay';
-        overlay.innerHTML = `
-            <div style="text-align: center;">
-                <div class="typing-indicator"><span></span><span></span><span></span></div>
-                <p style="margin-top: 15px; color: var(--primary); font-weight: 600;">${message}</p>
-            </div>`;
-
-        el.style.position = 'relative';
-        el.appendChild(overlay);
-    },
-
-    hideLoading: (elementId) => {
-        const el = document.getElementById(elementId);
-        if (el) {
-            const overlay = el.querySelector('.loading-overlay');
-            if (overlay) overlay.remove();
-        }
-    },
-
+    // Show a toast notification
     showNotification: (message, type = 'info') => {
+        // Remove existing toasts first to prevent stacking
+        const existing = document.querySelector('.notification-toast');
+        if (existing) existing.remove();
+
         const toast = document.createElement('div');
         toast.className = `notification-toast toast-${type}`;
 
+        // Icon selection
         let icon = 'info-circle';
         if (type === 'success') icon = 'check-circle';
-        if (type === 'error') icon = 'exclamation-circle';
+        if (type === 'error') icon = 'exclamation-triangle';
 
         toast.innerHTML = `<i class="bi bi-${icon}"></i> <span>${message}</span>`;
         document.body.appendChild(toast);
 
+        // Auto remove
         setTimeout(() => {
             toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
-            toast.style.transition = 'all 0.3s ease';
             setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        }, CONFIG.TOAST_DURATION);
     },
 
-    fadeIn: (element, duration = 300) => {
-        if (!element) return;
-        element.style.opacity = '0';
-        element.style.display = 'block';
-        setTimeout(() => {
-            element.style.transition = `opacity ${duration}ms ease`;
-            element.style.opacity = '1';
-        }, 10);
-    }
-};
+    // Show loading overlay
+    showLoading: (containerId, message = 'Processing...') => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
 
-const app = {
-    state: {
-        questions: [],
-        currentQuestionIndex: 0,
-        score: 0,
-        user: { name: "Student", email: "", class: "", language: "English" },
-        token: localStorage.getItem('token'),
-        role: localStorage.getItem('role') || 'guest',
-        language: localStorage.getItem('language') || 'English',
-        onboardingStep: 1,
-        uploadedFile: null,
-        chatHistory: JSON.parse(localStorage.getItem('chatHistory') || '[]')
-    },
+        // Check if already loading
+        if (container.querySelector('.loading-overlay')) return;
 
-    init: async () => {
-        const hasSeenOnboarding = localStorage.getItem('onboarding_completed');
-        const hasSeenPermissions = localStorage.getItem('permissions_accepted');
+        const overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.style.cssText = `
+            position: absolute; inset: 0; background: rgba(15,23,42,0.7); 
+            backdrop-filter: blur(5px); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 50; border-radius: inherit;
+        `;
+        overlay.innerHTML = `
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p style="margin-top: 15px; font-weight: 600; color: white;">${message}</p>
+        `;
 
-        if (!hasSeenOnboarding) app.showOnboarding();
-        else if (!hasSeenPermissions) app.showPermissions();
-
-        // Load saved user data
-        const savedUser = JSON.parse(localStorage.getItem('userData') || '{}');
-        app.state.user = { ...app.state.user, ...savedUser };
-
-        app.updateUIForRole();
-        app.updateTranslations();
-        app.updateAuthQuote();
-
-        if (app.state.token) {
-            app.showTopic();
-        } else if (hasSeenOnboarding && hasSeenPermissions) {
-            app.showView('auth-view');
+        // Ensure container is relative for absolute positioning of overlay
+        if (getComputedStyle(container).position === 'static') {
+            container.style.position = 'relative';
         }
 
-        app.initPWA();
-        app.detectAndroidDevice();
+        container.appendChild(overlay);
     },
 
-    /* --- AUTH --- */
-    switchAuthTab: (type) => {
-        document.getElementById('login-container').style.display = type === 'login' ? 'block' : 'none';
-        document.getElementById('signup-container').style.display = type === 'signup' ? 'block' : 'none';
-        document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i === 0 && type === 'login') || (i === 1 && type === 'signup')));
+    // Hide loading overlay
+    hideLoading: (containerId) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const overlay = container.querySelector('.loading-overlay');
+        if (overlay) overlay.remove();
     },
 
-    togglePassword: (id, btn) => {
-        const input = document.getElementById(id);
+    getRandomQuote: () => QUOTES[Math.floor(Math.random() * QUOTES.length)]
+};
+
+// --- APPLICATION LOGIC ---
+const app = {
+    state: {
+        user: null,
+        token: localStorage.getItem('token'),
+        role: localStorage.getItem('role') || 'guest'
+    },
+
+    init: () => {
+        console.log("App Initializing...");
+
+        // 1. Setup global event listeners
+        app.setupEventListeners();
+
+        // 2. Check Auth State
+        if (app.state.token) {
+            app.fetchUserProfile();
+        } else {
+            app.showAuth();
+        }
+
+        // 3. Random Quote for Auth Screen
+        const quote = utils.getRandomQuote();
+        // If we had a quote element on auth screen, we'd update it here
+    },
+
+    setupEventListeners: () => {
+        // Auth Tab Switching
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const mode = e.target.textContent.trim().toLowerCase().includes('sign') ? 'signup' : 'login';
+                app.switchAuthTab(mode);
+            });
+        });
+    },
+
+    // --- NAVIGATION ---
+    showAuth: () => {
+        document.getElementById('auth-view').style.display = 'flex';
+        document.getElementById('app-container').style.display = 'none';
+        document.querySelector('.navbar-compact').style.display = 'none';
+    },
+
+    showDashboard: () => {
+        document.getElementById('auth-view').style.display = 'none';
+        document.getElementById('app-container').style.display = 'block';
+        document.querySelector('.navbar-compact').style.display = 'flex';
+
+        // Default View
+        app.showView('dashboard-view');
+        app.updateActiveNav('btn-dashboard');
+    },
+
+    showView: (viewId) => {
+        // Close any open modals first
+        document.querySelectorAll('.modal-overlay').forEach(modal => modal.remove());
+
+        // Hide all screens
+        document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
+
+        // Show target screen
+        const target = document.getElementById(viewId);
+        if (target) {
+            target.style.display = 'block';
+            window.scrollTo(0, 0);
+        } else {
+            console.error(`View not found: ${viewId}`);
+        }
+    },
+
+    updateActiveNav: (btnId) => {
+        document.querySelectorAll('.feature-button').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById(btnId);
+        if (btn) btn.classList.add('active');
+    },
+
+    // --- AUTH ACTIONS ---
+    switchAuthTab: (mode) => {
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+
+        if (mode === 'login') {
+            document.querySelector('.auth-tab:first-child').classList.add('active');
+            document.getElementById('login-container').style.display = 'block';
+            document.getElementById('signup-container').style.display = 'none';
+        } else {
+            document.querySelector('.auth-tab:last-child').classList.add('active');
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('signup-container').style.display = 'block';
+        }
+    },
+
+    togglePassword: (inputId, btn) => {
+        const input = document.getElementById(inputId);
         const icon = btn.querySelector('i');
-        const isSecret = input.type === 'password';
-        input.type = isSecret ? 'text' : 'password';
-        icon.className = isSecret ? 'bi bi-eye-slash' : 'bi bi-eye';
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
+    },
+
+    previewSignupAvatar: (input) => {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('signup-avatar-preview').src = e.target.result;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
     },
 
     handleLogin: async () => {
         const email = document.getElementById('login-email').value.trim();
         const password = document.getElementById('login-password').value.trim();
-        if (!email || !password) return utils.showNotification("Fields required", "error");
+
+        if (!email || !password) return utils.showNotification("Please fill in all fields", "error");
+
+        utils.showLoading('auth-view', 'Logging in...');
 
         try {
-            utils.showLoading('auth-view', 'Authenticating...');
-            const params = new URLSearchParams();
-            params.append('username', email); // backend uses email as username
-            params.append('password', password);
+            const formData = new FormData();
+            formData.append('username', email);
+            formData.append('password', password);
 
-            const res = await fetch('/auth/token', {
+            const res = await fetch(`${API_BASE_URL}/auth/token`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params
+                body: formData
             });
+
             if (!res.ok) throw new Error("Invalid credentials");
 
             const data = await res.json();
-            app.onAuthSuccess(data);
+            localStorage.setItem('token', data.access_token);
+            app.state.token = data.access_token;
+
+            await app.fetchUserProfile();
             utils.showNotification("Welcome back!", "success");
-        } catch (e) {
-            utils.showNotification(e.message, "error");
-            app.showView('auth-view');
+
+        } catch (err) {
+            utils.showNotification(err.message, "error");
+        } finally {
+            utils.hideLoading('auth-view');
         }
     },
 
@@ -207,519 +233,368 @@ const app = {
         const name = document.getElementById('signup-name').value.trim();
         const email = document.getElementById('signup-email').value.trim();
         const password = document.getElementById('signup-password').value.trim();
+        // const avatarInput = document.getElementById('signup-avatar');
+
         if (!name || !email || !password) return utils.showNotification("All fields required", "error");
 
+        utils.showLoading('auth-view', 'Creating account...');
+
         try {
-            utils.showLoading('auth-view', 'Creating account...');
-            const res = await fetch('/auth/register', {
+            // 1. Signup
+            const signupRes = await fetch(`${API_BASE_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, full_name: name, username: email.split('@')[0] })
             });
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.detail || "Registration failed");
+
+            if (!signupRes.ok) {
+                const errData = await signupRes.json();
+                throw new Error(errData.detail || "Signup failed. Email might be taken.");
             }
 
-            utils.showNotification("Account created! Logging in...", "success");
-            const params = new URLSearchParams();
-            params.append('username', email);
-            params.append('password', password);
-            const loginRes = await fetch('/auth/token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params
-            });
-            if (loginRes.ok) app.onAuthSuccess(await loginRes.json());
-        } catch (e) {
-            utils.showNotification(e.message, "error");
-            app.showView('auth-view');
+            // 2. Auto Login
+            const formData = new FormData();
+            formData.append('username', email);
+            formData.append('password', password);
+
+            const loginRes = await fetch(`${API_BASE_URL}/auth/token`, { method: 'POST', body: formData });
+            if (!loginRes.ok) throw new Error("Auto-login failed");
+
+            const loginData = await loginRes.json();
+            localStorage.setItem('token', loginData.access_token);
+            app.state.token = loginData.access_token;
+
+            // 3. Avatar Upload Removed
+            // if (avatarInput && avatarInput.files[0]) { ... }
+
+            await app.fetchUserProfile();
+            utils.showNotification("Account created!", "success");
+
+        } catch (err) {
+            utils.showNotification(err.message, "error");
+        } finally {
+            utils.hideLoading('auth-view');
         }
     },
 
     guestLogin: () => {
-        app.onAuthSuccess({ access_token: "guest_token_placeholder", role: "guest", username: "Guest" });
-        utils.showNotification("Guest mode active", "info");
-    },
-
-    googleLogin: () => {
-        utils.showNotification("Google Sign-In coming soon!", "info");
-    },
-
-    onAuthSuccess: (data) => {
-        app.state.token = data.access_token;
-        app.state.role = data.role || (data.user ? data.user.role : 'user');
-        app.state.user.name = data.username || (data.user ? data.user.full_name : "Student");
-
-        localStorage.setItem('token', app.state.token);
-        localStorage.setItem('role', app.state.role);
-        localStorage.setItem('username', app.state.user.name);
-
-        app.updateUIForRole();
-        app.showTopic();
+        app.state.role = 'guest';
+        app.state.user = {
+            full_name: 'Guest User',
+            email: 'guest@example.com',
+            profile_photo: '/static/default-avatar.png'
+        };
+        app.updateUI(app.state.user);
+        app.showDashboard();
+        utils.showNotification("Guest Mode Active", "warning");
     },
 
     logout: () => {
-        localStorage.clear();
+        localStorage.removeItem('token');
         window.location.reload();
     },
 
-    /* --- NAVIGATION --- */
-    showView: (id) => {
-        document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-        const view = document.getElementById(id);
-        if (view) view.style.display = 'block';
+    // --- DATA FETCHING ---
+    fetchUserProfile: async () => {
+        if (!app.state.token) return;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/users/me`, {
+                headers: { 'Authorization': `Bearer ${app.state.token}` }
+            });
+
+            if (res.ok) {
+                const user = await res.json();
+                app.state.user = user;
+                app.updateUI(user);
+                app.showDashboard();
+            } else {
+                // Token invalid
+                app.logout();
+            }
+        } catch (err) {
+            console.error(err);
+            utils.showNotification("Connection error", "error");
+        }
     },
 
-    showTopic: () => {
-        app.showView('topic-view');
-        app.setActiveFeature('btn-topic');
+    updateUI: (user) => {
+        // Nav
+        const avatar = user.profile_photo || '/static/default-avatar.png';
+        const firstName = user.full_name?.split(' ')[0] || 'User';
+
+        // Update all avatar instances
+        document.querySelectorAll('#nav-user-avatar, #dashboard-avatar, #profile-avatar-display').forEach(img => {
+            img.src = avatar;
+        });
+
+        // Text updates
+        document.getElementById('nav-user-display').textContent = firstName;
+        document.getElementById('dashboard-welcome').textContent = `Welcome back, ${firstName}! 👋`;
+        document.getElementById('dashboard-quote').textContent = `"${utils.getRandomQuote().text}"`;
+
+        // Profile Inputs
+        document.getElementById('profile-name-display').textContent = user.full_name;
+        document.getElementById('profile-email-display').textContent = user.email;
+
+        // Stats
+        document.getElementById('stat-quizzes').textContent = user.quizzes_taken || 0;
+        document.getElementById('stat-score').textContent = (user.avg_score || 0) + '%';
+        document.getElementById('stat-streak').textContent = (user.streak_count || 0) + ' Days';
+
+        // Feature Locking for Guests
+        const isGuest = app.state.role === 'guest';
+        // Logic to gray out buttons could go here
     },
 
-    showUpload: () => {
-        if (app.state.role === 'guest') return utils.showNotification("Members only", "error");
-        app.showView('upload-view');
-        app.setActiveFeature('btn-upload');
-    },
+    // --- FEATURE NAVIGATION HANDLERS ---
+    showTopic: () => { app.showView('topic-view'); app.updateActiveNav('btn-topic'); },
+    showUpload: () => { app.showView('upload-view'); app.updateActiveNav('btn-upload'); },
+    showNotes: () => { app.showView('presentation-view'); app.updateActiveNav('btn-notes'); },
+    showTutor: () => { app.showView('tutor-view'); app.updateActiveNav('btn-tutor'); },
 
-    showTutor: () => {
-        if (app.state.role === 'guest') return utils.showNotification("Members only", "error");
-        app.showView('tutor-view');
-        app.setActiveFeature('btn-tutor');
-    },
-
-    showNotes: () => {
-        if (app.state.role === 'guest') return utils.showNotification("Members only", "error");
-        app.showView('presentation-view');
-        app.setActiveFeature('btn-notes');
-    },
-
-    setActiveFeature: (id) => {
-        document.querySelectorAll('.feature-button').forEach(b => b.classList.remove('active'));
-        const btn = document.getElementById(id);
-        if (btn) btn.classList.add('active');
-    },
-
-    /* --- PROFILE --- */
     showProfile: () => {
         app.showView('profile-view');
-        document.getElementById('profile-name-display').innerText = app.state.user.name;
-        document.getElementById('profile-name-input').value = app.state.user.name;
-        document.getElementById('profile-class-input').value = app.state.user.class || "";
-        document.getElementById('profile-lang-select').value = app.state.language;
+        // Pre-fill
+        if (app.state.user) {
+            document.getElementById('profile-name-input').value = app.state.user.full_name || '';
+            document.getElementById('profile-class-input').value = app.state.user.current_class || '';
+            document.getElementById('profile-lang-select').value = app.state.user.preferred_language || 'English';
+        }
     },
 
- copilot/improve-ui-layout-and-performance
-    viewProfile: () => {
-        // Load current profile data
-        const userData = localStorage.getItem('user_data');
-        const username = localStorage.getItem('username') || 'Student';
-        const email = localStorage.getItem('user_email') || '';
-        
-        // Populate profile fields
-        document.getElementById('profile-name').value = username;
-        
-        if (userData) {
-            try {
-                const user = JSON.parse(userData);
-                if (user.full_name) document.getElementById('profile-name').value = user.full_name;
-                if (user.class_course) document.getElementById('profile-class').value = user.class_course;
-                if (user.bio) document.getElementById('profile-bio').value = user.bio;
-                
-                // Update profile photo if available
-                if (user.profile_photo) {
-                    const photoDisplay = document.getElementById('profile-photo-display');
-                    if (photoDisplay) {
-                        const img = document.createElement('img');
-                        img.src = user.profile_photo;
-                        img.alt = 'Profile';
-                        img.style.width = '100%';
-                        img.style.height = '100%';
-                        img.style.objectFit = 'cover';
-                        photoDisplay.innerHTML = '';
-                        photoDisplay.appendChild(img);
-                    }
-                }
-            } catch (e) {
-                console.error('Error parsing user data:', e);
-            }
-        }
-        
-        // Set language selector
-        document.getElementById('profile-language').value = app.state.language;
-        
-        // Set email display
-        if (email) {
-            document.getElementById('profile-email-display').textContent = email;
-        }
-        
-        // Close profile menu and show profile view
-        const menu = document.getElementById('profile-menu');
-        if (menu) menu.style.display = 'none';
-        
-        document.getElementById('profile-view').style.display = 'block';
-    },
+    // --- PROFILE ACTIONS ---
+    uploadProfilePicture: async (input) => {
+        if (!input.files || !input.files[0]) return;
 
-    closeProfile: () => {
-        document.getElementById('profile-view').style.display = 'none';
-    },
+        utils.showLoading('profile-view', 'Uploading...');
 
-    saveProfile: () => {
-        // Get profile data
-        const name = document.getElementById('profile-name').value.trim();
-        const classCourse = document.getElementById('profile-class').value.trim();
-        const language = document.getElementById('profile-language').value;
-        const bio = document.getElementById('profile-bio').value.trim();
-        
-        // Validation
-        if (!name || name.length < 2) {
-            utils.showNotification('Name must be at least 2 characters long', 'error');
-            return;
-        }
-        
-        // Update state
-        app.state.user.name = name;
-        localStorage.setItem('username', name);
-        
-        // Update user data
-        let userData = {};
         try {
-            const existing = localStorage.getItem('user_data');
-            if (existing) userData = JSON.parse(existing);
-        } catch (e) {}
-        
-        userData.full_name = name;
-        userData.class_course = classCourse;
-        userData.bio = bio;
-        
-        localStorage.setItem('user_data', JSON.stringify(userData));
-        
-        // Update language if changed
-        if (language !== app.state.language) {
-            app.setLanguage(language);
-        }
-        
-        // Update display name in header
-        const userDisplay = document.getElementById('user-display');
-        if (userDisplay) userDisplay.innerText = name;
-        
-        utils.showNotification('✓ Profile updated successfully!', 'success');
-        
-        // Close profile after a short delay
-        setTimeout(() => {
-            app.closeProfile();
-        }, 1000);
-    },
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
 
-    saveProfile: () => {
-        app.state.user.name = document.getElementById('profile-name-input').value;
-        app.state.user.class = document.getElementById('profile-class-input').value;
-        app.state.language = document.getElementById('profile-lang-select').value;
- main
-
-        localStorage.setItem('userData', JSON.stringify(app.state.user));
-        localStorage.setItem('language', app.state.language);
-        localStorage.setItem('username', app.state.user.name);
-
-        app.updateTranslations();
-        app.updateUIForRole();
-        utils.showNotification("Profile Saved", "success");
-        app.showTopic();
-    },
-
-    /* --- ONBOARDING --- */
-    showOnboarding: () => {
-        document.getElementById('onboarding-modal').style.display = 'flex';
-    },
-
-    nextOnboarding: () => {
-        const steps = document.querySelectorAll('.onboarding-step');
-        const dots = document.querySelectorAll('.dot');
-        if (app.state.onboardingStep < steps.length) {
-            steps[app.state.onboardingStep - 1].classList.remove('active');
-            dots[app.state.onboardingStep - 1].classList.remove('active');
-            app.state.onboardingStep++;
-            steps[app.state.onboardingStep - 1].classList.add('active');
-            dots[app.state.onboardingStep - 1].classList.add('active');
-            if (app.state.onboardingStep === steps.length) {
-                document.querySelector('.onboarding-controls button').innerHTML = 'Finish <i class="bi bi-check"></i>';
-            }
-        } else {
-            app.finishOnboarding();
-        }
-    },
-
-    finishOnboarding: () => {
-        document.getElementById('onboarding-modal').style.display = 'none';
-        localStorage.setItem('onboarding_completed', 'true');
-        app.showPermissions();
-    },
-
-    showPermissions: () => {
-        document.getElementById('permission-modal').style.display = 'flex';
-    },
-
-    allowPermissions: () => {
-        document.getElementById('permission-modal').style.display = 'none';
-        localStorage.setItem('permissions_accepted', 'true');
-        if (!app.state.token) app.showView('auth-view');
-    },
-
-    /* --- UI UPDATES --- */
-    updateUIForRole: () => {
-        const isGuest = app.state.role === 'guest';
-        const pill = document.getElementById('user-pill-container');
-        const logout = document.getElementById('btn-logout');
-        const name = document.getElementById('nav-user-display');
-
-        if (pill) pill.classList.toggle('hidden', isGuest);
-        if (logout) logout.classList.toggle('hidden', isGuest);
-        if (name) name.innerText = app.state.user.name;
-
-        ['btn-upload', 'btn-notes', 'btn-tutor'].forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) btn.classList.toggle('disabled', isGuest);
-        });
-    },
-
-    updateAuthQuote: () => {
-        const q = getRandomQuote();
-        const text = document.getElementById('auth-quote-text');
-        const auth = document.getElementById('auth-quote-author');
-        if (text) text.innerText = `"${q.text}"`;
-        if (auth) auth.innerText = `— ${q.author}`;
-    },
-
- copilot/improve-ui-layout-and-performance
-    // Toggle password visibility
-    togglePasswordVisibility: () => {
-        const passwordInput = document.getElementById('password-input');
-        const toggleIcon = document.getElementById('password-toggle-icon');
-        const toggleBtn = document.getElementById('toggle-password');
-        
-        if (passwordInput && toggleIcon && toggleBtn) {
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleIcon.className = 'bi bi-eye-slash';
-                toggleBtn.setAttribute('aria-label', 'Hide password');
-            } else {
-                passwordInput.type = 'password';
-                toggleIcon.className = 'bi bi-eye';
-                toggleBtn.setAttribute('aria-label', 'Show password');
-            }
-        }
-    },
-
-    /* --- QUIZ FEATURE --- */
-    handleFileSelect: (input) => {
-        if (input.files && input.files[0]) {
-            app.state.uploadedFile = input.files[0];
-            const label = document.getElementById('file-label-text');
-            if (label) {
-                label.innerText = `✅ ${input.files[0].name}`;
-                label.style.color = 'var(--success)';
-            }
-        }
-
-    updateTranslations: () => {
-        const lang = app.state.language;
-        if (typeof translations === 'undefined' || !translations[lang]) return;
-        document.querySelectorAll('[id^="t-"]').forEach(el => {
-            const key = el.id.replace('t-', '');
-            if (translations[lang][key]) el.innerText = translations[lang][key];
-        });
- main
-    },
-
-    /* --- CORE FEATURES --- */
-    generateTopicQuiz: async () => {
-        const topic = document.getElementById('topic-input').value.trim();
- copilot/improve-ui-layout-and-performance
-        const numQ = parseInt(document.getElementById('q-count').value);
-        const diff = document.getElementById('difficulty-select').value;
-        const lang = document.getElementById('language-select').value;
-
-        if (lang !== app.state.language) app.setLanguage(lang);
-        
-        // Input validation
-        if (!topic || topic.length < 2) {
-            utils.showNotification("Please enter a valid topic (at least 2 characters).", "error");
-            document.getElementById('topic-input').focus();
-            return;
-        }
-        
-        if (numQ < 1 || numQ > 50) {
-            utils.showNotification("Please enter a valid number of questions (1-50).", "error");
-            document.getElementById('q-count').focus();
-            return;
-        }
-
-        // Use enhanced loading indicator with animated steps
-        utils.showLoadingSteps('loading-topic', [
-            '⏳ Understanding topic',
-            '⏳ Selecting difficulty',
-            '⏳ Generating questions',
-            '⏳ Finalizing quiz'
-        ]);
-
-        if (!topic) return utils.showNotification("Please enter a topic", "error");
- main
-
-        utils.showLoadingSteps('topic-view', ['Scanning Library', 'AI Brainstorming', 'Generating Quiz']);
-        try {
-            const res = await fetch('/quiz/generate', {
+            const res = await fetch(`${API_BASE_URL}/users/me/avatar`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.state.token}` },
+                headers: { 'Authorization': `Bearer ${app.state.token}` },
+                body: formData
+            });
+
+            if (!res.ok) throw new Error("Upload failed");
+
+            // Refresh Profile
+            await app.fetchUserProfile();
+            utils.showNotification("Avatar updated!", "success");
+
+        } catch (err) {
+            utils.showNotification(err.message, "error");
+        } finally {
+            utils.hideLoading('profile-view');
+        }
+    },
+
+    saveProfile: async () => {
+        const name = document.getElementById('profile-name-input').value;
+        const currentClass = document.getElementById('profile-class-input').value;
+        const lang = document.getElementById('profile-lang-select').value;
+
+        utils.showLoading('profile-view', 'Saving...');
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/users/me`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${app.state.token}`
+                },
                 body: JSON.stringify({
-                    topic,
-                    num_questions: parseInt(document.getElementById('q-count').value),
-                    difficulty: document.getElementById('difficulty-select').value,
-                    language: document.getElementById('language-select').value
+                    full_name: name,
+                    current_class: currentClass,
+                    preferred_language: lang
                 })
             });
-            if (!res.ok) throw new Error("Our AI is currently busy. Please try again.");
-            app.startQuiz(await res.json());
-        } catch (e) {
-            utils.showNotification(e.message, "error");
+
+            if (!res.ok) throw new Error("Update failed");
+
+            await app.fetchUserProfile();
+            utils.showNotification("Profile saved!", "success");
+
+            // Return to dashboard
+            setTimeout(() => app.showDashboard(), 500);
+
+        } catch (err) {
+            utils.showNotification(err.message, "error");
         } finally {
-copilot/improve-ui-layout-and-performance
-            utils.hideLoading('loading-topic');
+            utils.hideLoading('profile-view');
         }
     },
 
-    // --- FILE QUIZ ---
-    generateFileQuiz: async () => {
-        if (!app.state.uploadedFile) {
-            utils.showNotification("Please upload a file first.", "error");
-            return;
-        }
+    // --- QUIZ GENERATION & HANDLING ---
 
-        const numQ = parseInt(document.getElementById('file-q-count').value);
-        const diff = document.getElementById('file-difficulty-select').value;
-        const lang = document.getElementById('file-language-select').value;
-        
-        // Validate number of questions
-        if (numQ < 1 || numQ > 50) {
-            utils.showNotification("Please enter a valid number of questions (1-50).", "error");
-            document.getElementById('file-q-count').focus();
-            return;
-        }
-        
-        // Validate file size (max 10MB for performance)
-        if (app.state.uploadedFile.size > 10 * 1024 * 1024) {
-            utils.showNotification("File is too large. Please upload a file smaller than 10MB.", "error");
-            return;
-        }
+    generateTopicQuiz: async () => {
+        const topic = document.getElementById('topic-input').value.trim();
+        const count = parseInt(document.getElementById('q-count').value);
+        const difficulty = document.getElementById('difficulty-select').value;
+        const language = document.getElementById('language-select').value;
+        const type = document.getElementById('type-select').value;
 
-        utils.showLoadingSteps('loading-file', [
-            '⏳ Reading file',
-            '⏳ Extracting content',
-            '⏳ Generating questions',
-            '⏳ Creating quiz'
-        ]);
+        if (!topic) return utils.showNotification("Please enter a topic", "error");
+
+        utils.showLoading('topic-view', 'Generating Quiz with AI...');
 
         try {
-            const fd = new FormData();
-            fd.append('file', app.state.uploadedFile);
-            fd.append('num_questions', numQ);
-            fd.append('difficulty', diff);
-            fd.append('mastery_level', "Intermediate");
-            fd.append('language', lang);
-
-            const headers = app.getAuthHeaders();
-
-            const res = await fetch('/quiz/generate-from-file', {
+            const res = await fetch(`${API_BASE_URL}/generate_topic`, {
                 method: 'POST',
-                headers: headers,
-                body: fd
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${app.state.token}`
+                },
+                body: JSON.stringify({
+                    topic,
+                    num_questions: count,
+                    difficulty,
+                    language,
+                    question_type: type
+                })
             });
 
-            if (res.status === 401) {
-                app.logout();
-                throw new Error("Session expired. Please login again.");
-            }
             if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Failed to process file. Please try a different file.");
+                const err = await res.json();
+                throw new Error(err.detail || "Generation failed");
             }
+
             const data = await res.json();
-            app.startQuiz(data);
+            app.startQuiz(data.questions, topic);
 
-        } catch (e) {
-            utils.showNotification("Error: " + e.message);
+        } catch (err) {
+            console.error(err);
+            utils.showNotification(err.message || "Failed to generate quiz", "error");
         } finally {
-            utils.hideLoading('loading-file');
-
             utils.hideLoading('topic-view');
-main
         }
     },
 
-    startQuiz: (data) => {
-        app.state.questions = data.questions;
-        app.state.currentQuestionIndex = 0;
-        app.state.score = 0;
+    handleFileSelect: (input) => {
+        if (input.files && input.files[0]) {
+            document.getElementById('file-label-text').textContent = input.files[0].name;
+        }
+    },
+
+    generateFileQuiz: async () => {
+        const input = document.getElementById('file-upload');
+        if (!input.files || !input.files[0]) return utils.showNotification("Please select a file", "error");
+
+        const count = parseInt(document.getElementById('file-q-count').value);
+        const difficulty = document.getElementById('file-difficulty-select').value;
+
+        utils.showLoading('upload-view', 'Analyzing file & generating quiz...');
+
+        try {
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            formData.append('num_questions', count);
+            formData.append('difficulty', difficulty);
+
+            const res = await fetch(`${API_BASE_URL}/generate_file`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${app.state.token}` },
+                body: formData
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "File processing failed");
+            }
+
+            const data = await res.json();
+            app.startQuiz(data.questions, `File: ${data.filename}`);
+
+        } catch (err) {
+            console.error(err);
+            utils.showNotification(err.message, "error");
+        } finally {
+            utils.hideLoading('upload-view');
+        }
+    },
+
+    // --- QUIZ GAMEPLAY ---
+
+    currentQuiz: {
+        questions: [],
+        currentIndex: 0,
+        score: 0,
+        topic: ''
+    },
+
+    startQuiz: (questions, topic) => {
+        if (!questions || questions.length === 0) {
+            return utils.showNotification("No questions generated. Try again.", "error");
+        }
+
+        app.currentQuiz = {
+            questions: questions,
+            currentIndex: 0,
+            score: 0,
+            topic: topic,
+            userAnswers: new Array(questions.length).fill(null)
+        };
+
         app.showView('quiz-view');
-        app.renderQuestion();
+        document.getElementById('quiz-topic-display').textContent = topic;
+        app.showQuestion();
     },
 
-    renderQuestion: () => {
-        const q = app.state.questions[app.state.currentQuestionIndex];
-        const textEl = document.getElementById('question-text');
-        if (textEl) textEl.innerText = q.question;
+    showQuestion: () => {
+        const q = app.currentQuiz.questions[app.currentQuiz.currentIndex];
+        document.getElementById('current-q').textContent = app.currentQuiz.currentIndex + 1;
+        document.getElementById('question-text').textContent = q.prompt;
 
-        const currentQEl = document.getElementById('current-q');
-        if (currentQEl) currentQEl.innerText = app.state.onboardingStep + 1; // Wrong index, use:
-        if (currentQEl) currentQEl.innerText = app.state.currentQuestionIndex + 1;
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
+        document.getElementById('explanation-box').style.display = 'none';
+        document.getElementById('btn-next-question').classList.add('hidden');
 
-        const opts = document.getElementById('options-container');
-        if (!opts) return;
-        opts.innerHTML = '';
-
-        q.options.forEach((opt, i) => {
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-outline w-100 option-btn';
-            btn.innerHTML = `<span>${String.fromCharCode(65 + i)}.</span> ${opt}`;
-            btn.onclick = () => app.handleAnswer(opt, btn);
-            opts.appendChild(btn);
+        q.choices.forEach((choice, index) => {
+            const btn = document.createElement('div');
+            btn.className = 'quiz-option';
+            btn.textContent = choice;
+            btn.onclick = () => app.handleAnswer(btn, choice, q);
+            container.appendChild(btn);
         });
+    },
 
-        const nextBtn = document.getElementById('btn-next-question');
-        if (nextBtn) {
-            nextBtn.classList.add('hidden');
-            nextBtn.innerHTML = (app.state.currentQuestionIndex === app.state.questions.length - 1)
-                ? 'Finish Quiz <i class="bi bi-check-circle"></i>'
-                : 'Next Question <i class="bi bi-arrow-right"></i>';
+    handleAnswer: (btnElement, choice, question) => {
+        // Prevent multiple answers
+        if (document.querySelector('.quiz-option.correct') || document.querySelector('.quiz-option.wrong')) return;
+
+        const isCorrect = choice === question.answer;
+
+        if (isCorrect) {
+            btnElement.classList.add('correct');
+            app.currentQuiz.score++;
+            utils.showNotification("Correct! 🎉", "success");
+        } else {
+            btnElement.classList.add('wrong');
+            utils.showNotification("Incorrect", "error");
+
+            // Highlight correct answer
+            document.querySelectorAll('.quiz-option').forEach(opt => {
+                if (opt.textContent === question.answer) opt.classList.add('correct');
+            });
         }
 
+        // Show explanation
         const expBox = document.getElementById('explanation-box');
-        if (expBox) expBox.style.display = 'none';
-    },
-
-    handleAnswer: (selected, btn) => {
-        if (btn.parentElement.classList.contains('locked')) return;
-
-        const q = app.state.questions[app.state.currentQuestionIndex];
-        const isCorrect = selected === q.answer;
-
-        btn.classList.add(isCorrect ? 'correct' : 'wrong');
-        btn.parentElement.classList.add('locked');
-
-        if (isCorrect) app.state.score++;
-
         const expText = document.getElementById('explanation-text');
-        const expBox = document.getElementById('explanation-box');
-        if (expText) expText.innerText = q.explanation;
-        if (expBox) expBox.style.display = 'block';
+        expBox.style.display = 'block';
+        expText.textContent = isCorrect ? question.explanation : (question.explanation || "No explanation available.");
 
-        const nextBtn = document.getElementById('btn-next-question');
-        if (nextBtn) nextBtn.classList.remove('hidden');
+        document.getElementById('btn-next-question').classList.remove('hidden');
     },
 
     nextQuestion: () => {
-        if (app.state.currentQuestionIndex < app.state.questions.length - 1) {
-            app.state.currentQuestionIndex++;
-            app.renderQuestion();
+        app.currentQuiz.currentIndex++;
+        if (app.currentQuiz.currentIndex < app.currentQuiz.questions.length) {
+            app.showQuestion();
         } else {
             app.showResult();
         }
@@ -727,140 +602,208 @@ main
 
     showResult: () => {
         app.showView('result-view');
-        const pct = Math.round((app.state.score / app.state.questions.length) * 100);
-        const scoreEl = document.getElementById('final-score');
-        if (scoreEl) scoreEl.innerText = `${pct}%`;
+        const percentage = Math.round((app.currentQuiz.score / app.currentQuiz.questions.length) * 100);
+        document.getElementById('final-score').textContent = `${percentage}%`;
 
-        // Quote
-        const q = getRandomQuote();
-        const text = document.getElementById('result-quote-text');
-        const auth = document.getElementById('result-quote-author');
-        if (text) text.innerText = q.text;
-        if (auth) auth.innerText = q.author;
+        // Create Action Buttons Container if not exists
+        let actionContainer = document.getElementById('result-actions');
+        if (!actionContainer) {
+            actionContainer = document.createElement('div');
+            actionContainer.id = 'result-actions';
+            actionContainer.style.marginTop = '20px';
+            actionContainer.style.display = 'flex';
+            actionContainer.style.gap = '10px';
+            actionContainer.style.justifyContent = 'center';
+            document.querySelector('#result-view .card-premium').appendChild(actionContainer);
+        }
+
+        actionContainer.innerHTML = `
+            <button class="btn-primary-small" onclick="app.restartQuiz()">Re-attempt 🔄</button>
+            <button class="btn-primary-small" style="background: rgba(255,255,255,0.1);" onclick="app.reviewQuiz()">Review 📝</button>
+        `;
+
+        // Save score if logged in
+        if (app.state.token) {
+            // Logic to save score to backend could go here
+            // fetch(`${API_BASE_URL}/users/me/stats`, ...)
+        }
     },
 
-    /* --- TUTOR --- */
-    sendTutorMessage: async () => {
-        const input = document.getElementById('tutor-input');
-        const msg = input.value.trim();
-        if (!msg) return;
+    restartQuiz: () => {
+        app.startQuiz(app.currentQuiz.questions, app.currentQuiz.topic);
+    },
 
-        const box = document.getElementById('tutor-history');
-        const userDiv = document.createElement('div');
-        userDiv.className = 'msg msg-user';
-        userDiv.textContent = msg;
-        box.appendChild(userDiv);
-        input.value = '';
+    reviewQuiz: () => {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+
+        let content = `<div class="glass-card" style="max-width: 800px; max-height: 90vh; overflow-y: auto; text-align: left;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 class="indigo-text" style="margin:0;">Quiz Review</h2>
+                <div class="score-badge">${Math.round((app.currentQuiz.score / app.currentQuiz.questions.length) * 100)}%</div>
+            </div>`;
+
+        app.currentQuiz.questions.forEach((q, i) => {
+            const uAns = app.currentQuiz.userAnswers[i];
+            const cAns = q.correct_answers || q.answer;
+
+            // Format Display
+            const uStr = Array.isArray(uAns) ? uAns.join(", ") : (uAns || "Skipped");
+            const cStr = Array.isArray(cAns) ? cAns.join(", ") : cAns;
+
+            // Check Correctness
+            let isCorrect = false;
+            if (Array.isArray(cAns)) {
+                if (Array.isArray(uAns) && uAns.length === cAns.length && uAns.every(val => cAns.includes(val))) isCorrect = true;
+            } else {
+                if (uAns === cAns) isCorrect = true;
+            }
+
+            const statusColor = isCorrect ? 'var(--success)' : 'var(--error)';
+            const statusIcon = isCorrect ? '<i class="bi bi-check-circle-fill"></i>' : '<i class="bi bi-x-circle-fill"></i>';
+
+            content += `
+                <div style="margin-bottom: 20px; padding: 20px; background: rgba(255,255,255,0.03); border-radius: 12px; border-left: 4px solid ${statusColor};">
+                    <p style="font-weight: 600; margin-bottom: 12px; font-size: 1.1rem;">
+                        <span style="opacity:0.6; margin-right:8px;">Q${i + 1}.</span> ${q.prompt}
+                    </p>
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; font-size: 0.95rem;">
+                        <div style="padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <span style="display:block; font-size:0.8rem; opacity:0.7; margin-bottom:4px;">Your Answer</span>
+                            <span style="color: ${statusColor}; font-weight: 500;">${uStr} ${statusIcon}</span>
+                        </div>
+                        <div style="padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <span style="display:block; font-size:0.8rem; opacity:0.7; margin-bottom:4px;">Correct Answer</span>
+                            <span style="color: var(--success); font-weight: 500;">${cStr}</span>
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(99, 102, 241, 0.1); padding: 12px; border-radius: 8px; font-size: 0.9rem; color: var(--text-secondary);">
+                        <i class="bi bi-lightbulb-fill" style="color: var(--warning); margin-right: 5px;"></i> ${q.explanation}
+                    </div>
+                </div>
+            `;
+        });
+
+        content += `<button class="btn-primary-glass w-100" onclick="this.closest('.modal-overlay').remove()">Close Review</button></div>`;
+
+        modal.innerHTML = content;
+        document.body.appendChild(modal);
+    },
+
+    // --- PRESENTATION & TUTOR LOGIC ---
+
+    generateNotes: async () => {
+        const topic = document.getElementById('ppt-topic').value.trim();
+        if (!topic) return utils.showNotification("Please enter a topic", "error");
+
+        utils.showLoading('presentation-view', 'Creating Smart Notes...');
 
         try {
-            const res = await fetch('/ai/chat', {
+            // Note: Currently reusing generate_topic but ideally would have dedicated endpoint
+            // For now, let's use teacher_help to get a structured summary
+            const res = await fetch(`${API_BASE_URL}/teacher_help`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.state.token}` },
-                body: JSON.stringify({ message: msg, language: app.state.language, history: app.state.chatHistory.slice(-5) })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${app.state.token}`
+                },
+                body: JSON.stringify({
+                    task: "Create detailed study notes",
+                    topic: topic,
+                    details: "Include key concepts, examples, and a summary."
+                })
             });
+
+            if (!res.ok) throw new Error("Failed to create notes");
             const data = await res.json();
-            const botDiv = document.createElement('div');
-            botDiv.className = 'msg msg-bot';
-            botDiv.innerHTML = data.response.replace(/\n/g, '<br>');
-            box.appendChild(botDiv);
-            app.state.chatHistory.push({ role: 'user', content: msg }, { role: 'assistant', content: data.response });
-            localStorage.setItem('chatHistory', JSON.stringify(app.state.chatHistory.slice(-20)));
-        } catch (e) {
-            utils.showNotification("Chat error");
+
+            // Display in a simple modal or alert for now (can be improved to a full view)
+            // Creating a simple modal on the fly
+            const noteContent = data.response;
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.display = 'flex';
+            modal.innerHTML = `
+                <div class="glass-card" style="max-width: 600px; max-height: 80vh; overflow-y: auto; text-align: left;">
+                    <h2 class="indigo-text"><i class="bi bi-journal-text"></i> Smart Notes: ${topic}</h2>
+                    <div style="white-space: pre-wrap; line-height: 1.6; color: var(--text-secondary); margin: 20px 0;">${noteContent.replace(/\*\*/g, '')}</div>
+                    <button class="btn-primary-glass w-100" onclick="this.closest('.modal-overlay').remove()">Close</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+        } catch (err) {
+            console.error(err);
+            utils.showNotification(err.message, "error");
+        } finally {
+            utils.hideLoading('presentation-view');
         }
     },
 
-    /* --- UTILS --- */
-    initPWA: () => { console.log("PWA initialized"); },
-    detectAndroidDevice: () => {
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        if (isAndroid && !localStorage.getItem('apk_modal_dismissed')) {
-            // Optional: app.showAPKModal();
-        }
-    },
-    showDailyMotivation: () => { },
-    getHeaders: () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${app.state.token}` }),
+    // --- AI TUTOR CHAT ---
 
-copilot/improve-ui-layout-and-performance
-    /* --- PWA INSTALL --- */
-    deferredPrompt: null,
+    tutorHistory: [],
 
-    initPWA: () => {
-        // Listen for beforeinstallprompt event
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            app.deferredPrompt = e;
-            
-            // Show PWA banner if user hasn't dismissed it
-            if (!localStorage.getItem('pwa_dismissed')) {
-                const banner = document.getElementById('pwa-banner');
-                if (banner) {
-                    setTimeout(() => {
-                        banner.style.display = 'flex';
-                    }, CONFIG.PWA_BANNER_DELAY);
-                }
-            }
-        });
+    sendTutorMessage: async () => {
+        const input = document.getElementById('tutor-input');
+        const message = input.value.trim();
+        if (!message) return;
 
-        // Listen for successful installation
-        window.addEventListener('appinstalled', () => {
-            console.log('PWA installed successfully');
-            app.dismissPWA();
-        });
-        
-        // Online/Offline detection
-        const offlineIndicator = document.getElementById('offline-indicator');
-        
-        window.addEventListener('online', () => {
-            console.log('Back online');
-            if (offlineIndicator) offlineIndicator.style.display = 'none';
-        });
-        
-        window.addEventListener('offline', () => {
-            console.log('Gone offline');
-            if (offlineIndicator) offlineIndicator.style.display = 'flex';
-        });
-        
-        // Check initial status
-        if (!navigator.onLine && offlineIndicator) {
-            offlineIndicator.style.display = 'flex';
-        }
-    },
+        // Add User Message
+        const historyContainer = document.getElementById('tutor-history');
+        const userMsg = document.createElement('div');
+        userMsg.className = 'msg user';
+        userMsg.style.cssText = `background: var(--primary); color: white; padding: 10px 15px; border-radius: 12px 12px 0 12px; max-width: 80%; align-self: flex-end; margin: 5px 0;`;
+        userMsg.textContent = message;
+        historyContainer.appendChild(userMsg);
 
-    installPWA: async () => {
-        if (!app.deferredPrompt) {
-            utils.showNotification('PWA installation is not available on this device/browser.');
-            return;
-        }
+        // Clear input
+        input.value = '';
+        historyContainer.scrollTop = historyContainer.scrollHeight;
 
-        app.deferredPrompt.prompt();
-        const { outcome } = await app.deferredPrompt.userChoice;
-        
-        if (outcome === 'accepted') {
-            console.log('User accepted PWA installation');
+        // Show thinking indicator
+        const loadingMsg = document.createElement('div');
+        loadingMsg.className = 'msg bot loading';
+        loadingMsg.style.cssText = `background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 12px 12px 12px 0; max-width: 80%; margin: 5px 0; font-style: italic; color: var(--text-muted);`;
+        loadingMsg.innerHTML = '<i class="bi bi-three-dots"></i> Thinking...';
+        historyContainer.appendChild(loadingMsg);
+        historyContainer.scrollTop = historyContainer.scrollHeight;
 
-    shareQuiz: () => {
-        const score = document.getElementById('final-score').innerText;
-        const text = `I just scored ${score} on S Quiz! 🚀 Try it yourself: ${window.location.origin}`;
-        if (navigator.share) {
-            navigator.share({ title: 'S Quiz Result', text: text, url: window.location.origin });
- main
-        } else {
-            navigator.clipboard.writeText(text);
-            utils.showNotification("Result copied to clipboard!", "success");
+        try {
+            const res = await fetch(`${API_BASE_URL}/teacher_help`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${app.state.token}`
+                },
+                body: JSON.stringify({
+                    task: "Chat",
+                    topic: "General",
+                    details: message
+                })
+            });
+
+            if (!res.ok) throw new Error("AI didn't respond");
+            const data = await res.json();
+
+            // Remove loading
+            loadingMsg.remove();
+
+            // Add Bot Message
+            const botMsg = document.createElement('div');
+            botMsg.className = 'msg bot';
+            botMsg.style.cssText = `background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 12px 12px 12px 0; max-width: 80%; margin: 5px 0;`;
+            // Simple markdown parsing for bold
+            botMsg.innerHTML = data.response.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+            historyContainer.appendChild(botMsg);
+            historyContainer.scrollTop = historyContainer.scrollHeight;
+
+        } catch (err) {
+            loadingMsg.textContent = "Error: " + err.message;
+            loadingMsg.style.color = '#ef4444';
         }
     }
 };
-
-function getRandomQuote() {
-    const quotes = [
-        { text: "The beautiful thing about learning is that no one can take it away from you.", author: "B.B. King" },
-        { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
-        { text: "Believe in yourself and all that you are.", author: "Christian D. Larson" },
-        { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
-        { text: "Your talent is God's gift to you. What you do with it is your gift back to God.", author: "Leo Buscaglia" }
-    ];
-    return quotes[Math.floor(Math.random() * quotes.length)];
-}
-
-app.init();

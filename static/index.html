@@ -8,169 +8,133 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link rel="apple-touch-icon" href="/static/icon-192.png">
-    <!-- Poppins Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+
+    <!-- Fonts: Outfit for Modern SaaS Look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
+
     <!-- Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#6366f1">
-    <!-- CSS -->
-    <link rel="stylesheet" href="/static/style.css?v=7">
+    <meta name="theme-color" content="#0f172a">
+
+    <!-- CSS (Version 10 to force refresh) -->
+    <link rel="stylesheet" href="/static/style.css?v=10">
 </head>
 
 <body>
 
-    <!-- Onboarding Modal (Shown Once) -->
-    <div id="onboarding-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-premium-card onboarding-card">
-            <div class="onboarding-steps">
-                <!-- Step 1: Welcome -->
-                <div class="onboarding-step active" data-step="1">
-                    <div class="onboarding-icon"><i class="bi bi-mortarboard-fill"></i></div>
-                    <h2>Welcome to S Quiz</h2>
-                    <p>Your premium AI learning assistant. Master any topic with ease.</p>
-                </div>
-                <!-- Step 2: Features -->
-                <div class="onboarding-step" data-step="2">
-                    <div class="onboarding-icon"><i class="bi bi-lightning-charge-fill"></i></div>
-                    <h2>AI Power</h2>
-                    <p>Generate quizzes from topics or upload your own PDFs for personalized practice.</p>
-                </div>
-                <!-- Step 3: Languages & Tutor -->
-                <div class="onboarding-step" data-step="3">
-                    <div class="onboarding-icon"><i class="bi bi-translate"></i></div>
-                    <h2>Learn in Any Language</h2>
-                    <p>Support for 12+ Indian languages and a 24/7 AI Tutor to help you learn better.</p>
-                </div>
-            </div>
-            <div class="onboarding-controls">
-                <div class="onboarding-dots">
-                    <span class="dot active"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                </div>
-                <button class="btn btn-primary-glow" onclick="app.nextOnboarding()">Next <i
-                        class="bi bi-arrow-right"></i></button>
-            </div>
-        </div>
+    <!-- Background Animation -->
+    <div class="floating-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
     </div>
 
     <!-- Permission Explanation Screen -->
     <div id="permission-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-premium-card">
-            <div class="icon-header indigo"><i class="bi bi-shield-check"></i></div>
+        <div class="glass-card" style="max-width: 400px; text-align: center;">
+            <div class="icon-header indigo" style="font-size: 3rem; margin-bottom: 20px;"><i
+                    class="bi bi-shield-check"></i></div>
             <h2>Storage & Internet Access</h2>
-            <p class="permission-text">S Quiz needs <strong>Storage</strong> access to process your study material and
+            <p class="permission-text" style="color: var(--text-muted); margin-bottom: 30px;">
+                S Quiz needs <strong>Storage</strong> access to process your study material and
                 <strong>Internet</strong> access to connect with our advanced AI Engine.
             </p>
-            <div class="permission-list">
-                <div class="permission-item"><i class="bi bi-folder-check"></i> Read PDFs & Study Notes</div>
-                <div class="permission-item"><i class="bi bi-wifi"></i> Instant AI Quiz Generation</div>
-            </div>
-            <button class="btn btn-primary-glow w-100" onclick="app.allowPermissions()">Allow & Continue</button>
+            <button class="btn-primary-glass w-100" onclick="app.allowPermissions()">Allow & Continue</button>
         </div>
     </div>
- copilot/improve-ui-layout-and-performance
-        <input type="text" id="username-input" class="input-field" placeholder="Username or Email">
-        
-        <!-- Password Field with Show/Hide Toggle -->
-        <div style="position: relative; width: 100%; margin-bottom: 20px;">
-            <input type="password" id="password-input" class="input-field" placeholder="Password" style="padding-right: 50px; margin-bottom: 0;">
-            <button type="button" id="toggle-password" class="password-toggle-btn" onclick="app.togglePasswordVisibility()" aria-label="Show password">
-                <i class="bi bi-eye" id="password-toggle-icon"></i>
-            </button>
-        </div>
 
-        <button class="btn" onclick="app.login()">Start Learning 🚀</button>
-
-        <div style="display: flex; align-items: center; margin: 30px 0 20px;">
-            <hr style="flex:1; border:0; border-top:1px solid rgba(255,255,255,0.2);">
-            <span style="padding: 0 10px; color: var(--text-muted); font-size: 0.9rem;">OR</span>
-            <hr style="flex:1; border:0; border-top:1px solid rgba(255,255,255,0.2);">
-
-    <!-- Auth View -->
+    <!-- Auth View (Glassmorphism Redesign) -->
     <div id="auth-view" class="screen auth-screen">
-        <div class="auth-header">
-            <div class="nav-brand">
-                <div class="nav-logo"><i class="bi bi-lightning-charge-fill"></i></div>
-                <span>S Quiz</span>
+        <div class="auth-card-glass">
+            <div class="auth-header">
+                <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+                    <div class="nav-logo" style="width: 60px; height: 60px; font-size: 2rem;"><i
+                            class="bi bi-lightning-charge-fill"></i></div>
+                </div>
+                <h1 class="auth-title">S Quiz</h1>
+                <p class="auth-subtitle">Master any topic with AI</p>
             </div>
-            <p class="auth-subtitle">Premium AI Learning for Students</p>
-      main
-        </div>
 
-        <div class="auth-form-card card-premium">
             <div class="auth-tabs">
-                <button class="auth-tab active" onclick="app.switchAuthTab('login')">Login</button>
-                <button class="auth-tab" onclick="app.switchAuthTab('signup')">Sign Up</button>
+                <button class="auth-tab active">Login</button>
+                <button class="auth-tab">Sign Up</button>
             </div>
 
             <!-- Login Form -->
-            <div id="login-container">
-                <div class="input-group">
-                    <label>Email Address</label>
-                    <input type="email" id="login-email" class="input-field" placeholder="student@example.com">
+            <div id="login-container" class="auth-form-container">
+                <div class="input-group-glass">
+                    <i class="bi bi-envelope"></i>
+                    <input type="email" id="login-email" placeholder="Email Address">
                 </div>
-                <div class="input-group">
-                    <label>Password</label>
-                    <div class="password-wrapper">
-                        <input type="password" id="login-password" class="input-field" placeholder="••••••••">
-                        <button class="btn-toggle-password" onclick="app.togglePassword('login-password', this)">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                    </div>
+                <div class="input-group-glass">
+                    <i class="bi bi-lock-fill"></i>
+                    <input type="password" id="login-password" placeholder="Password">
+                    <button class="btn-toggle-password" onclick="app.togglePassword('login-password', this)">
+                        <i class="bi bi-eye"></i>
+                    </button>
                 </div>
-                <button class="btn btn-primary-glow w-100" onclick="app.handleLogin()">Login to Account</button>
+                <button class="btn-primary-glass w-100" onclick="app.handleLogin()">
+                    <span>Login</span> <i class="bi bi-arrow-right"></i>
+                </button>
             </div>
 
             <!-- Signup Form -->
-            <div id="signup-container" style="display: none;">
-                <div class="input-group">
-                    <label>Full Name</label>
-                    <input type="text" id="signup-name" class="input-field" placeholder="John Doe">
+            <div id="signup-container" class="auth-form-container" style="display: none;">
+                <div class="profile-upload-mini" onclick="document.getElementById('signup-avatar').click()">
+                    <img id="signup-avatar-preview" src="/static/default-avatar.png" alt="Avatar"
+                        style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    <div class="upload-overlay"><i class="bi bi-camera-fill"></i></div>
+                    <input type="file" id="signup-avatar" hidden accept="image/png, image/jpeg"
+                        onchange="app.previewSignupAvatar(this)">
                 </div>
-                <div class="input-group">
-                    <label>Email Address</label>
-                    <input type="email" id="signup-email" class="input-field" placeholder="student@example.com">
+                <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">Tap to
+                    upload photo</p>
+
+                <div class="input-group-glass">
+                    <i class="bi bi-person-fill"></i>
+                    <input type="text" id="signup-name" placeholder="Full Name">
                 </div>
-                <div class="input-group">
-                    <label>Create Password</label>
-                    <div class="password-wrapper">
-                        <input type="password" id="signup-password" class="input-field" placeholder="••••••••">
-                        <button class="btn-toggle-password" onclick="app.togglePassword('signup-password', this)">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                    </div>
+                <div class="input-group-glass">
+                    <i class="bi bi-envelope"></i>
+                    <input type="email" id="signup-email" placeholder="Email Address">
                 </div>
-                <button class="btn btn-primary-glow w-100" onclick="app.handleSignup()">Create Free Account</button>
+                <div class="input-group-glass">
+                    <i class="bi bi-lock-fill"></i>
+                    <input type="password" id="signup-password" placeholder="Create Password">
+                    <button class="btn-toggle-password" onclick="app.togglePassword('signup-password', this)">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <button class="btn-primary-glass w-100" onclick="app.handleSignup()">
+                    <span>Create Account</span> <i class="bi bi-arrow-right"></i>
+                </button>
             </div>
 
-            <div class="auth-divider"><span>OR</span></div>
+            <div style="margin: 25px 0; color: var(--text-muted); font-size: 0.9rem;"><span>OR</span></div>
 
-            <button class="btn-google w-100" onclick="app.googleLogin()">
-                <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" width="20">
-                Sign in with Google
-            </button>
-
-            <button class="btn-guest w-100" onclick="app.guestLogin()">Continue as Guest 👤</button>
+            <button class="btn-guest-glass w-100" onclick="app.guestLogin()">Continue as Guest 👤</button>
         </div>
     </div>
 
     <!-- Top Navbar (Premium) -->
-    <nav class="navbar-compact">
+    <nav class="navbar-compact" style="display: none;">
         <div class="nav-brand">
             <div class="nav-logo"><i class="bi bi-lightning-charge-fill"></i></div>
             <span>S Quiz</span>
         </div>
 
         <div class="nav-user-area" id="auth-nav">
-            <div class="user-pill hidden" id="user-pill-container" onclick="app.showProfile()">
-                <div class="avatar-nav"><i class="bi bi-person-fill"></i></div>
+            <div class="user-pill" id="user-pill-container" onclick="app.showProfile()">
+                <img id="nav-user-avatar" src="/static/default-avatar.png" class="avatar-nav-img" alt="Avatar">
                 <span id="nav-user-display" class="hidden-mobile">Student</span>
             </div>
-            <button class="btn-logout hidden" id="btn-logout" onclick="app.logout()">
+            <button class="btn-logout" id="btn-logout" onclick="app.logout()" style="margin-left: 10px;">
                 <i class="bi bi-box-arrow-right"></i>
             </button>
         </div>
@@ -179,22 +143,57 @@
     <div id="app-container" style="display: none; width: 100%;">
 
         <main class="content-wrapper">
-            <!-- Hero Section (Compact) -->
-            <section class="hero-compact">
-                <h1 class="hero-title">S Quiz</h1>
-                <p class="hero-tagline">Master any topic with AI-powered quizzes.</p>
 
-                <div class="hero-actions">
-                    <button class="btn-primary-small" onclick="app.showTopic()">Start Learning</button>
-                    <div id="guest-notice" class="guest-badge hidden">
-                        <i class="bi bi-info-circle"></i> Guest Mode (Limited)
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="screen container-centered">
+                <div class="dashboard-header">
+                    <div class="welcome-card glass-card">
+                        <div class="welcome-text">
+                            <h2 id="dashboard-welcome">Welcome back! 👋</h2>
+                            <p class="motivation-text" id="dashboard-quote">"Learning never exhausts the mind."</p>
+                            <button class="btn-primary-small" onclick="app.showTopic()"
+                                style="width: auto; padding: 10px 25px;">Start New Quiz</button>
+                        </div>
+                        <div class="welcome-avatar-container">
+                            <img id="dashboard-avatar" src="/static/default-avatar.png" class="avatar-large"
+                                alt="Profile">
+                        </div>
                     </div>
                 </div>
-            </section>
 
-            <!-- Quick Navigation / Feature Buttons -->
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon indigo"><i class="bi bi-check-circle-fill"></i></div>
+                        <div class="stat-info">
+                            <h3>Quizzes</h3>
+                            <span id="stat-quizzes">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="bi bi-trophy-fill"></i></div>
+                        <div class="stat-info">
+                            <h3>Avg Score</h3>
+                            <span id="stat-score">0%</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon purple"><i class="bi bi-lightning-fill"></i></div>
+                        <div class="stat-info">
+                            <h3>Streak</h3>
+                            <span id="stat-streak">0 Days</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Quick Navigation / Feature Buttons (Floating Dock) -->
             <div class="feature-grid-compact">
-                <button class="feature-button active" id="btn-topic" onclick="app.showTopic()">
+                <button class="feature-button active" id="btn-dashboard" onclick="app.showDashboard()">
+                    <i class="bi bi-grid-fill"></i>
+                    <span>HOME</span>
+                </button>
+                <button class="feature-button" id="btn-topic" onclick="app.showTopic()">
                     <i class="bi bi-lightning-fill"></i>
                     <span>TOPIC</span>
                 </button>
@@ -216,23 +215,23 @@
             <div id="view-container" class="view-container">
 
                 <!-- 1. Topic Quiz View -->
-                <div id="topic-view" class="screen">
+                <div id="topic-view" class="screen container-centered" style="display: none;">
                     <div class="card-premium topic-card">
-                        <h2 class="section-title"><i class="bi bi-file-earmark-text"></i> Generate Quiz from Topic</h2>
+                        <h2 class="section-title"><i class="bi bi-file-earmark-text"></i> Generate Quiz</h2>
 
                         <div class="input-group">
                             <label><i class="bi bi-bullseye"></i> Enter Topic</label>
                             <input type="text" id="topic-input" class="input-field"
-                                placeholder="e.g., Photosynthesis, Indian History, Python Programming">
+                                placeholder="e.g., Photosynthesis, Indian History">
                         </div>
 
                         <div class="quiz-config-grid">
                             <div class="config-item">
-                                <label><i class="bi bi-list-ol"></i> Questions</label>
+                                <label>Questions</label>
                                 <input type="number" id="q-count" class="input-field" value="5" min="3" max="20">
                             </div>
                             <div class="config-item">
-                                <label><i class="bi bi-graph-up"></i> Difficulty</label>
+                                <label>Difficulty</label>
                                 <select id="difficulty-select" class="input-field">
                                     <option value="Easy">Easy</option>
                                     <option value="Medium" selected>Medium</option>
@@ -240,42 +239,52 @@
                                 </select>
                             </div>
                             <div class="config-item">
-                                <label><i class="bi bi-translate"></i> Language</label>
+                                <label>Language</label>
                                 <select id="language-select" class="input-field">
                                     <option value="English">English</option>
-                                    <option value="Hindi">हिन्दी (Hindi)</option>
-                                    <option value="Telugu">తెలుగు (Telugu)</option>
-                                    <option value="Tamil">தமிழ் (Tamil)</option>
-                                    <option value="Kannada">ಕನ್ನಡ (Kannada)</option>
-                                    <option value="Malayalam">മലയാളം (Malayalam)</option>
-                                    <option value="Marathi">मराठी (Marathi)</option>
-                                    <option value="Gujarati">ગુજરાતી (Gujarati)</option>
-                                    <option value="Punjabi">ਪੰਜਾਬੀ (Punjabi)</option>
-                                    <option value="Bengali">বাংলা (Bengali)</option>
-                                    <option value="Odia">ଓଡ଼ିଆ (Odia)</option>
-                                    <option value="Urdu">اردو (Urdu)</option>
+                                    <option value="Hindi">Hindi (हिन्दी)</option>
+                                    <option value="Hinglish">Hinglish</option>
+                                    <option value="Tamil">Tamil (தமிழ்)</option>
+                                    <option value="Telugu">Telugu (తెలుగు)</option>
+                                    <option value="Bengali">Bengali (বাংলা)</option>
+                                    <option value="Marathi">Marathi (मराठी)</option>
+                                    <option value="Gujarati">Gujarati (ગુજરાતી)</option>
+                                    <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
+                                    <option value="Malayalam">Malayalam (മലയാളം)</option>
+                                </select>
+                            </div>
+                            <div class="config-item">
+                                <label>Question Type</label>
+                                <select id="type-select" class="input-field">
+                                    <option value="Multiple Choice" selected>Multiple Choice</option>
+                                    <option value="True/False">True / False</option>
+                                    <option value="Mixed">Mixed</option>
                                 </select>
                             </div>
                         </div>
 
-                        <button class="btn btn-primary-glow w-100" onclick="app.generateTopicQuiz()">
+                        <button class="btn-primary-glow w-100" onclick="app.generateTopicQuiz()">
                             Generate Quiz 🚀
                         </button>
                     </div>
                 </div>
 
                 <!-- 2. Upload View -->
-                <div id="upload-view" class="screen" style="display: none;">
+                <div id="upload-view" class="screen container-centered" style="display: none;">
                     <div class="card-premium">
                         <h2 class="section-title"><i class="bi bi-cloud-arrow-up"></i> Upload Study Material</h2>
-                        <div class="upload-area" onclick="document.getElementById('file-upload').click()">
-                            <div class="onboarding-icon indigo"><i class="bi bi-file-earmark-pdf"></i></div>
+                        <div class="upload-area"
+                            style="border: 2px dashed var(--glass-border); border-radius: 20px; padding: 40px; text-align: center; cursor: pointer; transition: 0.3s; background: rgba(255,255,255,0.02);"
+                            onclick="document.getElementById('file-upload').click()">
+                            <div class="onboarding-icon indigo"
+                                style="font-size: 3rem; margin-bottom: 20px; color: var(--primary);"><i
+                                    class="bi bi-file-earmark-pdf"></i></div>
                             <h3>Drop your PDF or Text file here</h3>
-                            <p id="file-label-text">Tap to browse files</p>
+                            <p id="file-label-text" style="color: var(--text-muted);">Tap to browse files</p>
                             <input type="file" id="file-upload" hidden onchange="app.handleFileSelect(this)">
                         </div>
 
-                        <div class="quiz-config-grid" style="margin-top: 20px;">
+                        <div class="quiz-config-grid" style="margin-top: 30px;">
                             <div class="config-item">
                                 <label>Questions</label>
                                 <input type="number" id="file-q-count" class="input-field" value="10">
@@ -283,387 +292,143 @@
                             <div class="config-item">
                                 <label>Difficulty</label>
                                 <select id="file-difficulty-select" class="input-field">
-                                    <option value="Easy">Easy</option>
-                                    <option value="Medium" selected>Medium</option>
-                                    <option value="Hard">Hard</option>
+                                    <option value="Medium">Medium</option>
+                                </select>
+                            </div>
+                            <div class="config-item">
+                                <label>Language</label>
+                                <select id="file-language-select" class="input-field">
+                                    <option value="English">English</option>
+                                    <option value="Hindi">Hindi</option>
+                                    <option value="Tamil">Tamil</option>
+                                    <option value="Telugu">Telugu</option>
+                                    <option value="Bengali">Bengali</option>
+                                    <option value="Marathi">Marathi</option>
+                                </select>
+                            </div>
+                            <div class="config-item">
+                                <label>Type</label>
+                                <select id="file-type-select" class="input-field">
+                                    <option value="Multiple Choice">MCQ</option>
+                                    <option value="Mixed">Mixed</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="input-group">
-                            <label>Language</label>
-                            <select id="file-language-select" class="input-field">
-                                <option value="English">English</option>
-                                <option value="Hindi">हिन्दी (Hindi)</option>
-                                <option value="Telugu">తెలుగు (Telugu)</option>
-                                <option value="Tamil">தமிழ் (Tamil)</option>
-                                <option value="Kannada">ಕನ್ನಡ (Kannada)</option>
-                                <option value="Malayalam">മലയാളം (Malayalam)</option>
-                                <option value="Marathi">मराठी (Marathi)</option>
-                                <option value="Gujarati">ગુજરાતી (Gujarati)</option>
-                                <option value="Punjabi">ਪੰਜਾਬੀ (Punjabi)</option>
-                                <option value="Bengali">বাংলা (Bengali)</option>
-                                <option value="Odia">ଓଡ଼ିଆ (Odia)</option>
-                                <option value="Urdu">اردو (Urdu)</option>
-                            </select>
-                        </div>
 
-                        <button class="btn btn-primary-glow w-100" onclick="app.generateFileQuiz()">Generate Quiz from
-                            File 📂</button>
+                        <button class="btn-primary-glow w-100" onclick="app.generateFileQuiz()">Generate Quiz
+                            📂</button>
                     </div>
                 </div>
 
                 <!-- 3. Smart Notes View -->
-                <div id="presentation-view" class="screen" style="display: none;">
+                <div id="presentation-view" class="screen container-centered" style="display: none;">
                     <div class="card-premium">
-                        <h2 class="section-title"><i class="bi bi-journal-text"></i> Smart Notes Creator</h2>
-                        <p style="text-align: center; color: var(--text-muted); margin-bottom: 25px;">Turn any topic
-                            into a professional study guide.</p>
-
+                        <h2 class="section-title"><i class="bi bi-journal-text"></i> Notes Creator</h2>
                         <div class="input-group">
                             <label>Topic</label>
                             <input type="text" id="ppt-topic" class="input-field" placeholder="e.g. Photosynthesis">
                         </div>
-
-                        <div class="quiz-config-grid">
-                            <div class="config-item">
-                                <label>Format</label>
-                                <select id="ppt-format" class="input-field">
-                                    <option value="pdf" selected>📄 PDF Guide</option>
-                                    <option value="docx">📝 Word Doc</option>
-                                    <option value="pptx">📊 Slides (PPTX)</option>
-                                </select>
-                            </div>
-                            <div class="config-item">
-                                <label>Style</label>
-                                <select id="ppt-font" class="input-field">
-                                    <option value="Modern">Modern Sans</option>
-                                    <option value="Classic">Classic Serif</option>
-                                </select>
-                            </div>
-                        </div>
-                        <input type="hidden" id="ppt-slides" value="10">
-
-                        <button class="btn btn-primary-glow w-100" onclick="app.generateNotes()">Create Notes ✨</button>
+                        <button class="btn-primary-glow w-100" onclick="app.generateNotes()">Create Notes ✨</button>
                     </div>
                 </div>
 
                 <!-- 4. Tutor View -->
-                <div id="tutor-view" class="screen" style="display: none;">
-                    <div class="card-premium"
-                        style="padding: 0; overflow: hidden; height: 70vh; display: flex; flex-direction: column;">
-                        <div style="padding: 20px; border-bottom: 1px solid var(--border-color); background: #fafafa;">
-                            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700;"><i
-                                    class="bi bi-robot indigo-icon"></i> AI Tutor</h3>
+                <div id="tutor-view" class="screen container-centered" style="display: none;">
+                    <div class="card-premium" style="height: 70vh; display: flex; flex-direction: column; padding: 0;">
+                        <div style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <h3>AI Tutor</h3>
                         </div>
-
-                        <div id="tutor-history"
-                            style="flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
-                            <div class="msg msg-bot">Hello! I'm your AI tutor. Ask me anything about your studies! 👋
-                            </div>
+                        <div id="tutor-history" style="flex: 1; padding: 20px; overflow-y: auto;">
+                            <div class="msg"
+                                style="background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 12px 12px 12px 0; max-width: 80%;">
+                                Hello! Ask me anything.</div>
                         </div>
-
                         <div
-                            style="padding: 20px; border-top: 1px solid var(--border-color); display: flex; gap: 12px; background: white;">
+                            style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 10px;">
                             <input type="text" id="tutor-input" class="input-field" style="margin: 0;"
-                                placeholder="Ask a question..."
-                                onkeypress="if(event.key==='Enter') app.sendTutorMessage()">
-                            <button class="btn btn-primary-glow" style="width: auto; padding: 0 25px;"
-                                onclick="app.sendTutorMessage()">
-                                <i class="bi bi-send-fill"></i>
-                            </button>
+                                placeholder="Type here...">
+                            <button class="btn-primary-small" onclick="app.sendTutorMessage()" style="width: auto;"><i
+                                    class="bi bi-send-fill"></i></button>
                         </div>
                     </div>
                 </div>
 
                 <!-- 5. Quiz Taking View -->
-                <div id="quiz-view" class="screen" style="display: none;">
+                <div id="quiz-view" class="screen container-centered" style="display: none;">
                     <div class="card-premium">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                            <span style="font-weight: 700; color: var(--primary); font-size: 0.9rem;"
-                                id="quiz-topic-display">TOPIC</span>
-                            <div class="badge-premium">Question <span id="current-q">1</span> / <span
-                                    id="total-q">5</span></div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                            <span id="quiz-topic-display" style="color: var(--primary); font-weight: 700;">TOPIC</span>
+                            <span class="badge">Q <span id="current-q">1</span></span>
                         </div>
-
-                        <h3 id="question-text"
-                            style="font-size: 1.25rem; font-weight: 700; margin-bottom: 30px; line-height: 1.5; color: var(--text-main);">
-                            Question goes here?</h3>
-
-                        <div id="options-container" style="display: grid; gap: 12px; margin-bottom: 30px;">
-                            <!-- Options injected by JS -->
+                        <h3 id="question-text" style="font-size: 1.4rem; margin-bottom: 30px;">Question?</h3>
+                        <div id="options-container" style="display: grid; gap: 15px; margin-bottom: 30px;"></div>
+                        <div id="explanation-box"
+                            style="display: none; background: rgba(99,102,241,0.1); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                            <h4 style="color: var(--primary); margin-bottom: 10px;">Explanation</h4>
+                            <p id="explanation-text"></p>
                         </div>
-
-                        <!-- Explanation -->
-                        <div id="explanation-box" class="explanation-card" style="display:none;">
-                            <h4 style="margin-bottom: 10px; color: var(--primary);"><i class="bi bi-lightbulb-fill"></i>
-                                Explanation</h4>
-                            <p id="explanation-text" style="font-size: 0.95rem; line-height: 1.6;"></p>
-                        </div>
-
-                        <button class="btn btn-primary-glow w-100" id="btn-next-question"
-                            onclick="app.nextQuestion()">Next Question <i class="bi bi-arrow-right"></i></button>
+                        <button class="btn-primary-glow w-100 hidden" id="btn-next-question"
+                            onclick="app.nextQuestion()">Next <i class="bi bi-arrow-right"></i></button>
                     </div>
                 </div>
 
                 <!-- 6. Result View -->
-                <div id="result-view" class="screen" style="display: none;">
+                <div id="result-view" class="screen container-centered" style="display: none;">
                     <div class="card-premium" style="text-align: center;">
-                        <div class="onboarding-icon" style="background: #fff8e1; color: #ffc107; margin: 0 auto 20px;">
-                            <i class="bi bi-trophy-fill"></i>
-                        </div>
-                        <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 5px;">Quiz Complete!</h2>
-                        <p class="text-muted" style="margin-bottom: 20px;">Excellent progress, Student!</p>
-
-                        <div class="badge-premium"
-                            style="display: inline-block; padding: 10px 20px; font-size: 1.1rem; margin-bottom: 30px;">
-                            Score: <span id="final-score" style="font-weight: 800;">90%</span>
-                        </div>
-
-    copilot/improve-ui-layout-and-performance
-    <!-- Profile View/Edit Screen -->
-    <div id="profile-view" class="screen" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; background: var(--bg-gradient); overflow-y: auto; padding: 30px;">
-        <div class="container" style="max-width: 700px; margin: 80px auto; padding: 0 20px;">
-            <!-- Back Button -->
-            <button class="btn-back" onclick="app.closeProfile()">
-                <i class="bi bi-arrow-left"></i> Back
-            </button>
-            
-            <!-- Profile Card -->
-            <div class="glass-card" style="padding: 50px;">
-                <div style="text-align: center; margin-bottom: 40px;">
-                    <h2 style="font-size: 2rem; margin-bottom: 10px;">👤 Your Profile</h2>
-                    <p style="color: var(--text-muted);">Manage your learning profile</p>
+                        <i class="bi bi-trophy-fill"
+                            style="font-size: 4rem; color: #f59e0b; margin-bottom: 20px; display: block;"></i>
+                        <h2 style="font-size: 2.5rem; margin-bottom: 10px;">Quiz Complete!</h2>
+                        <div style="font-size: 1.5rem; margin-bottom: 30px;">Score: <span id="final-score"
+                                style="font-weight: 800; color: var(--success);">0%</span></div>
+                        <button class="btn-primary-glow w-100" onclick="app.showDashboard()">Back to Home</button>
+                    </div>
                 </div>
-                
-                <!-- Profile Photo Section -->
-                <div style="text-align: center; margin-bottom: 40px;">
-                    <div id="profile-photo-display" style="width: 120px; height: 120px; margin: 0 auto 20px; background: var(--primary-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem; overflow: hidden; box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);">
-                        <i class="bi bi-person-fill"></i>
+
+        </main>
+
+        <!-- 7. Profile View -->
+        <div id="profile-view" class="screen container-centered" style="display: none;">
+            <div class="card-premium profile-card">
+                <div class="profile-header">
+                    <div class="profile-upload-mini" onclick="document.getElementById('profile-upload').click()">
+                        <img id="profile-avatar-display" src="/static/default-avatar.png" class="avatar-large"
+                            alt="Profile" style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%;">
+                        <div class="upload-overlay"><i class="bi bi-camera-fill"></i></div>
+                        <input type="file" id="profile-upload" hidden accept="image/png, image/jpeg"
+                            onchange="app.uploadProfilePicture(this)">
                     </div>
-                    <p style="font-size: 0.9rem; color: var(--text-muted);" id="profile-email-display"></p>
+                    <h2 id="profile-name-display">Student Name</h2>
+                    <p id="profile-email-display" style="color: var(--text-muted);">student@example.com</p>
                 </div>
-                
-                <!-- Editable Fields -->
-                <div style="display: grid; gap: 20px;">
-                    <!-- Full Name -->
-                    <div>
-                        <label style="display: block; margin-bottom: 8px; color: var(--text-body); font-weight: 600;">
-                            <i class="bi bi-person"></i> Full Name
-                        </label>
-                        <input type="text" id="profile-name" class="input-field" placeholder="Enter your full name" style="margin-bottom: 0;">
+
+                <div class="profile-form">
+                    <div class="input-group-glass">
+                        <label>Full Name</label>
+                        <input type="text" id="profile-name-input" class="input-field" placeholder="Your Name">
                     </div>
-                    
-                    <!-- Class/Course -->
-                    <div>
-                        <label style="display: block; margin-bottom: 8px; color: var(--text-body); font-weight: 600;">
-                            <i class="bi bi-book"></i> Class / Course
-                        </label>
-                        <input type="text" id="profile-class" class="input-field" placeholder="e.g., Grade 10, B.Sc Computer Science" style="margin-bottom: 0;">
+                    <div class="input-group-glass">
+                        <label>Class / Course</label>
+                        <input type="text" id="profile-class-input" class="input-field" placeholder="e.g. Class 10">
                     </div>
-                    
-                    <!-- Preferred Language -->
-                    <div>
-                        <label style="display: block; margin-bottom: 8px; color: var(--text-body); font-weight: 600;">
-                            <i class="bi bi-translate"></i> Preferred Language
-                        </label>
-                        <select id="profile-language" class="input-field" style="margin-bottom: 0;">
+                    <div class="input-group-glass">
+                        <label>Language</label>
+                        <select id="profile-lang-select" class="input-field">
                             <option value="English">English</option>
-                            <option value="Hindi">Hindi (हिन्दी)</option>
-                            <option value="Telugu">Telugu (తెలుగు)</option>
-                            <option value="Tamil">Tamil (தமிழ்)</option>
-                            <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
-                            <option value="Malayalam">Malayalam (മലയാളം)</option>
-                            <option value="Marathi">Marathi (मराठी)</option>
-                            <option value="Bengali">Bengali (বাংলা)</option>
-                            <option value="Gujarati">Gujarati (ગુજરાતી)</option>
-                            <option value="Punjabi">Punjabi (ਪੰਜਾਬੀ)</option>
-                            <option value="Urdu">Urdu (اردو)</option>
+                            <option value="Hindi">Hindi</option>
                         </select>
                     </div>
-                    
-                    <!-- Bio/About -->
-                    <div>
-                        <label style="display: block; margin-bottom: 8px; color: var(--text-body); font-weight: 600;">
-                            <i class="bi bi-chat-text"></i> About / Bio
-                        </label>
-                        <textarea id="profile-bio" class="input-field" placeholder="Tell us about yourself and your learning goals..." rows="4" style="margin-bottom: 0; resize: vertical;"></textarea>
-                    </div>
-                </div>
-                
-                <!-- Save Button -->
-                <div style="margin-top: 30px; display: flex; gap: 15px;">
-                    <button class="btn" onclick="app.saveProfile()" style="flex: 1;">
-                        <i class="bi bi-check-circle"></i> Save Changes
-                    </button>
-                    <button class="btn btn-secondary" onclick="app.closeProfile()" style="flex: 0 0 auto;">
-                        Cancel
-                    </button>
+
+                    <button class="btn-primary-glow w-100" onclick="app.saveProfile()">Save Changes</button>
+                    <button class="btn-primary-small" onclick="app.showDashboard()"
+                        style="width: 100%; margin-top: 15px; background: transparent; border: 1px solid rgba(255,255,255,0.1);">Cancel</button>
                 </div>
             </div>
         </div>
-    </div>
 
-    <style>
-        @keyframes spin {
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-    </style>
-
-    <!-- Onboarding Modal -->
-    <!-- Improved Onboarding Modal with 3-Card Layout -->
-    <div id="onboarding-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content" style="max-width: 900px; padding: 60px 40px;">
-            <div class="modal-header" style="text-align: center; margin-bottom: 50px;">
-                <div class="app-icon" style="margin: 0 auto 20px; width: 80px; height: 80px; font-size: 3rem;">
-                    <i class="bi bi-stars"></i>
-                </div>
-                <h2 style="font-size: 2.5rem; margin-bottom: 10px;">✨ Welcome to S Quiz!</h2>
-                <p style="font-size: 1.1rem; color: var(--text-muted);">Your AI-Powered Learning Companion</p>
-            </div>
-            
-            <!-- 3-Card Explanation -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; margin-bottom: 40px;">
-                <!-- Card 1: Upload -->
-                <div class="onboarding-card">
-                    <div class="onboarding-icon">
-                        <i class="bi bi-cloud-upload-fill"></i>
-                    </div>
-                    <h3>1. Upload Material</h3>
-                    <p>Drop your PDFs, DOCX files, or simply type any topic you want to learn</p>
-                </div>
-                
-                <!-- Card 2: AI Generation -->
-                <div class="onboarding-card">
-                    <div class="onboarding-icon">
-                        <i class="bi bi-stars"></i>
-                    </div>
-                    <h3>2. AI Magic</h3>
-                    <p>Our AI generates quizzes, notes, and detailed explanations instantly</p>
-                </div>
-                
-                <!-- Card 3: Learn Faster -->
-                <div class="onboarding-card">
-                    <div class="onboarding-icon">
-                        <i class="bi bi-lightning-charge-fill"></i>
-                    </div>
-                    <h3>3. Learn Smarter</h3>
-                    <p>Master topics faster with personalized content in your own language</p>
-                </div>
-            </div>
-            
-            <!-- Features List -->
-            <div style="background: rgba(139, 92, 246, 0.1); border-left: 3px solid var(--accent); padding: 20px; border-radius: 12px; margin-bottom: 30px;">
-                <h3 style="margin-bottom: 15px; font-size: 1.1rem; color: var(--text-main);">
-                    <i class="bi bi-check2-circle"></i> What You Get:
-                </h3>
-                <ul style="list-style: none; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.95rem;">
-                    <li><i class="bi bi-check" style="color: var(--accent);"></i> Unlimited AI Quizzes</li>
-                    <li><i class="bi bi-check" style="color: var(--accent);"></i> 12+ Languages</li>
-                    <li><i class="bi bi-check" style="color: var(--accent);"></i> 24/7 AI Tutor</li>
-                    <li><i class="bi bi-check" style="color: var(--accent);"></i> Free Forever</li>
-                </ul>
-            </div>
-            
-            <div class="modal-actions">
-                <button class="modal-btn modal-btn-primary" onclick="app.startLearning()">
-                    Get Started 🚀
-                </button>
-            </div>
-        </div>
-    </div>
-             <!-- Motivational Quote -->
-                        <div class="explanation-card"
-                            style="display: block; background: #f5f3ff; border-left: 4px solid var(--primary); text-align: left; margin: 0 auto 30px;">
-                            <i class="bi bi-quote" style="font-size: 1.5rem; color: var(--primary); opacity: 0.5;"></i>
-                            <p id="result-quote-text"
-                                style="font-style: italic; font-weight: 500; font-size: 1rem; color: var(--text-main); margin-bottom: 10px;">
-                            </p>
-                            <span id="result-quote-author"
-                                style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;"></span>
-                        </div>
-
-                        <div style="display: flex; gap: 12px; justify-content: center;">
-                            <button class="btn btn-primary-glow" onclick="app.showTopic()" style="flex: 1;">New Quiz
-                                ↺</button>
-                            <button class="btn btn-outline-small" onclick="app.shareQuiz()" style="width: 60px;"><i
-                                    class="bi bi-share"></i></button>
-                        </div>
-                    </div>
-                </div>
-        main
-
-                <!-- 7. Profile View (BYJU'S style) -->
-                <div id="profile-view" class="screen" style="display: none;">
-                    <div class="card-premium profile-card">
-                        <div class="profile-header">
-                            <div class="profile-avatar"><i class="bi bi-person"></i></div>
-                            <h2 id="profile-name-display">Student Name</h2>
-                            <p id="profile-email-display">student@example.com</p>
-                        </div>
-
-                        <div class="profile-form">
-                            <div class="input-group">
-                                <label><i class="bi bi-person-badge"></i> Full Name</label>
-                                <input type="text" id="profile-name-input" class="input-field" placeholder="Your Name">
-                            </div>
-                            <div class="input-group">
-                                <label><i class="bi bi-book"></i> Class / Course</label>
-                                <input type="text" id="profile-class-input" class="input-field"
-                                    placeholder="e.g. Class 10, JEE, NEET">
-                            </div>
-                            <div class="input-group">
-                                <label><i class="bi bi-translate"></i> Preferred Language</label>
-                                <select id="profile-lang-select" class="input-field">
-                                    <option value="English">English</option>
-                                    <option value="Hindi">हिन्दी (Hindi)</option>
-                                    <option value="Telugu">తెలుగు (Telugu)</option>
-                                    <option value="Tamil">தமிழ் (Tamil)</option>
-                                    <option value="Kannada">ಕನ್ನಡ (Kannada)</option>
-                                    <option value="Malayalam">മലയാളം (Malayalam)</option>
-                                    <option value="Marathi">मराठी (Marathi)</option>
-                                    <option value="Gujarati">ગુજરાતી (Gujarati)</option>
-                                    <option value="Punjabi">ਪੰਜਾਬੀ (Punjabi)</option>
-                                    <option value="Bengali">বাংলা (Bengali)</option>
-                                    <option value="Odia">ଓଡ଼ିଆ (Odia)</option>
-                                    <option value="Urdu">اردو (Urdu)</option>
-                                </select>
-                            </div>
-                            <button class="btn btn-primary-glow w-100" onclick="app.saveProfile()">Save Profile
-                                Changes</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 8. Library List View -->
-                <div id="library-view" class="screen" style="display: none;">
-                    <div id="library-list"></div>
-                </div>
-
-            </div> <!-- End Container -->
     </div> <!-- End App Container -->
 
-copilot/improve-ui-layout-and-performance
-    <!-- Offline Indicator -->
-    <div id="offline-indicator" class="offline-indicator" style="display: none;">
-        <i class="bi bi-wifi-off"></i>
-        <span>You're offline</span>
-    </div>
-
-    <script>
-        // Helper for navigation highlighting
-        function setActiveNav(element) {
-            document.querySelectorAll('.nav-pill').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
-        }
-    </script>
-
-    <!-- Duplicate/Legacy structures removed for stability -->
- main
     <script src="/static/translations.js"></script>
-    <script src="/static/script.js?v=8"></script>
+    <script src="/static/script.js?v=22"></script>
 </body>
 
 </html>

@@ -18,6 +18,7 @@ class TopicQuizRequest(BaseModel):
     num_questions: int = Field(5, ge=1, le=10)
     mastery_level: str = "Intermediate" # Beginner, Intermediate, Advanced, Exam
     context: Optional[str] = None
+    question_type: str = "Multiple Choice"
 
 class TeacherHelpRequest(BaseModel):
     task: str

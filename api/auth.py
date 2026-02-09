@@ -17,30 +17,33 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 @router.post("/register", response_model=UserDisplay)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    # Check if email already exists
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Check if username already exists (fallback for display)
-    db_username = db.query(User).filter(User.username == user.username).first()
-    if db_username:
-        # If username exists but email doesn't, we can append a random string or just error
-        # For simplicity, let's error or auto-adjust.
-        user.username = f"{user.username}_{os.urandom(2).hex()}"
-    
-    hashed_password = auth_service.get_password_hash(user.password)
-    new_user = User(
-        username=user.username,
-        email=user.email,
-        full_name=user.full_name,
-        hashed_password=hashed_password,
-        role="user"
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+    try:
+        # Check if email already exists
+        db_user = db.query(User).filter(User.email == user.email).first()
+        if db_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Check if username already exists (fallback for display)
+        db_username = db.query(User).filter(User.username == user.username).first()
+        if db_username:
+            # For simplicity, append random string
+            user.username = f"{user.username}_{os.urandom(2).hex()}"
+        
+        hashed_password = auth_service.get_password_hash(user.password)
+        new_user = User(
+            username=user.username,
+            email=user.email,
+            full_name=user.full_name,
+            hashed_password=hashed_password,
+            role="user"
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+    except Exception as e:
+        logger.exception("Error during registration")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @router.post("/token", response_model=Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):

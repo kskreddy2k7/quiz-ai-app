@@ -34,7 +34,7 @@ class AIService:
         self.status = "Offline"
         self.model = None
         self.fallback_models = []
-        self.current_provider = None
+        self.current_provider = ""
         
         # Connection pooling for better performance
         self._session = None
@@ -88,10 +88,11 @@ class AIService:
                 genai.configure(api_key=self.gemini_api_key)
                 # Try primary model first, with fallback options
                 self.fallback_models = [
+                    'gemini-1.5-flash',
+                    'gemini-1.5-pro',
+                    'gemini-1.0-pro',
                     'models/gemini-1.5-flash-latest',
-                    'models/gemini-1.5-pro-latest',
-                    'gemini-1.5-flash-latest',
-                    'gemini-1.5-pro-latest'
+                    'models/gemini-1.5-pro-latest'
                 ]
                 
                 # Use the first model without testing during init to avoid slow startup
@@ -139,7 +140,7 @@ class AIService:
     
     async def close(self):
         """Close the session when shutting down."""
-        if self._session and not self._session.closed:
+        if self._session is not None and not self._session.closed:
             await self._session.close()
     
     def _get_cache_key(self, prompt: str) -> str:
@@ -290,16 +291,14 @@ class AIService:
         
         # Try with the current model first
         loop = asyncio.get_event_loop()
- copilot/improve-ui-layout-and-performance
         
-        # If current model fails, try fallback models
-
         try:
             response = await loop.run_in_executor(None, lambda: self.model.generate_content(prompt))
             return response.text
         except Exception as e:
             print(f"Primary Gemini model failed, trying fallbacks: {e}")
-main
+
+        # If current model fails, try fallback models
         for model_name in self.fallback_models:
             try:
                 # Update model if needed
@@ -323,8 +322,6 @@ main
         
         # If all models failed
         raise Exception("All Gemini models failed. Please try again later.")
-        response = await loop.run_in_executor(None, lambda: self.model.generate_content(prompt))
-        return response.text
     
     async def generate_with_huggingface(self, prompt: str, model: str = "mistralai/Mistral-7B-Instruct-v0.2") -> str:
         """Generate text using Hugging Face Inference API (free tier)."""
@@ -379,6 +376,7 @@ main
         # Generic quiz templates
         templates = [
             {
+                "type": "single",
                 "prompt": f"What is the primary purpose of {topic}?",
                 "choices": [
                     f"To solve complex problems related to {topic}",
@@ -390,6 +388,7 @@ main
                 "explanation": f"The primary purpose of {topic} is to address and solve problems in its domain."
             },
             {
+                "type": "single",
                 "prompt": f"Which of the following is a key concept in {topic}?",
                 "choices": [
                     f"Fundamental principles of {topic}",
@@ -401,15 +400,17 @@ main
                 "explanation": f"Understanding fundamental principles is crucial for mastering {topic}."
             },
             {
-                "prompt": f"What is an important application of {topic}?",
+                "type": "multi",
+                "prompt": f"Select all valid applications of {topic}:",
                 "choices": [
-                    f"Real-world problem solving in {topic}",
+                    f"Real-world problem solving",
+                    f"Academic research in {topic}",
                     "Creating confusion",
-                    "Making things complicated",
-                    "No applications exist"
+                    "Making things complicated"
                 ],
-                "answer": f"Real-world problem solving in {topic}",
-                "explanation": f"{topic} has practical applications in solving real-world problems."
+                "answer": "", 
+                "correct_answers": [f"Real-world problem solving", f"Academic research in {topic}"],
+                "explanation": f"{topic} is widely used in both industry and academia."
             }
         ]
         
@@ -424,6 +425,25 @@ main
             questions.append(base)
         
         return questions[:num_questions]
+
+    def generate_offline_notes(self, topic: str) -> str:
+        """Generate structured offline notes when AI is unavailable."""
+        return f"""# 📚 Smart Notes: {topic} (Offline Mode)
+
+## 🔑 Key Concepts
+• **Definition**: {topic} is a fundamental concept in its field, serving as a building block for more complex topics.
+• **Core Principle**: The main idea behind {topic} is to organize and structure information or processes efficiently.
+• **Importance**: Understanding {topic} is essential for mastery of the subject.
+
+## 📝 Summary
+{topic} involves various components that work together to achieve a specific goal. While exact details vary based on context, the underlying principles remain consistent.
+
+## 🌟 Examples
+1. **Real-world Application**: {topic} is used in industry to optimize workflows.
+2. **Academic Context**: In studies, {topic} helps categorize different phenomena.
+3. **Daily Life**: You might encounter principles of {topic} when organizing your daily tasks.
+
+> **Note**: These notes were generated in offline mode. Connect to the internet and ensure AI availability for more specific details."""
 
     async def generate_quiz(self, prompt: str) -> List[Dict[str, Any]]:
         """Generate quiz with multi-provider fallback and caching."""
@@ -443,7 +463,7 @@ main
             text = await self.generate_text(prompt)
             parsed = self._parse_json(text)
             # Cache successful response
-            self._save_to_cache(prompt, json.dumps(parsed), self.current_provider)
+            self._save_to_cache(prompt, json.dumps(parsed), self.current_provider or "unknown")
             return parsed
         except Exception as e:
             print(f"AI generation failed, using offline fallback: {e}")
@@ -641,10 +661,14 @@ main
                 print(f"🤖 Trying {provider_name}...")
                 
                 # Set timeout for each provider
-                response = await asyncio.wait_for(
-                    provider_func(compressed_prompt),
-                    timeout=self.PROVIDER_TIMEOUT
-                )
+                # usage of asyncio.wait_for should be careful with Geminis synchronous calls wrapped in executor
+                if provider_name == "gemini":
+                     response = await provider_func(compressed_prompt)
+                else:
+                    response = await asyncio.wait_for(
+                        provider_func(compressed_prompt),
+                        timeout=self.PROVIDER_TIMEOUT
+                    )
                 
                 # Success!
                 self.current_provider = provider_name
@@ -658,7 +682,7 @@ main
                 self._mark_provider_failure(provider_name)
                 continue
             except Exception as e:
-                print(f"❌ {provider_name} failed: {str(e)[:100]}")
+                print(f"❌ {provider_name} failed: {str(e)[:200]}") # Increased log length
                 self._mark_provider_failure(provider_name)
                 continue
         

@@ -28,30 +28,38 @@ async def generate_topic(req: TopicQuizRequest, request: Request):
         raise HTTPException(status_code=400, detail="AI not configured")
     
     prompt = f"""
-    Generate {req.num_questions} multiple-choice questions about "{req.topic}" in {req.language}.
-    Difficulty: {req.difficulty}
+    Generate {req.num_questions} {req.question_type} questions about "{req.topic}" in {req.language}.
+    Difficulty: {req.difficulty}.
     
-    Return ONLY a JSON array:
+    IMPORTANT: The output must be valid JSON only. Ensure the questions are in {req.language}.
+    
+    Return ONLY a JSON array of objects with this structure:
     [
         {{
-            "prompt": "Question text",
+            "type": "single", // OR "multi"
+            "prompt": "Question text...",
             "choices": ["Option A", "Option B", "Option C", "Option D"],
-            "answer": "The exact correct option text",
-            "explanation": "Why this is correct",
-            "wrong_explanations": {{
-                "Wrong Option 1": "Why this is wrong",
-                "Wrong Option 2": "Why this is wrong",
-                "Wrong Option 3": "Why this is wrong"
-            }}
+            "answer": "Option A", // IF type is "single": Exact string match
+            "correct_answers": ["Option A", "Option C"], // IF type is "multi": List of correct strings
+            "explanation": "Explanation...",
+            "wrong_explanations": {{"Option B": "Why wrong..."}}
         }}
     ]
+    
+    RULES:
+    - If {req.question_type} is "Multiple Choice", generate 70% "single" and 30% "multi" type questions.
+    - If {req.question_type} is "Mixed", generate 50% "single" and 50% "multi".
+    - For "multi" type, ensure there are at least 2 correct options.
     """
     
     try:
         questions = await ai_service.generate_quiz(prompt)
         return {"questions": questions}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error in generate_topic: {e}") # Debug log
+        # Fallback to offline quiz
+        offline_questions = ai_service.generate_offline_quiz(req.topic, req.num_questions, req.difficulty)
+        return {"questions": offline_questions}
 
 @router.post("/generate_file")
 @limiter.limit("3/minute")
@@ -108,7 +116,10 @@ async def teacher_help(req: TeacherHelpRequest, request: Request):
         response = await ai_service.generate_text(prompt)
         return {"response": response}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error in teacher_help: {e}") # Debug log
+        # Fallback to offline notes
+        fallback_notes = ai_service.generate_offline_notes(req.topic)
+        return {"response": fallback_notes}
 
 @router.post("/ai_help")
 @limiter.limit("5/minute")
@@ -121,4 +132,5 @@ async def ai_help(req: AIHelpRequest, request: Request):
         response = await ai_service.generate_text(prompt)
         return {"response": response}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error in ai_help: {e}")
+        return {"response": "🤖 **AI Tutor Offline**: I'm having trouble connecting to the brain right now. Please check your internet or try again later."}
