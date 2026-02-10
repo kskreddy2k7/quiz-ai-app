@@ -23,6 +23,12 @@ user_models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="S Quiz AI Academy - PRO")
 app.state.limiter = limiter
+
+@app.on_event("startup")
+async def startup_event():
+    print("\n" + "="*50)
+    print("✅ SERVER RESTARTED SUCCESSFULLY! - Version With Fixes")
+    print("="*50 + "\n")
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.on_event("shutdown")

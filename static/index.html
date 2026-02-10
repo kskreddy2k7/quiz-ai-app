@@ -256,9 +256,10 @@
                             <div class="config-item">
                                 <label>Question Type</label>
                                 <select id="type-select" class="input-field">
-                                    <option value="Multiple Choice" selected>Multiple Choice</option>
+                                    <option value="Single Choice" selected>Single Choice (One Answer)</option>
+                                    <option value="Multiple Choice">Multiple Choice (2+ Answers)</option>
                                     <option value="True/False">True / False</option>
-                                    <option value="Mixed">Mixed</option>
+                                    <option value="Mixed">Mixed (All Types)</option>
                                 </select>
                             </div>
                         </div>
@@ -273,26 +274,40 @@
                 <div id="upload-view" class="screen container-centered" style="display: none;">
                     <div class="card-premium">
                         <h2 class="section-title"><i class="bi bi-cloud-arrow-up"></i> Upload Study Material</h2>
+
+                        <!-- File Type Support Indicator -->
+                        <div
+                            style="text-align: center; margin-bottom: 20px; padding: 15px; background: rgba(99, 102, 241, 0.1); border-radius: 12px;">
+                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary);">
+                                <i class="bi bi-info-circle" style="color: var(--primary);"></i>
+                                <strong>Supported Files:</strong> PDF, DOCX, TXT, Images (with OCR)
+                            </p>
+                        </div>
+
                         <div class="upload-area"
                             style="border: 2px dashed var(--glass-border); border-radius: 20px; padding: 40px; text-align: center; cursor: pointer; transition: 0.3s; background: rgba(255,255,255,0.02);"
                             onclick="document.getElementById('file-upload').click()">
                             <div class="onboarding-icon indigo"
                                 style="font-size: 3rem; margin-bottom: 20px; color: var(--primary);"><i
                                     class="bi bi-file-earmark-pdf"></i></div>
-                            <h3>Drop your PDF or Text file here</h3>
-                            <p id="file-label-text" style="color: var(--text-muted);">Tap to browse files</p>
-                            <input type="file" id="file-upload" hidden onchange="app.handleFileSelect(this)">
+                            <h3>Drop your file here</h3>
+                            <p id="file-label-text" style="color: var(--text-muted);">PDF, DOCX, TXT, or Image • Tap to
+                                browse</p>
+                            <input type="file" id="file-upload" hidden accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg"
+                                onchange="app.handleFileSelect(this)">
                         </div>
 
                         <div class="quiz-config-grid" style="margin-top: 30px;">
                             <div class="config-item">
                                 <label>Questions</label>
-                                <input type="number" id="file-q-count" class="input-field" value="10">
+                                <input type="number" id="file-q-count" class="input-field" value="10" min="1" max="20">
                             </div>
                             <div class="config-item">
                                 <label>Difficulty</label>
                                 <select id="file-difficulty-select" class="input-field">
-                                    <option value="Medium">Medium</option>
+                                    <option value="Easy">Easy</option>
+                                    <option value="Medium" selected>Medium</option>
+                                    <option value="Hard">Hard</option>
                                 </select>
                             </div>
                             <div class="config-item">
@@ -307,10 +322,12 @@
                                 </select>
                             </div>
                             <div class="config-item">
-                                <label>Type</label>
+                                <label>Question Type</label>
                                 <select id="file-type-select" class="input-field">
-                                    <option value="Multiple Choice">MCQ</option>
-                                    <option value="Mixed">Mixed</option>
+                                    <option value="Single Choice" selected>Single Choice (One Answer)</option>
+                                    <option value="Multiple Choice">Multiple Choice (2+ Answers)</option>
+                                    <option value="True/False">True / False</option>
+                                    <option value="Mixed">Mixed (All Types)</option>
                                 </select>
                             </div>
                         </div>
@@ -355,20 +372,75 @@
 
                 <!-- 5. Quiz Taking View -->
                 <div id="quiz-view" class="screen container-centered" style="display: none;">
-                    <div class="card-premium">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-                            <span id="quiz-topic-display" style="color: var(--primary); font-weight: 700;">TOPIC</span>
-                            <span class="badge">Q <span id="current-q">1</span></span>
+                    <div class="card-premium quiz-card">
+                        <!-- Quiz Header -->
+                        <div class="quiz-header">
+                            <div class="quiz-header-top">
+                                <div class="quiz-subject-info">
+                                    <i class="bi bi-book-fill"></i>
+                                    <span id="quiz-topic-display">Subject Name</span>
+                                </div>
+                                <div class="quiz-timer" id="quiz-timer" style="display: none;">
+                                    <i class="bi bi-clock-fill"></i>
+                                    <span id="timer-display">00:30</span>
+                                </div>
+                            </div>
+
+                            <div class="quiz-meta">
+                                <div class="question-counter">
+                                    <span class="current-q-num" id="current-q-display">1</span>
+                                    <span class="q-separator">/</span>
+                                    <span class="total-q-num" id="total-q-display">10</span>
+                                </div>
+                                <div class="difficulty-badge" id="difficulty-badge">
+                                    <i class="bi bi-star-fill"></i>
+                                    <span id="difficulty-text">Medium</span>
+                                </div>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div class="quiz-progress-bar">
+                                <div class="quiz-progress-fill" id="quiz-progress-fill" style="width: 0%;"></div>
+                            </div>
+                            <div class="quiz-progress-text">
+                                <span>Answered: <strong id="answered-count">0</strong> / <strong
+                                        id="total-count">10</strong></span>
+                                <span>Remaining: <strong id="remaining-count">10</strong></span>
+                            </div>
                         </div>
-                        <h3 id="question-text" style="font-size: 1.4rem; margin-bottom: 30px;">Question?</h3>
-                        <div id="options-container" style="display: grid; gap: 15px; margin-bottom: 30px;"></div>
-                        <div id="explanation-box"
-                            style="display: none; background: rgba(99,102,241,0.1); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
-                            <h4 style="color: var(--primary); margin-bottom: 10px;">Explanation</h4>
+
+                        <!-- Question Section -->
+                        <div class="question-section">
+                            <h3 id="question-text" class="question-prompt">Question will appear here?</h3>
+
+                            <!-- Question Type Indicator -->
+                            <div class="question-type-indicator" id="question-type-indicator">
+                                <i class="bi bi-record-circle" id="question-type-icon"></i>
+                                <span id="question-type-text">Single Choice - Select One Answer</span>
+                            </div>
+
+                            <!-- Options Container -->
+                            <div id="options-container" class="options-container"></div>
+                        </div>
+
+                        <!-- Explanation Box (Hidden Initially) -->
+                        <div id="explanation-box" class="explanation-box" style="display: none;">
+                            <div class="explanation-header">
+                                <i class="bi bi-lightbulb-fill"></i>
+                                <h4>Explanation</h4>
+                            </div>
                             <p id="explanation-text"></p>
                         </div>
-                        <button class="btn-primary-glow w-100 hidden" id="btn-next-question"
-                            onclick="app.nextQuestion()">Next <i class="bi bi-arrow-right"></i></button>
+
+                        <!-- Action Buttons -->
+                        <div class="quiz-actions">
+                            <button class="btn-clear" id="btn-clear-answer" onclick="app.clearAnswer()" disabled>
+                                <i class="bi bi-x-circle"></i> Clear Answer
+                            </button>
+                            <button class="btn-next" id="btn-next-question" onclick="app.submitAnswer()" disabled>
+                                Next <i class="bi bi-arrow-right"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

@@ -16,9 +16,19 @@ class FileService:
             elif ext == 'pdf':
                 # pypdf doesn't natively support async, so we wrap it
                 def _read_pdf():
-                    with open(filepath, 'rb') as f:
-                        pdf = pypdf.PdfReader(f)
-                        return "\n".join([page.extract_text() or "" for page in pdf.pages])
+                    try:
+                        with open(filepath, 'rb') as f:
+                            pdf = pypdf.PdfReader(f)
+                            text_parts = []
+                            for page in pdf.pages:
+                                extracted = page.extract_text()
+                                if extracted:
+                                    text_parts.append(extracted.strip())
+                            
+                            full_text = "\n\n".join(text_parts)
+                            return full_text if full_text.strip() else "Error: Empty PDF or scanned image. Please use a text-based PDF."
+                    except Exception as pdf_err:
+                        return f"Error reading PDF: {str(pdf_err)}"
                 
                 return await anyio.to_thread.run_sync(_read_pdf)
 

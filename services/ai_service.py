@@ -323,7 +323,7 @@ class AIService:
         # If all models failed
         raise Exception("All Gemini models failed. Please try again later.")
     
-    async def generate_with_huggingface(self, prompt: str, model: str = "mistralai/Mistral-7B-Instruct-v0.2") -> str:
+    async def generate_with_huggingface(self, prompt: str, model: str = "mistralai/Mistral-7B-Instruct-v0.3") -> str:
         """Generate text using Hugging Face Inference API (free tier)."""
         url = f"https://api-inference.huggingface.co/models/{model}"
         headers = {
@@ -331,13 +331,18 @@ class AIService:
             "Content-Type": "application/json"
         }
         
+        # Enhance prompt for Mistral models to follow instructions better
+        final_prompt = prompt
+        if "mistral" in model.lower() and "[INST]" not in prompt:
+            final_prompt = f"[INST] {prompt} [/INST]"
+        
         # Different models have different input formats
         if "mistral" in model.lower() or "llama" in model.lower():
             payload = {
-                "inputs": prompt,
+                "inputs": final_prompt,
                 "parameters": {
                     "max_new_tokens": self.MAX_TOKEN_LENGTH,
-                    "temperature": 0.7,
+                    "temperature": 0.5, # Lower temperature for better JSON consistency
                     "top_p": 0.95,
                     "return_full_text": False
                 }
@@ -345,7 +350,7 @@ class AIService:
         else:
             # For simpler models like T5
             payload = {
-                "inputs": prompt,
+                "inputs": final_prompt,
                 "parameters": {"max_length": self.MAX_TOKEN_LENGTH}
             }
         
@@ -354,69 +359,239 @@ class AIService:
             async with session.post(url, headers=headers, json=payload, timeout=self._client_timeout) as response:
                 if response.status == 200:
                     result = await response.json()
+                    extracted_text = ""
                     if isinstance(result, list) and len(result) > 0:
-                        return result[0].get('generated_text', str(result[0]))
+                        extracted_text = result[0].get('generated_text', str(result[0]))
                     elif isinstance(result, dict):
-                        return result.get('generated_text', str(result))
-                    return str(result)
+                        extracted_text = result.get('generated_text', str(result))
+                    else:
+                        extracted_text = str(result)
+                        
+                    return extracted_text.strip()
+                    
                 elif response.status == 503:
                     # Model is loading, might work on retry
                     raise Exception("HuggingFace model loading, try again")
                 else:
-                    text = await response.text()
-                    raise Exception(f"HuggingFace API error: {response.status} - {text}")
+                    text_resp = await response.text()
+                    raise Exception(f"HuggingFace API error: {response.status} - {text_resp}")
         except asyncio.TimeoutError:
             raise Exception("HuggingFace timeout")
     
-    def generate_offline_quiz(self, topic: str, num_questions: int, difficulty: str) -> List[Dict[str, Any]]:
+    def validate_question_types(self, questions: List[Dict[str, Any]], mode: str) -> List[Dict[str, Any]]:
+        """Validate and enforce question types to match expected mode."""
+        
+        if mode == "single_only":
+            for q in questions:
+                q["type"] = "single"
+                # Ensure answer is a string, not array
+                if isinstance(q.get("answer"), list):
+                    q["answer"] = q["answer"][0] if q["answer"] else q["choices"][0]
+                elif "answer" not in q and "correct_answers" in q:
+                    q["answer"] = q["correct_answers"][0] if q["correct_answers"] else q["choices"][0]
+                # Ensure no correct_answers field
+                q.pop("correct_answers", None)
+                # Ensure 4 choices
+                if len(q.get("choices", [])) != 4:
+                    while len(q["choices"]) < 4:
+                        q["choices"].append(f"Option {len(q['choices']) + 1}")
+                    q["choices"] = q["choices"][:4]
+        
+        elif mode == "multi_only":
+            for q in questions:
+                q["type"] = "multi"
+                # Ensure correct_answers is an array with 2+ items
+                if "correct_answers" not in q or not isinstance(q["correct_answers"], list) or len(q["correct_answers"]) < 2:
+                    # Fix: convert single answer to multi
+                    if "answer" in q:
+                        # Add a second correct answer from choices
+                        second_answer = next((c for c in q.get("choices", []) if c != q["answer"]), None)
+                        q["correct_answers"] = [q["answer"], second_answer] if second_answer else [q["answer"], "Option 2"]
+                    else:
+                        q["correct_answers"] = q.get("choices", ["Option 1", "Option 2"])[:2]
+                q.pop("answer", None)
+        
+        elif mode == "truefalse_only":
+            for q in questions:
+                q["type"] = "truefalse"
+                q["choices"] = ["True", "False"]
+                # Ensure answer is "True" or "False"
+                if q.get("answer") not in ["True", "False"]:
+                    q["answer"] = "True"  # Default fallback
+                q.pop("correct_answers", None)
+        
+        # For mixed mode, validate each question follows its type's rules
+        elif mode == "mixed":
+            # First, check if AI actually mixed the types
+            type_counts = {"single": 0, "multi": 0, "truefalse": 0}
+            for q in questions:
+                qtype = q.get("type", "single")
+                if qtype in type_counts:
+                    type_counts[qtype] += 1
+            
+            # If AI generated all questions as one type, force distribution
+            total_questions = len(questions)
+            if type_counts["single"] == total_questions or type_counts["multi"] == total_questions or type_counts["truefalse"] == total_questions:
+                # Calculate proper distribution
+                num_single = max(1, int(total_questions * 0.4))
+                num_multi = max(1, int(total_questions * 0.4))
+                num_tf = max(1, total_questions - num_single - num_multi)
+                
+                # Force convert questions to match distribution
+                for i, q in enumerate(questions):
+                    if i < num_single:
+                        q["type"] = "single"
+                    elif i < num_single + num_multi:
+                        q["type"] = "multi"
+                    else:
+                        q["type"] = "truefalse"
+            
+            # Now validate each question follows its type's rules
+            for q in questions:
+                qtype = q.get("type", "single")
+                if qtype == "single":
+                    if isinstance(q.get("answer"), list):
+                        q["answer"] = q["answer"][0]
+                    elif "answer" not in q and "correct_answers" in q:
+                        q["answer"] = q["correct_answers"][0] if q["correct_answers"] else q.get("choices", ["Option 1"])[0]
+                    q.pop("correct_answers", None)
+                    # Ensure 4 choices
+                    if len(q.get("choices", [])) < 4:
+                        while len(q.get("choices", [])) < 4:
+                            q.setdefault("choices", []).append(f"Option {len(q['choices']) + 1}")
+                elif qtype == "multi":
+                    if "correct_answers" not in q or len(q.get("correct_answers", [])) < 2:
+                        if "answer" in q:
+                            second_answer = next((c for c in q.get("choices", []) if c != q["answer"]), None)
+                            q["correct_answers"] = [q["answer"], second_answer] if second_answer else [q.get("choices", ["Option 1", "Option 2"])[0], q.get("choices", ["Option 1", "Option 2"])[1]]
+                        else:
+                            q["correct_answers"] = q.get("choices", ["Option 1", "Option 2"])[:2]
+                    q.pop("answer", None)
+                elif qtype == "truefalse":
+                    q["choices"] = ["True", "False"]
+                    if q.get("answer") not in ["True", "False"]:
+                        q["answer"] = "True"
+                    q.pop("correct_answers", None)
+        
+        return questions
+
+    def generate_offline_quiz(self, topic: str, num_questions: int, difficulty: str, mode: str = "single_only") -> List[Dict[str, Any]]:
         """Generate a basic quiz using rule-based logic when all AI providers fail."""
-        # Template-based quiz generation
         questions = []
         
-        # Generic quiz templates
-        templates = [
-            {
-                "type": "single",
-                "prompt": f"What is the primary purpose of {topic}?",
-                "choices": [
-                    f"To solve complex problems related to {topic}",
-                    f"To demonstrate basic principles of {topic}",
-                    f"To provide entertainment only",
-                    f"None of the above"
-                ],
-                "answer": f"To solve complex problems related to {topic}",
-                "explanation": f"The primary purpose of {topic} is to address and solve problems in its domain."
-            },
-            {
-                "type": "single",
-                "prompt": f"Which of the following is a key concept in {topic}?",
-                "choices": [
-                    f"Fundamental principles of {topic}",
-                    "Random unrelated concepts",
-                    "Entertainment value",
-                    "None apply"
-                ],
-                "answer": f"Fundamental principles of {topic}",
-                "explanation": f"Understanding fundamental principles is crucial for mastering {topic}."
-            },
-            {
-                "type": "multi",
-                "prompt": f"Select all valid applications of {topic}:",
-                "choices": [
-                    f"Real-world problem solving",
-                    f"Academic research in {topic}",
-                    "Creating confusion",
-                    "Making things complicated"
-                ],
-                "answer": "", 
-                "correct_answers": [f"Real-world problem solving", f"Academic research in {topic}"],
-                "explanation": f"{topic} is widely used in both industry and academia."
-            }
-        ]
+        # Templates based on mode
+        if mode == "single_only":
+            templates = [
+                {
+                    "type": "single",
+                    "prompt": f"What is the primary purpose of {topic}?",
+                    "choices": [
+                        f"To solve complex problems related to {topic}",
+                        f"To demonstrate basic principles of {topic}",
+                        f"To provide entertainment only",
+                        f"None of the above"
+                    ],
+                    "answer": f"To solve complex problems related to {topic}",
+                    "explanation": f"The primary purpose of {topic} is to address and solve problems in its domain."
+                },
+                {
+                    "type": "single",
+                    "prompt": f"Which of the following is a key concept in {topic}?",
+                    "choices": [
+                        f"Fundamental principles of {topic}",
+                        "Random unrelated concepts",
+                        "Entertainment value",
+                        "None apply"
+                    ],
+                    "answer": f"Fundamental principles of {topic}",
+                    "explanation": f"Understanding fundamental principles is crucial for mastering {topic}."
+                }
+            ]
+        
+        elif mode == "multi_only":
+            templates = [
+                {
+                    "type": "multi",
+                    "prompt": f"Select all valid applications of {topic}:",
+                    "choices": [
+                        f"Real-world problem solving",
+                        f"Academic research in {topic}",
+                        "Creating confusion",
+                        "Making things complicated"
+                    ],
+                    "correct_answers": [f"Real-world problem solving", f"Academic research in {topic}"],
+                    "explanation": f"{topic} is widely used in both industry and academia."
+                },
+                {
+                    "type": "multi",
+                    "prompt": f"Which of these are important aspects of {topic}? (Select all that apply)",
+                    "choices": [
+                        f"Understanding core concepts",
+                        f"Practical application",
+                        "Ignoring fundamentals",
+                        "Avoiding practice"
+                    ],
+                    "correct_answers": [f"Understanding core concepts", f"Practical application"],
+                    "explanation": f"Both theory and practice are essential for mastering {topic}."
+                }
+            ]
+        
+        elif mode == "truefalse_only":
+            templates = [
+                {
+                    "type": "truefalse",
+                    "prompt": f"{topic} is an important field of study.",
+                    "choices": ["True", "False"],
+                    "answer": "True",
+                    "explanation": f"{topic} is indeed an important and valuable field of study."
+                },
+                {
+                    "type": "truefalse",
+                    "prompt": f"Understanding {topic} requires no effort or study.",
+                    "choices": ["True", "False"],
+                    "answer": "False",
+                    "explanation": f"Mastering {topic} requires dedicated study and practice."
+                }
+            ]
+        
+        else:  # mixed mode
+            templates = [
+                {
+                    "type": "single",
+                    "prompt": f"What is the primary purpose of {topic}?",
+                    "choices": [
+                        f"To solve complex problems related to {topic}",
+                        f"To demonstrate basic principles of {topic}",
+                        f"To provide entertainment only",
+                        f"None of the above"
+                    ],
+                    "answer": f"To solve complex problems related to {topic}",
+                    "explanation": f"The primary purpose of {topic} is to address and solve problems in its domain."
+                },
+                {
+                    "type": "multi",
+                    "prompt": f"Select all valid applications of {topic}:",
+                    "choices": [
+                        f"Real-world problem solving",
+                        f"Academic research in {topic}",
+                        "Creating confusion",
+                        "Making things complicated"
+                    ],
+                    "correct_answers": [f"Real-world problem solving", f"Academic research in {topic}"],
+                    "explanation": f"{topic} is widely used in both industry and academia."
+                },
+                {
+                    "type": "truefalse",
+                    "prompt": f"{topic} is an important field of study.",
+                    "choices": ["True", "False"],
+                    "answer": "True",
+                    "explanation": f"{topic} is indeed an important and valuable field of study."
+                }
+            ]
         
         # Generate requested number of questions
         for i in range(min(num_questions, len(templates))):
-            questions.append(templates[i])
+            questions.append(templates[i].copy())
         
         # If more questions needed, cycle through templates with variations
         while len(questions) < num_questions:
@@ -445,7 +620,7 @@ class AIService:
 
 > **Note**: These notes were generated in offline mode. Connect to the internet and ensure AI availability for more specific details."""
 
-    async def generate_quiz(self, prompt: str) -> List[Dict[str, Any]]:
+    async def generate_quiz(self, prompt: str, allow_fallback: bool = True) -> List[Dict[str, Any]]:
         """Generate quiz with multi-provider fallback and caching."""
         # Try to get from cache first
         cached = self._get_from_cache(prompt)
@@ -466,7 +641,12 @@ class AIService:
             self._save_to_cache(prompt, json.dumps(parsed), self.current_provider or "unknown")
             return parsed
         except Exception as e:
-            print(f"AI generation failed, using offline fallback: {e}")
+            print(f"AI generation failed: {e}")
+            if not allow_fallback:
+                # For file uploads, we MUST fail if AI fails because offline generator can't read files
+                raise Exception(f"AI Generation Failed: {str(e)}")
+            
+            print(f"Using offline fallback due to: {e}")
             last_error = e
         
         # Ultimate fallback: offline quiz generation
@@ -655,13 +835,16 @@ class AIService:
         if self.huggingface_api_key and not self._is_provider_on_cooldown("huggingface"):
             providers.append(("huggingface", self.generate_with_huggingface))
         
+        if not providers:
+             raise Exception("No active AI providers found. Please check your API keys in .env file.")
+
         # Try each provider
+        errors = []
         for provider_name, provider_func in providers:
             try:
                 print(f"🤖 Trying {provider_name}...")
                 
                 # Set timeout for each provider
-                # usage of asyncio.wait_for should be careful with Geminis synchronous calls wrapped in executor
                 if provider_name == "gemini":
                      response = await provider_func(compressed_prompt)
                 else:
@@ -678,17 +861,22 @@ class AIService:
                 return response
                 
             except asyncio.TimeoutError:
-                print(f"⏱️ {provider_name} timeout")
+                msg = f"{provider_name} timeout"
+                print(f"⏱️ {msg}")
+                errors.append(msg)
                 self._mark_provider_failure(provider_name)
                 continue
             except Exception as e:
-                print(f"❌ {provider_name} failed: {str(e)[:200]}") # Increased log length
+                err_msg = str(e)[:200]
+                print(f"❌ {provider_name} failed: {err_msg}")
+                errors.append(f"{provider_name}: {err_msg}")
                 self._mark_provider_failure(provider_name)
                 continue
         
         # All providers failed, check cache for any similar past responses
-        # (This is a last resort - return a generic error message)
-        raise Exception("⚡ All AI providers temporarily unavailable. Using offline mode.")
+        # (This is a last resort - return a detailed error message)
+        error_details = " | ".join(errors)
+        raise Exception(f"All AI providers failed. Details: {error_details}")
 
     def _parse_json(self, text: Any) -> List[Dict[str, Any]]:
         if isinstance(text, list):

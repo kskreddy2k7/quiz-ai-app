@@ -463,7 +463,7 @@ const app = {
             }
 
             const data = await res.json();
-            app.startQuiz(data.questions, topic);
+            app.startQuiz(data.questions, topic, difficulty);
 
         } catch (err) {
             console.error(err);
@@ -485,6 +485,8 @@ const app = {
 
         const count = parseInt(document.getElementById('file-q-count').value);
         const difficulty = document.getElementById('file-difficulty-select').value;
+        const questionType = document.getElementById('file-type-select').value;
+        const language = document.getElementById('file-language-select').value;
 
         utils.showLoading('upload-view', 'Analyzing file & generating quiz...');
 
@@ -493,6 +495,8 @@ const app = {
             formData.append('file', input.files[0]);
             formData.append('num_questions', count);
             formData.append('difficulty', difficulty);
+            formData.append('question_type', questionType);
+            formData.append('language', language);
 
             const res = await fetch(`${API_BASE_URL}/generate_file`, {
                 method: 'POST',
@@ -506,7 +510,7 @@ const app = {
             }
 
             const data = await res.json();
-            app.startQuiz(data.questions, `File: ${data.filename}`);
+            app.startQuiz(data.questions, `File: ${data.filename}`, difficulty);
 
         } catch (err) {
             console.error(err);
@@ -522,10 +526,15 @@ const app = {
         questions: [],
         currentIndex: 0,
         score: 0,
-        topic: ''
+        topic: '',
+        difficulty: 'Medium',
+        userAnswers: [],
+        selectedOptions: [],
+        timerInterval: null,
+        timeRemaining: 0
     },
 
-    startQuiz: (questions, topic) => {
+    startQuiz: (questions, topic, difficulty = 'Medium') => {
         if (!questions || questions.length === 0) {
             return utils.showNotification("No questions generated. Try again.", "error");
         }
@@ -535,64 +544,278 @@ const app = {
             currentIndex: 0,
             score: 0,
             topic: topic,
-            userAnswers: new Array(questions.length).fill(null)
+            difficulty: difficulty,
+            userAnswers: new Array(questions.length).fill(null),
+            selectedOptions: [],
+            timerInterval: null,
+            timeRemaining: 0
         };
 
         app.showView('quiz-view');
-        document.getElementById('quiz-topic-display').textContent = topic;
         app.showQuestion();
+    },
+
+    // Detect question type based on answer structure
+    detectQuestionType: (question) => {
+        // ALWAYS trust the backend "type" field first
+        if (question.type) {
+            return question.type;  // "single", "multi", or "truefalse"
+        }
+
+        // Fallback detection (for old data)
+        // Check if it's True/False
+        if (question.choices && question.choices.length === 2 &&
+            question.choices.includes("True") && question.choices.includes("False")) {
+            return 'truefalse';
+        }
+
+        // Check if it's multiple choice
+        if (Array.isArray(question.answer) || Array.isArray(question.correct_answers)) {
+            return 'multi';
+        }
+
+        return 'single';
+    },
+
+    // Get timer duration based on difficulty
+    getTimerDuration: (difficulty) => {
+        const durations = {
+            'Easy': 45,
+            'Medium': 60,
+            'Hard': 90
+        };
+        return durations[difficulty] || 60;
     },
 
     showQuestion: () => {
         const q = app.currentQuiz.questions[app.currentQuiz.currentIndex];
-        document.getElementById('current-q').textContent = app.currentQuiz.currentIndex + 1;
+        const questionType = app.detectQuestionType(q);
+        const totalQuestions = app.currentQuiz.questions.length;
+        const currentNum = app.currentQuiz.currentIndex + 1;
+        const answeredCount = app.currentQuiz.userAnswers.filter(a => a !== null).length;
+
+        // Reset selected options
+        app.currentQuiz.selectedOptions = [];
+
+        // Update header info
+        document.getElementById('quiz-topic-display').textContent = app.currentQuiz.topic;
+        document.getElementById('current-q-display').textContent = currentNum;
+        document.getElementById('total-q-display').textContent = totalQuestions;
+        document.getElementById('difficulty-text').textContent = app.currentQuiz.difficulty;
+
+        // Update difficulty badge class
+        const difficultyBadge = document.getElementById('difficulty-badge');
+        difficultyBadge.className = 'difficulty-badge ' + app.currentQuiz.difficulty.toLowerCase();
+
+        // Update progress
+        const progressPercent = (answeredCount / totalQuestions) * 100;
+        document.getElementById('quiz-progress-fill').style.width = progressPercent + '%';
+        document.getElementById('answered-count').textContent = answeredCount;
+        document.getElementById('total-count').textContent = totalQuestions;
+        document.getElementById('remaining-count').textContent = totalQuestions - answeredCount;
+
+        // Update question text
         document.getElementById('question-text').textContent = q.prompt;
 
-        const container = document.getElementById('options-container');
-        container.innerHTML = '';
-        document.getElementById('explanation-box').style.display = 'none';
-        document.getElementById('btn-next-question').classList.add('hidden');
+        // Update question type indicator
+        const typeIndicator = document.getElementById('question-type-indicator');
+        const typeIcon = document.getElementById('question-type-icon');
+        const typeText = document.getElementById('question-type-text');
 
-        q.choices.forEach((choice, index) => {
-            const btn = document.createElement('div');
-            btn.className = 'quiz-option';
-            btn.textContent = choice;
-            btn.onclick = () => app.handleAnswer(btn, choice, q);
-            container.appendChild(btn);
-        });
-    },
-
-    handleAnswer: (btnElement, choice, question) => {
-        // Prevent multiple answers
-        if (document.querySelector('.quiz-option.correct') || document.querySelector('.quiz-option.wrong')) return;
-
-        const isCorrect = choice === question.answer;
-
-        if (isCorrect) {
-            btnElement.classList.add('correct');
-            app.currentQuiz.score++;
-            utils.showNotification("Correct! 🎉", "success");
+        if (questionType === 'multi') {
+            typeIndicator.classList.remove('truefalse');
+            typeIndicator.classList.add('multi');
+            typeIcon.className = 'bi bi-check2-square';
+            typeText.textContent = 'Multiple Choice - Select All Correct Answers';
+        } else if (questionType === 'truefalse') {
+            typeIndicator.classList.remove('multi');
+            typeIndicator.classList.add('truefalse');
+            typeIcon.className = 'bi bi-check-circle';
+            typeText.textContent = 'True / False - Select One';
         } else {
-            btnElement.classList.add('wrong');
-            utils.showNotification("Incorrect", "error");
-
-            // Highlight correct answer
-            document.querySelectorAll('.quiz-option').forEach(opt => {
-                if (opt.textContent === question.answer) opt.classList.add('correct');
-            });
+            typeIndicator.classList.remove('multi', 'truefalse');
+            typeIcon.className = 'bi bi-record-circle';
+            typeText.textContent = 'Single Choice - Select One Answer';
         }
 
-        // Show explanation
-        const expBox = document.getElementById('explanation-box');
-        const expText = document.getElementById('explanation-text');
-        expBox.style.display = 'block';
-        expText.textContent = isCorrect ? question.explanation : (question.explanation || "No explanation available.");
+        // Render options
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
 
-        document.getElementById('btn-next-question').classList.remove('hidden');
+        q.choices.forEach((choice, index) => {
+            const option = document.createElement('div');
+            option.className = `quiz-option ${questionType}`;
+            option.textContent = choice;
+            option.dataset.choice = choice;
+            option.onclick = () => app.handleSelection(option, choice, questionType);
+            container.appendChild(option);
+        });
+
+        // Hide explanation and reset buttons
+        document.getElementById('explanation-box').style.display = 'none';
+        document.getElementById('btn-next-question').disabled = true;
+        document.getElementById('btn-clear-answer').disabled = true;
+
+        // Start timer (optional - can be disabled by not showing timer element)
+        // app.startTimer(app.getTimerDuration(app.currentQuiz.difficulty));
+    },
+
+    handleSelection: (optionElement, choice, questionType) => {
+        // Don't allow selection if answer already submitted
+        if (document.querySelector('.quiz-option.correct') || document.querySelector('.quiz-option.wrong')) {
+            return;
+        }
+
+        if (questionType === 'single' || questionType === 'truefalse') {
+            // Single choice or True/False: deselect all others
+            document.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            optionElement.classList.add('selected');
+            app.currentQuiz.selectedOptions = [choice];
+        } else {
+            // Multiple choice: toggle selection
+            if (optionElement.classList.contains('selected')) {
+                optionElement.classList.remove('selected');
+                app.currentQuiz.selectedOptions = app.currentQuiz.selectedOptions.filter(c => c !== choice);
+            } else {
+                optionElement.classList.add('selected');
+                app.currentQuiz.selectedOptions.push(choice);
+            }
+        }
+
+        // Enable/disable buttons based on selection
+        const hasSelection = app.currentQuiz.selectedOptions.length > 0;
+        document.getElementById('btn-next-question').disabled = !hasSelection;
+        document.getElementById('btn-clear-answer').disabled = !hasSelection;
+    },
+
+    clearAnswer: () => {
+        // Don't allow clearing if answer already submitted
+        if (document.querySelector('.quiz-option.correct') || document.querySelector('.quiz-option.wrong')) {
+            return;
+        }
+
+        document.querySelectorAll('.quiz-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        app.currentQuiz.selectedOptions = [];
+        document.getElementById('btn-next-question').disabled = true;
+        document.getElementById('btn-clear-answer').disabled = true;
+    },
+
+    submitAnswer: () => {
+        const q = app.currentQuiz.questions[app.currentQuiz.currentIndex];
+        const questionType = app.detectQuestionType(q);
+        const userAnswer = questionType === 'single' ? app.currentQuiz.selectedOptions[0] : app.currentQuiz.selectedOptions;
+        const correctAnswer = q.answer || q.correct_answers;
+
+        // Stop timer
+        app.stopTimer();
+
+        // Store user answer
+        app.currentQuiz.userAnswers[app.currentQuiz.currentIndex] = userAnswer;
+
+        // Check correctness
+        let isCorrect = false;
+        if (questionType === 'single' || questionType === 'truefalse') {
+            isCorrect = userAnswer === correctAnswer;
+        } else {
+            // For multiple choice, check if arrays match
+            if (Array.isArray(correctAnswer) && Array.isArray(userAnswer)) {
+                isCorrect = correctAnswer.length === userAnswer.length &&
+                    correctAnswer.every(ans => userAnswer.includes(ans));
+            }
+        }
+
+        // Update score
+        if (isCorrect) {
+            app.currentQuiz.score++;
+        }
+
+        // DO NOT show visual feedback during quiz - only at final results
+        // Just disable the options so user can't change answer
+        document.querySelectorAll('.quiz-option').forEach(opt => {
+            opt.classList.add('disabled');
+            opt.onclick = null;
+        });
+
+        // DO NOT show explanation during quiz - only at final results
+        // Keep explanation box hidden
+        const expBox = document.getElementById('explanation-box');
+        expBox.style.display = 'none';
+
+        // NO NOTIFICATION HERE - feedback shown only at final results
+
+        // Change button to "Next" or "Finish"
+        const nextBtn = document.getElementById('btn-next-question');
+        nextBtn.disabled = false;
+        nextBtn.onclick = app.nextQuestion;
+
+        if (app.currentQuiz.currentIndex === app.currentQuiz.questions.length - 1) {
+            nextBtn.innerHTML = 'Finish & See Results <i class="bi bi-check-circle"></i>';
+        } else {
+            nextBtn.innerHTML = 'Next <i class="bi bi-arrow-right"></i>';
+        }
+
+        // Disable clear button
+        document.getElementById('btn-clear-answer').disabled = true;
+    },
+
+    startTimer: (duration) => {
+        app.currentQuiz.timeRemaining = duration;
+        const timerDisplay = document.getElementById('timer-display');
+        const timerElement = document.getElementById('quiz-timer');
+
+        // Show timer
+        timerElement.style.display = 'flex';
+        timerElement.classList.remove('warning', 'danger');
+
+        app.updateTimerDisplay();
+
+        app.currentQuiz.timerInterval = setInterval(() => {
+            app.currentQuiz.timeRemaining--;
+            app.updateTimerDisplay();
+
+            // Change color based on time remaining
+            if (app.currentQuiz.timeRemaining <= 10) {
+                timerElement.classList.add('danger');
+            } else if (app.currentQuiz.timeRemaining <= 20) {
+                timerElement.classList.add('warning');
+            }
+
+            // Auto-submit when time runs out
+            if (app.currentQuiz.timeRemaining <= 0) {
+                app.stopTimer();
+                // Auto-submit with current selection (or empty if nothing selected)
+                if (app.currentQuiz.selectedOptions.length > 0) {
+                    app.submitAnswer();
+                } else {
+                    utils.showNotification("Time's up! Moving to next question.", "warning");
+                    app.nextQuestion();
+                }
+            }
+        }, 1000);
+    },
+
+    stopTimer: () => {
+        if (app.currentQuiz.timerInterval) {
+            clearInterval(app.currentQuiz.timerInterval);
+            app.currentQuiz.timerInterval = null;
+        }
+    },
+
+    updateTimerDisplay: () => {
+        const minutes = Math.floor(app.currentQuiz.timeRemaining / 60);
+        const seconds = app.currentQuiz.timeRemaining % 60;
+        const display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        document.getElementById('timer-display').textContent = display;
     },
 
     nextQuestion: () => {
+        app.stopTimer();
         app.currentQuiz.currentIndex++;
+
         if (app.currentQuiz.currentIndex < app.currentQuiz.questions.length) {
             app.showQuestion();
         } else {
@@ -634,6 +857,10 @@ const app = {
     },
 
     reviewQuiz: () => {
+        // Remove any existing review modals first to prevent duplicates
+        const existingModals = document.querySelectorAll('.modal-overlay');
+        existingModals.forEach(m => m.remove());
+
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.style.display = 'flex';
@@ -680,8 +907,13 @@ const app = {
                         </div>
                     </div>
 
-                    <div style="background: rgba(99, 102, 241, 0.1); padding: 12px; border-radius: 8px; font-size: 0.9rem; color: var(--text-secondary);">
-                        <i class="bi bi-lightbulb-fill" style="color: var(--warning); margin-right: 5px;"></i> ${q.explanation}
+                    <div style="background: rgba(99, 102, 241, 0.1); padding: 15px; border-radius: 8px; font-size: 0.95rem; line-height: 1.6; color: var(--text-secondary);">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--warning);">
+                            <i class="bi bi-lightbulb-fill" style="margin-right: 5px;"></i> Explanation:
+                        </div>
+                        <div style="padding-left: 24px;">
+                            ${q.explanation || "No explanation available."}
+                        </div>
                     </div>
                 </div>
             `;
