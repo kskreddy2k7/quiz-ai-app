@@ -279,11 +279,14 @@ const app = {
 
     guestLogin: () => {
         app.state.role = 'guest';
+        app.state.token = 'guest_token_placeholder';
         app.state.user = {
             full_name: 'Guest User',
             email: 'guest@example.com',
             profile_photo: '/static/default-avatar.png'
         };
+        localStorage.setItem('token', app.state.token);
+        localStorage.setItem('role', 'guest');
         app.updateUI(app.state.user);
         app.showDashboard();
         utils.showNotification("Guest Mode Active", "warning");
@@ -291,6 +294,7 @@ const app = {
 
     logout: () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('role');
         window.location.reload();
     },
 
@@ -949,43 +953,57 @@ const app = {
 
     generateNotes: async () => {
         const topic = document.getElementById('ppt-topic').value.trim();
+        const format = document.getElementById('ppt-format').value;
+        const language = document.getElementById('ppt-language').value;
+        const tone = document.getElementById('ppt-tone').value;
+        const numSlides = parseInt(document.getElementById('ppt-slides').value, 10) || 8;
         if (!topic) return utils.showNotification("Please enter a topic", "error");
 
         utils.showLoading('presentation-view', 'Creating Smart Notes...');
 
         try {
-            // Note: Currently reusing generate_topic but ideally would have dedicated endpoint
-            // For now, let's use teacher_help to get a structured summary
-            const res = await fetch(`${API_BASE_URL}/teacher_help`, {
+            const res = await fetch(`${API_BASE_URL}/presentation/generate`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${app.state.token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    task: "Create detailed study notes",
                     topic: topic,
-                    details: "Include key concepts, examples, and a summary."
+                    num_slides: Math.min(Math.max(numSlides, 5), 20),
+                    language: language,
+                    theme: 'Modern',
+                    tone: tone,
+                    format: format
                 })
             });
 
-            if (!res.ok) throw new Error("Failed to create notes");
-            const data = await res.json();
+            if (!res.ok) {
+                let detail = 'Failed to create notes';
+                try {
+                    const errData = await res.json();
+                    detail = errData.detail || detail;
+                } catch (e) {
+                    // ignore JSON parsing errors
+                }
+                throw new Error(detail);
+            }
 
-            // Display in a simple modal or alert for now (can be improved to a full view)
-            // Creating a simple modal on the fly
-            const noteContent = data.response;
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.style.display = 'flex';
-            modal.innerHTML = `
-                <div class="glass-card" style="max-width: 600px; max-height: 80vh; overflow-y: auto; text-align: left;">
-                    <h2 class="indigo-text"><i class="bi bi-journal-text"></i> Smart Notes: ${topic}</h2>
-                    <div style="white-space: pre-wrap; line-height: 1.6; color: var(--text-secondary); margin: 20px 0;">${noteContent.replace(/\*\*/g, '')}</div>
-                    <button class="btn-primary-glass w-100" onclick="this.closest('.modal-overlay').remove()">Close</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
+            const disposition = res.headers.get('content-disposition') || '';
+            const match = disposition.match(/filename="?([^";]+)"?/i);
+            const fallbackName = `${topic.replace(/\s+/g, '_')}_Notes.${format}`;
+            const filename = match ? match[1] : fallbackName;
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+
+            utils.showNotification('Notes downloaded successfully', 'success');
 
         } catch (err) {
             console.error(err);
@@ -1012,6 +1030,8 @@ const app = {
         userMsg.textContent = message;
         historyContainer.appendChild(userMsg);
 
+        app.tutorHistory.push({ role: 'user', content: message });
+
         // Clear input
         input.value = '';
         historyContainer.scrollTop = historyContainer.scrollHeight;
@@ -1025,16 +1045,14 @@ const app = {
         historyContainer.scrollTop = historyContainer.scrollHeight;
 
         try {
-            const res = await fetch(`${API_BASE_URL}/teacher_help`, {
+            const res = await fetch(`${API_BASE_URL}/ai/chat`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${app.state.token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    task: "Chat",
-                    topic: "General",
-                    details: message
+                    message: message,
+                    history: app.tutorHistory
                 })
             });
 
@@ -1052,6 +1070,8 @@ const app = {
             botMsg.innerHTML = data.response.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
             historyContainer.appendChild(botMsg);
             historyContainer.scrollTop = historyContainer.scrollHeight;
+
+            app.tutorHistory.push({ role: 'assistant', content: data.response });
 
         } catch (err) {
             loadingMsg.textContent = "Error: " + err.message;

@@ -10,6 +10,11 @@ import sqlite3
 import time
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Ensure .env is loaded even when the working directory differs.
+_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(_project_root, ".env"))
 
 class AIService:
     # Configuration constants
