@@ -322,7 +322,16 @@ async def generate_file(
             
             Text: {text_excerpt}
             
-            Return ONLY a valid JSON array.
+            Return ONLY a valid JSON array:
+            [
+                {{
+                    "type": "single",
+                    "prompt": "Question text...",
+                    "choices": ["Option A", "Option B", "Option C", "Option D"],
+                    "answer": "Option A",
+                    "explanation": "Explanation..."
+                }}
+            ]
             """
         
         elif mode == "multi_only":
@@ -350,7 +359,16 @@ async def generate_file(
             
             Text: {text_excerpt}
             
-            Return ONLY a valid JSON array.
+            Return ONLY a valid JSON array:
+            [
+                {{
+                    "type": "multi",
+                    "prompt": "Question text...",
+                    "choices": ["Option A", "Option B", "Option C", "Option D"],
+                    "correct_answers": ["Option A", "Option C"],
+                    "explanation": "Explanation..."
+                }}
+            ]
             """
         
         elif mode == "truefalse_only":
@@ -377,7 +395,16 @@ async def generate_file(
             
             Text: {text_excerpt}
             
-            Return ONLY a valid JSON array.
+            Return ONLY a valid JSON array:
+            [
+                {{
+                    "type": "truefalse",
+                    "prompt": "Statement text...",
+                    "choices": ["True", "False"],
+                    "answer": "True",
+                    "explanation": "Explanation..."
+                }}
+            ]
             """
         
         else:  # mixed mode
@@ -408,8 +435,30 @@ async def generate_file(
             
             Text: {text_excerpt}
             
-            Return ONLY a valid JSON array with ALL THREE types mixed.
-            REMINDER: Generate {num_single} single + {num_multi} multi + {num_tf} truefalse = {num_questions} total questions
+            Return ONLY a valid JSON array with ALL THREE types mixed:
+            [
+                {{
+                    "type": "single",
+                    "prompt": "Question...",
+                    "choices": ["A", "B", "C", "D"],
+                    "answer": "A",
+                    "explanation": "..."
+                }},
+                {{
+                    "type": "multi",
+                    "prompt": "Question...",
+                    "choices": ["A", "B", "C", "D"],
+                    "correct_answers": ["A", "C"],
+                    "explanation": "..."
+                }},
+                {{
+                    "type": "truefalse",
+                    "prompt": "Statement...",
+                    "choices": ["True", "False"],
+                    "answer": "True",
+                    "explanation": "..."
+                }}
+            ]
             """
         
         # Generate quiz with NO FALLBACK (we want error if AI fails, not generic questions)

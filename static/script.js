@@ -597,59 +597,79 @@ const app = {
         // Reset selected options
         app.currentQuiz.selectedOptions = [];
 
+        // Helper to safely set text content
+        const safeSetText = (id, text) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = text;
+            } else {
+                console.warn(`Missing element: ${id}`);
+            }
+        };
+
         // Update header info
-        document.getElementById('quiz-topic-display').textContent = app.currentQuiz.topic;
-        document.getElementById('current-q-display').textContent = currentNum;
-        document.getElementById('total-q-display').textContent = totalQuestions;
-        document.getElementById('difficulty-text').textContent = app.currentQuiz.difficulty;
+        safeSetText('quiz-topic-display', app.currentQuiz.topic);
+        safeSetText('current-q-display', currentNum);
+        safeSetText('total-q-display', totalQuestions);
+        safeSetText('difficulty-text', app.currentQuiz.difficulty);
 
         // Update difficulty badge class
         const difficultyBadge = document.getElementById('difficulty-badge');
-        difficultyBadge.className = 'difficulty-badge ' + app.currentQuiz.difficulty.toLowerCase();
+        if (difficultyBadge) {
+            difficultyBadge.className = 'difficulty-badge ' + app.currentQuiz.difficulty.toLowerCase();
+        }
 
         // Update progress
         const progressPercent = (answeredCount / totalQuestions) * 100;
-        document.getElementById('quiz-progress-fill').style.width = progressPercent + '%';
-        document.getElementById('answered-count').textContent = answeredCount;
-        document.getElementById('total-count').textContent = totalQuestions;
-        document.getElementById('remaining-count').textContent = totalQuestions - answeredCount;
+        const progressFill = document.getElementById('quiz-progress-fill');
+        if (progressFill) progressFill.style.width = progressPercent + '%';
+
+        safeSetText('answered-count', answeredCount);
+        safeSetText('total-count', totalQuestions);
+        safeSetText('remaining-count', totalQuestions - answeredCount);
 
         // Update question text
-        document.getElementById('question-text').textContent = q.prompt;
+        safeSetText('question-text', q.prompt);
 
         // Update question type indicator
         const typeIndicator = document.getElementById('question-type-indicator');
         const typeIcon = document.getElementById('question-type-icon');
         const typeText = document.getElementById('question-type-text');
 
-        if (questionType === 'multi') {
-            typeIndicator.classList.remove('truefalse');
-            typeIndicator.classList.add('multi');
-            typeIcon.className = 'bi bi-check2-square';
-            typeText.textContent = 'Multiple Choice - Select All Correct Answers';
-        } else if (questionType === 'truefalse') {
-            typeIndicator.classList.remove('multi');
-            typeIndicator.classList.add('truefalse');
-            typeIcon.className = 'bi bi-check-circle';
-            typeText.textContent = 'True / False - Select One';
-        } else {
-            typeIndicator.classList.remove('multi', 'truefalse');
-            typeIcon.className = 'bi bi-record-circle';
-            typeText.textContent = 'Single Choice - Select One Answer';
+        if (typeIndicator && typeIcon && typeText) {
+            if (questionType === 'multi') {
+                typeIndicator.classList.remove('truefalse');
+                typeIndicator.classList.add('multi');
+                typeIcon.className = 'bi bi-check2-square';
+                typeText.textContent = 'Multiple Choice - Select All Correct Answers';
+            } else if (questionType === 'truefalse') {
+                typeIndicator.classList.remove('multi');
+                typeIndicator.classList.add('truefalse');
+                typeIcon.className = 'bi bi-check-circle';
+                typeText.textContent = 'True / False - Select One';
+            } else {
+                typeIndicator.classList.remove('multi', 'truefalse');
+                typeIcon.className = 'bi bi-record-circle';
+                typeText.textContent = 'Single Choice - Select One Answer';
+            }
         }
 
         // Render options
         const container = document.getElementById('options-container');
-        container.innerHTML = '';
+        if (container) {
+            container.innerHTML = '';
 
-        q.choices.forEach((choice, index) => {
-            const option = document.createElement('div');
-            option.className = `quiz-option ${questionType}`;
-            option.textContent = choice;
-            option.dataset.choice = choice;
-            option.onclick = () => app.handleSelection(option, choice, questionType);
-            container.appendChild(option);
-        });
+            q.choices.forEach((choice, index) => {
+                const option = document.createElement('div');
+                option.className = `quiz-option ${questionType}`;
+                option.textContent = choice;
+                option.dataset.choice = choice;
+                option.onclick = () => app.handleSelection(option, choice, questionType);
+                container.appendChild(option);
+            });
+        } else {
+            console.warn("options-container missing, skipping render");
+        }
 
         // Hide explanation and reset buttons
         document.getElementById('explanation-box').style.display = 'none';

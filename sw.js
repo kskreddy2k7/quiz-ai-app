@@ -1,4 +1,4 @@
-const CACHE_NAME = 's-quiz-v4';
+const CACHE_NAME = 's-quiz-v5';
 const ASSETS = [
     '/',
     '/static/index.html',
@@ -48,23 +48,23 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
-    
+
     // Skip chrome-extension and other non-http(s) requests
     if (!event.request.url.startsWith('http')) return;
-    
+
     event.respondWith(
         fetch(event.request)
             .then((response) => {
                 // Clone the response
                 const responseToCache = response.clone();
-                
+
                 // Cache successful responses
                 if (response.status === 200) {
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put(event.request, responseToCache);
                     });
                 }
-                
+
                 return response;
             })
             .catch(() => {
@@ -73,7 +73,7 @@ self.addEventListener('fetch', (event) => {
                     if (response) {
                         return response;
                     }
-                    
+
                     // If no cache, return a custom offline page for navigation requests
                     if (event.request.mode === 'navigate') {
                         return caches.match('/');
